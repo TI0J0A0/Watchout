@@ -117,22 +117,4 @@ export const BANNER_THEMES = [
   { a:'#30B0C7', b:'#34AADC' },
 ];
 
-export const AVATAR_PRESETS = [
-  { name: 'Naruto',   anilistId: 17     },
-  { name: 'Luffy',    anilistId: 40     },
-  { name: 'Levi',     anilistId: 124548 },
-  { name: 'Zero Two', anilistId: 117399 },
-  { name: 'Tanjiro',  anilistId: 149582 },
-  { name: 'Nezuko',   anilistId: 149584 },
-  { name: 'Gojo',     anilistId: 139788 },
-  { name: 'Rem',      anilistId: 110427 },
-  { name: 'Itachi',   anilistId: 11     },
-  { name: 'Killua',   anilistId: 30     },
-  { name: 'Mikasa',   anilistId: 116275 },
-  { name: 'Vegeta',   anilistId: 913    },
-  { name: 'Hinata',   anilistId: 70     },
-  { name: 'Robin',    anilistId: 62     },
-  { name: 'Goku',     anilistId: 912    },
-  { name: 'Sasuke',   anilistId: 13     },
-];
 

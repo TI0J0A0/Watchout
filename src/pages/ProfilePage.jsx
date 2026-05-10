@@ -3,7 +3,8 @@ import { useTranslation } from 'react-i18next'
 import { useTheme } from '../context/ThemeContext'
 import { useIsMobile } from '../hooks/useIsMobile'
 import { useAuth } from '../context/AuthContext'
-import { SM, AVATAR_GRADS, AVATAR_PRESETS, BANNER_THEMES } from '../constants'
+import { SM, AVATAR_GRADS, BANNER_THEMES } from '../constants'
+import { fetchAnilistBannerOnly, searchAnilistCharacters } from '../services/anilist'
 import { AvatarPic } from '../components/AvatarPic'
 import { StatBox } from '../components/StatBox'
 import { MediaCard } from '../components/MediaCard'
@@ -48,7 +49,11 @@ export function ProfilePage({ library, onOpen, onStatus, onLogin, onViewFriend =
   const [editOpen,  setEditOpen]  = useState(false)
   const [draft,     setDraft]     = useState(committed)
   const [saving,    setSaving]    = useState(false)
-  const [presetImgs,    setPresetImgs]    = useState({})
+  const [charQuery,     setCharQuery]     = useState('')
+  const [charResults,   setCharResults]   = useState([])
+  const [charLoading,   setCharLoading]   = useState(false)
+  const charTimer = useRef(null)
+  const [pinnedBanner,  setPinnedBanner]  = useState(null)
   const [bannerLoading, setBannerLoading] = useState(null)
   const [avatarBroken,  setAvatarBroken]  = useState(false)
   const [nameAvailable, setNameAvailable] = useState(null)
@@ -109,34 +114,33 @@ export function ProfilePage({ library, onOpen, onStatus, onLogin, onViewFriend =
 
   useEffect(() => {
     if (!editOpen) return
-    const fields = AVATAR_PRESETS.map(p => `c${p.anilistId}:Character(id:${p.anilistId}){image{large}}`).join(' ')
-    fetch('https://graphql.anilist.co', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ query: `{${fields}}` }),
-    })
-      .then(r => r.json())
-      .then(json => {
-        const map = {}
-        for (const [k, v] of Object.entries(json.data ?? {})) {
-          if (v?.image?.large) map[parseInt(k.slice(1))] = v.image.large
-        }
-        setPresetImgs(map)
-      })
-      .catch(() => {})
+    setCharQuery('')
+    setCharLoading(true)
+    searchAnilistCharacters(null)
+      .then(setCharResults)
+      .catch(() => setCharResults([]))
+      .finally(() => setCharLoading(false))
   }, [editOpen])
+
+  useEffect(() => {
+    clearTimeout(charTimer.current)
+    if (!editOpen) return
+    const q = charQuery.trim()
+    if (q.length === 1) return
+    charTimer.current = setTimeout(() => {
+      setCharLoading(true)
+      searchAnilistCharacters(q || null)
+        .then(setCharResults)
+        .catch(() => setCharResults([]))
+        .finally(() => setCharLoading(false))
+    }, 500)
+    return () => clearTimeout(charTimer.current)
+  }, [charQuery, editOpen])
 
   async function pickAnimeBanner(item) {
     setBannerLoading(item.id)
     try {
-      const query = `query($id:Int){Media(idMal:$id,type:ANIME){bannerImage}}`
-      const res = await fetch('https://graphql.anilist.co', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query, variables: { id: item.id } }),
-      })
-      const json = await res.json()
-      const url  = json?.data?.Media?.bannerImage
+      const url = await fetchAnilistBannerOnly(item.id)
       if (url) setDraft(d => ({ ...d, bannerUrl: url, bannerTheme: null, bannerAnimeId: item.id }))
     } catch {}
     setBannerLoading(null)
@@ -232,12 +236,17 @@ export function ProfilePage({ library, onOpen, onStatus, onLogin, onViewFriend =
     active.pinnedAnimeId ? (animeLib.find(i => i.id === active.pinnedAnimeId) ?? null) : null
   , [animeLib, active.pinnedAnimeId])
 
+  useEffect(() => {
+    if (!pinnedAnime?.id) { setPinnedBanner(null); return }
+    fetchAnilistBannerOnly(pinnedAnime.id)
+      .then(url => setPinnedBanner(url || null))
+      .catch(() => setPinnedBanner(null))
+  }, [pinnedAnime?.id])
+
   const hasCustomBanner = active.bannerTheme !== null && active.bannerTheme !== undefined
   const bannerColor     = hasCustomBanner ? BANNER_THEMES[active.bannerTheme] : autoBannerColor
 
-  const pinnedYtId     = pinnedAnime?.trailer?.match(/embed\/([^?]+)/)?.[1]
-  const bannerYtThumb  = pinnedYtId ? `https://img.youtube.com/vi/${pinnedYtId}/maxresdefault.jpg` : null
-  const bannerBlurImg  = bannerYtThumb ? null : (pinnedAnime?.img ?? (hasCustomBanner ? null : autoBannerAnime?.img))
+  const bannerBlurImg = pinnedBanner ? null : (pinnedAnime?.img ?? (hasCustomBanner ? null : autoBannerAnime?.img))
 
   // Friends handlers
   const handleFriendSearch = async (q) => {
@@ -340,8 +349,8 @@ export function ProfilePage({ library, onOpen, onStatus, onLogin, onViewFriend =
           {active.bannerUrl ? (
             <img src={active.bannerUrl} alt="" style={{ position:'absolute', inset:0,
               width:'100%', height:'100%', objectFit:'cover', objectPosition:'center 25%' }}/>
-          ) : bannerYtThumb ? (
-            <img src={bannerYtThumb} alt="" style={{ position:'absolute', inset:0,
+          ) : pinnedBanner ? (
+            <img src={pinnedBanner} alt="" style={{ position:'absolute', inset:0,
               width:'100%', height:'100%', objectFit:'cover', objectPosition:'center' }}/>
           ) : bannerBlurImg ? (
             <img src={bannerBlurImg} alt="" style={{ position:'absolute', inset:0,
@@ -351,10 +360,10 @@ export function ProfilePage({ library, onOpen, onStatus, onLogin, onViewFriend =
           ) : null}
 
           <div style={{ position:'absolute', inset:0,
-            background: (active.bannerUrl || bannerYtThumb)
+            background: (active.bannerUrl || pinnedBanner)
               ? 'linear-gradient(to bottom, rgba(0,0,0,.08) 0%, rgba(0,0,0,.42) 100%)'
               : `linear-gradient(135deg,${bannerColor.a}99,${bannerColor.b}88)` }}/>
-          {!active.bannerUrl && !bannerYtThumb && (
+          {!active.bannerUrl && !pinnedBanner && (
             <div style={{ position:'absolute', inset:0,
               background:'linear-gradient(to bottom,transparent 50%,rgba(0,0,0,.3) 100%)' }}/>
           )}
@@ -515,33 +524,49 @@ export function ProfilePage({ library, onOpen, onStatus, onLogin, onViewFriend =
                     outlineOffset:2, transition:'outline .15s' }}/>
               ))}
             </div>
-            {/* Character presets */}
+            {/* Character search */}
             <p style={{ fontSize: 11, fontWeight: 600, color: T.sub, marginBottom: 6 }}>
-              Personagens populares
+              Personagens
             </p>
+            <input
+              type="text" placeholder="Buscar personagem…"
+              value={charQuery}
+              onChange={e => setCharQuery(e.target.value)}
+              style={{ width:'100%', padding:'8px 12px', borderRadius:10, fontSize:13,
+                background: dark ? 'rgba(255,255,255,.07)' : 'rgba(0,0,0,.05)',
+                border:`1px solid ${T.bord}`, color:T.txt, outline:'none',
+                fontFamily:'inherit', boxSizing:'border-box', marginBottom:8 }}
+            />
             <div style={{
               display: 'grid', gridTemplateColumns: 'repeat(8, 1fr)', gap: 5, marginBottom: 10,
+              minHeight: 80,
             }}>
-              {AVATAR_PRESETS.map(p => {
-                const imgUrl = presetImgs[p.anilistId]
-                const selected = imgUrl && draft.avatarUrl === imgUrl
-                return (
-                  <button key={p.name} className="t" title={p.name}
-                    onClick={() => imgUrl && setDraft(d => ({ ...d, avatarUrl: imgUrl }))}
-                    style={{
-                      padding: 0, border: selected ? '2.5px solid #0A84FF' : '2.5px solid transparent',
-                      borderRadius: 8, overflow: 'hidden', cursor: imgUrl ? 'pointer' : 'default',
-                      aspectRatio: '1', background: dark ? 'rgba(255,255,255,.06)' : 'rgba(0,0,0,.05)',
+              {charLoading
+                ? Array.from({ length: 16 }).map((_, i) => (
+                    <div key={i} style={{
+                      aspectRatio:'1', borderRadius:8,
+                      background: dark ? 'rgba(255,255,255,.06)' : 'rgba(0,0,0,.05)',
+                      display:'flex', alignItems:'center', justifyContent:'center',
                     }}>
-                    {imgUrl
-                      ? <img src={imgUrl} alt={p.name} style={{ width:'100%', height:'100%', objectFit:'cover', display:'block' }} />
-                      : <div style={{ width:'100%', height:'100%', display:'flex', alignItems:'center', justifyContent:'center' }}>
-                          <div style={{ width:16, height:16, borderRadius:'50%', border:`2px solid ${dark?'rgba(255,255,255,.2)':'rgba(0,0,0,.15)'}`, borderTopColor:'#0A84FF', animation:'spin .7s linear infinite' }}/>
-                        </div>
-                    }
-                  </button>
-                )
-              })}
+                      <div style={{ width:14, height:14, borderRadius:'50%', border:`2px solid ${dark?'rgba(255,255,255,.2)':'rgba(0,0,0,.15)'}`, borderTopColor:'#0A84FF', animation:'spin .7s linear infinite' }}/>
+                    </div>
+                  ))
+                : charResults.map(node => {
+                    const selected = draft.avatarUrl === node.image.large
+                    return (
+                      <button key={node.id} className="t" title={node.name.full}
+                        onClick={() => setDraft(d => ({ ...d, avatarUrl: node.image.large }))}
+                        style={{
+                          padding: 0, border: selected ? '2.5px solid #0A84FF' : '2.5px solid transparent',
+                          borderRadius: 8, overflow: 'hidden', cursor: 'pointer',
+                          aspectRatio: '1', background: dark ? 'rgba(255,255,255,.06)' : 'rgba(0,0,0,.05)',
+                        }}>
+                        <img src={node.image.large} alt={node.name.full}
+                          style={{ width:'100%', height:'100%', objectFit:'cover', display:'block' }} />
+                      </button>
+                    )
+                  })
+              }
             </div>
             <input
               type="url" placeholder={t('profile.pasteImageUrl')}

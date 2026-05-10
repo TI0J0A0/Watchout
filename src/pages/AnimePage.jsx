@@ -9,24 +9,9 @@ import { ShelfRow } from '../components/ShelfRow'
 import { WatchPanel } from '../components/WatchPanel'
 import { StatBox } from '../components/StatBox'
 import { fmt, fmtTime } from '../utils'
-import { fetchRecommendations, fetchCharacters } from '../services/jikan'
+import { fetchRecommendations } from '../services/jikan'
+import { fetchAnilistBanner } from '../services/anilist'
 import { fetchAnimeComments, createAnimeComment, deleteAnimeComment } from '../services/community'
-
-async function fetchAnilistBanner(malId) {
-  const query = `query ($malId: Int) { Media(idMal: $malId, type: ANIME) { bannerImage } }`
-  try {
-    const res = await fetch('https://graphql.anilist.co', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-      body: JSON.stringify({ query, variables: { malId } }),
-    })
-    if (!res.ok) return null
-    const json = await res.json()
-    return json?.data?.Media?.bannerImage ?? null
-  } catch {
-    return null
-  }
-}
 
 function timeAgo(dateStr) {
   const diff = Date.now() - new Date(dateStr).getTime()
@@ -201,8 +186,12 @@ export function AnimePage({ item, onClose, onStatus, onScore, onEp, onNotes, onO
     setNoteText(item?.userNotes ?? '')
     setNoteSaved(false)
     fetchRecommendations(item.id).then(setRecs).catch(() => {})
-    fetchCharacters(item.id).then(setChars).catch(() => {})
-    fetchAnilistBanner(item.id).then(setBanner).catch(() => {})
+    fetchAnilistBanner(item.id)
+      .then(({ bannerImage, characters }) => {
+        setBanner(bannerImage)
+        if (characters.length) setChars(characters)
+      })
+      .catch(() => {})
   }, [item?.id])
 
   function handleNote(val) {

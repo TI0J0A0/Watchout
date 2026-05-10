@@ -7,6 +7,7 @@ import { MediaCard } from '../components/MediaCard'
 import { LoadingGrid } from '../components/LoadingGrid'
 import { ShelfRow } from '../components/ShelfRow'
 import { fetchPopular, fetchUpcoming, fetchByGenre, fetchSeasonArchive, fetchRecommendations } from '../services/jikan'
+import { fetchAnilistBannerOnly } from '../services/anilist'
 import { useOnScreen } from '../hooks/useOnScreen'
 import { computeTasteProfile, matchScore, personalityText } from '../utils/tasteProfile'
 
@@ -104,6 +105,13 @@ export function SeasonalPage({
   const [archSeason,  setArchSeason]  = useState(null)
   const [archData,    setArchData]    = useState([])
   const [archLoading, setArchLoading] = useState(false)
+  const [heroBanner,  setHeroBanner]  = useState(null)
+
+  useEffect(() => {
+    if (!hero?.id) return
+    setHeroBanner(null)
+    fetchAnilistBannerOnly(hero.id).then(url => setHeroBanner(url || null)).catch(() => {})
+  }, [hero?.id])
 
   const enrich = useCallback(
     items => items.map(i => data.find(d => d.id === i.id) ?? i),
@@ -142,7 +150,7 @@ export function SeasonalPage({
   const continueWatching = data.filter(i => i.type === 'anime' && i.userStatus === 'watching')
   const isArchive  = archYear !== null && archSeason !== null
   const ytId       = hero?.trailer?.match(/embed\/([^?]+)/)?.[1]
-  const ytThumb    = ytId ? `https://img.youtube.com/vi/${ytId}/maxresdefault.jpg` : null
+  const ytThumb    = heroBanner ?? (ytId ? `https://img.youtube.com/vi/${ytId}/maxresdefault.jpg` : null)
   const gridItems  = isArchive
     ? enrich(archData).filter(i => typeF === 'all' || i.type === typeF)
     : seasonal

@@ -2,41 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useTheme } from '../context/ThemeContext'
 import { useIsMobile } from '../hooks/useIsMobile'
-
-async function fetchAnilistData(malId) {
-  const query = `
-    query ($malId: Int) {
-      Media(idMal: $malId, type: ANIME) {
-        id
-        episodes
-        duration
-        streamingEpisodes {
-          title
-          thumbnail
-        }
-      }
-    }
-  `
-  try {
-    const res = await fetch('https://graphql.anilist.co', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-      body: JSON.stringify({ query, variables: { malId } }),
-    })
-    if (!res.ok) return null
-    const json = await res.json()
-    const media = json?.data?.Media
-    if (!media?.id) return null
-    return {
-      anilistId:        media.id,
-      episodes:         media.episodes ?? null,
-      duration:         media.duration ?? null,
-      streamingEpisodes: media.streamingEpisodes ?? [],
-    }
-  } catch {
-    return null
-  }
-}
+import { fetchAnilistData } from '../services/anilist'
 
 function parseEpNum(title) {
   const m = title?.match(/Episode\s+(\d+)/i)
