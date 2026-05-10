@@ -1,0 +1,169 @@
+import { useState, useEffect, useRef } from 'react'
+import { useTranslation } from 'react-i18next'
+import { mergeWithUserData, saveUserData } from '../utils'
+import { fetchSeasonal, fetchTop, fetchAnimeById } from '../services/jikan'
+import { loadUserLibrary, upsertAnime, upsertAnimesBatch, removeAnime } from '../services/userAnime'
+import { useAuth } from '../context/AuthContext'
+import { createNotification, hasNotificationToday } from '../services/notifications'
+
+export function useLibrary() {
+  const { user } = useAuth()
+  const { t } = useTranslation()
+  const [data, setData]         = useState([])
+  const [topData, setTopData]   = useState([])
+  const [loading, setLoading]   = useState(true)
+  const [topLoaded, setTopLoaded] = useState(false)
+  const noteTimer = useRef(null)
+
+  useEffect(() => {
+    fetchSeasonal()
+      .then(items => setData(mergeWithUserData(items)))
+      .catch(() => {})
+      .finally(() => setLoading(false))
+  }, [])
+
+  useEffect(() => {
+    if (!user) return
+    loadUserLibrary()
+      .then(library => {
+        setData(prev => {
+          const byId = Object.fromEntries(library.map(i => [i.id, i]))
+          const seasonalIds = new Set(prev.map(i => i.id))
+          const updated = prev.map(i =>
+            byId[i.id]
+              ? { ...i, userStatus: byId[i.id].userStatus, userScore: byId[i.id].userScore, userEp: byId[i.id].userEp }
+              : i
+          )
+          const extra = library.filter(i => !seasonalIds.has(i.id))
+          return [...updated, ...extra]
+        })
+
+        // Proactively notify about episodes airing today — fire-and-forget
+        const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+        const today = DAYS[new Date().getDay()]
+        const airingToday = library.filter(i =>
+          i.userStatus === 'watching' && i.airing && i.airDay === today
+        )
+        ;(async () => {
+          for (const item of airingToday) {
+            const already = await hasNotificationToday(user.id, item.id)
+            if (!already) {
+              await createNotification(
+                user.id,
+                'new_episode',
+                'New episode today!',
+                `${item.title} is airing today`,
+                { anime_id: item.id, air_day: item.airDay },
+              ).catch(() => {})
+            }
+          }
+        })()
+
+        // Enrich items that have no image (e.g. from MAL import)
+        const needsEnrich = library.filter(i => !i.img).slice(0, 60)
+        if (needsEnrich.length === 0) return
+        ;(async () => {
+          for (const item of needsEnrich) {
+            await new Promise(r => setTimeout(r, 360))
+            try {
+              const full = await fetchAnimeById(item.id)
+              const enriched = {
+                ...full,
+                userStatus: item.userStatus,
+                userScore:  item.userScore,
+                userEp:     item.userEp,
+                userNotes:  item.userNotes,
+              }
+              setData(prev => prev.map(i => i.id === enriched.id ? enriched : i))
+              upsertAnime(user.id, enriched).catch(() => {})
+            } catch {}
+          }
+        })()
+      })
+      .catch(console.error)
+  }, [user])
+
+  useEffect(() => {
+    if (!user && data.length > 0) saveUserData(data)
+  }, [data, user])
+
+  const loadTop = () => {
+    if (topLoaded) return
+    fetchTop()
+      .then(items => { setTopData(items); setTopLoaded(true) })
+      .catch(() => {})
+  }
+
+  const addToData = (item) => {
+    setData(d => d.find(i => i.id === item.id) ? d : [...d, item])
+  }
+
+  const setStatus = (id, s) => {
+    const it = data.find(i => i.id === id)
+    if (!it) return null
+    const removing = it.userStatus === s
+    const updated = {
+      ...it,
+      userStatus: removing ? null : s,
+      userEp: (!removing && s === 'completed' && it.eps) ? it.eps : it.userEp,
+    }
+    setData(d => d.map(i => i.id === id ? updated : i))
+    if (user) {
+      if (removing) removeAnime(user.id, id).catch(console.error)
+      else          upsertAnime(user.id, updated).catch(console.error)
+    }
+    return removing ? t('common.removedFromList') : `${it.title} → ${t(`status.${s}`)}`
+  }
+
+  const setScore = (id, v) => {
+    const it = data.find(i => i.id === id)
+    if (!it) return
+    const next = { ...it, userScore: v }
+    setData(d => d.map(i => i.id === id ? next : i))
+    if (user) upsertAnime(user.id, next).catch(console.error)
+  }
+
+  const setEp = (id, v) => {
+    const it = data.find(i => i.id === id)
+    if (!it) return
+    const next = { ...it, userEp: v }
+    setData(d => d.map(i => i.id === id ? next : i))
+    if (user) upsertAnime(user.id, next).catch(console.error)
+  }
+
+  const setNotes = (id, text) => {
+    const it = data.find(i => i.id === id)
+    if (!it) return
+    const updated = { ...it, userNotes: text }
+    setData(d => d.map(i => i.id === id ? updated : i))
+    if (user) {
+      clearTimeout(noteTimer.current)
+      noteTimer.current = setTimeout(
+        () => upsertAnime(user.id, updated).catch(console.error),
+        800
+      )
+    }
+  }
+
+  const importFromMAL = async (items) => {
+    const unique = [...new Map(items.map(i => [i.id, i])).values()]
+    setData(prev => {
+      const updated = prev.map(p => {
+        const match = unique.find(i => i.id === p.id)
+        return match
+          ? { ...p, userStatus: match.userStatus, userScore: match.userScore, userEp: match.userEp }
+          : p
+      })
+      const existingIds = new Set(prev.map(i => i.id))
+      return [...updated, ...unique.filter(i => !existingIds.has(i.id))]
+    })
+    if (user) await upsertAnimesBatch(user.id, unique)
+  }
+
+  return {
+    data, setData, loading,
+    topData, topLoaded, loadTop,
+    setStatus, setScore, setEp, setNotes,
+    importFromMAL, addToData,
+  }
+}

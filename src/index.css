@@ -1,0 +1,138 @@
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+::-webkit-scrollbar { width: 0; }
+html { color-scheme: dark; }
+body { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
+button, a { cursor: pointer; font-family: inherit; text-decoration: none; }
+input, textarea { font-family: inherit; }
+::selection { background: rgba(10,132,255,.22); color: inherit; }
+
+button:focus-visible, a:focus-visible {
+  outline: 2px solid #0A84FF;
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+button:focus:not(:focus-visible),
+a:focus:not(:focus-visible) { outline: none; }
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(.96); }
+  to   { opacity: 1; transform: scale(1); }
+}
+@keyframes toastIn {
+  from { opacity: 0; transform: translateY(10px) scale(.96); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes heroFade {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.fu  { animation: fadeUp  .34s ease both; }
+.sc  { animation: scaleIn .2s  ease both; }
+.hf  { animation: heroFade .5s ease both; }
+.t   { transition: all .18s ease; }
+
+.navbtn:hover { opacity: 1 !important; color: #0A84FF !important; }
+.card { cursor: pointer; }
+.card:hover { transform: translateY(-3px); }
+.card:hover .cimg { transform: scale(1.05); }
+.pill:hover { opacity: .78; }
+.hbtn:hover { opacity: .72; }
+.rbtn:hover { background: rgba(120,120,128,.1) !important; }
+
+/* ── Card hover overlay ── */
+.card-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0,0,0,.44);
+  backdrop-filter: blur(6px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  opacity: 0;
+  transition: opacity .18s ease;
+}
+.card:hover .card-overlay { opacity: 1; }
+
+/* ── Shimmer skeleton ── */
+@keyframes shimmer {
+  from { transform: translateX(-100%); }
+  to   { transform: translateX(200%); }
+}
+.shimmer {
+  position: relative;
+  overflow: hidden;
+}
+.shimmer::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255,255,255,.07) 50%,
+    transparent 100%
+  );
+  animation: shimmer 1.7s ease-in-out infinite;
+}
+
+/* ── Layout ── */
+.main-content { width: 100%; }
+
+.show-sm { display: none !important; }
+
+.mobile-nav {
+  display: none;
+  position: fixed;
+  bottom: 0; left: 0; right: 0;
+  z-index: 200;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* Disable hover lift + overlay on touch */
+@media (hover: none) {
+  .card:hover { transform: none; }
+  .card:hover .cimg { transform: none; }
+  .card:hover .card-overlay { opacity: 0; }
+}
+
+/* ── Small phones (320–480px) ── */
+@media (max-width: 480px) {
+  .hero-title { font-size: 22px !important; }
+  .hero-sub   { font-size: 12px !important; -webkit-line-clamp: 2; }
+  .main-content { padding-left: 12px !important; padding-right: 12px !important; }
+}
+
+/* ── Standard phones (≤640px) ── */
+@media (max-width: 640px) {
+  .hide-sm    { display: none !important; }
+  .show-sm    { display: flex !important; }
+  .hero-h     { height: 260px !important; }
+  .hero-pad   { padding: 20px 16px !important; }
+  .hero-title { font-size: 26px !important; }
+  .hero-sub   { font-size: 13px !important; -webkit-line-clamp: 2; }
+  .top3-grid  { grid-template-columns: 1fr !important; }
+  .navbtn     { padding: 6px 10px !important; font-size: 12px !important; }
+  .mobile-nav { display: flex; }
+  .main-content {
+    padding-bottom: 80px !important;
+    padding-left: 16px !important;
+    padding-right: 16px !important;
+  }
+  /* Touch-friendly minimum targets */
+  button { min-height: 36px; }
+  .nav-tab { min-height: 56px !important; min-width: 44px !important; }
+}
+
+/* ── Tablets (641–900px) ── */
+@media (min-width: 641px) and (max-width: 900px) {
+  .main-content { padding-left: 20px !important; padding-right: 20px !important; }
+  .hero-h     { height: 340px !important; }
+  .hero-title { font-size: 32px !important; }
+}
