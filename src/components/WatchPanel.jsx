@@ -9,52 +9,6 @@ function parseEpNum(title) {
   return m ? parseInt(m[1]) : null
 }
 
-async function fetchKitsuEpisodes(malId) {
-  const BASE = 'https://kitsu.io/api/edge'
-  const H = { Accept: 'application/vnd.api+json' }
-  try {
-    const mapJson = await fetch(
-      `${BASE}/mappings?filter[externalId]=${malId}&filter[externalSite]=myanimelist/anime&include=item`,
-      { headers: H }
-    ).then(r => r.json())
-    const kitsuId = mapJson.included?.[0]?.id
-    if (!kitsuId) return {}
-
-    const limit = 20
-    const firstJson = await fetch(
-      `${BASE}/episodes?filter[mediaId]=${kitsuId}&sort=number&page[limit]=${limit}&page[offset]=0`,
-      { headers: H }
-    ).then(r => r.json())
-    const total = firstJson.meta?.count ?? 0
-    let allEps = firstJson.data ?? []
-
-    if (total > limit) {
-      const pages = Math.ceil(total / limit)
-      const extras = await Promise.all(
-        Array.from({ length: pages - 1 }, (_, i) =>
-          fetch(`${BASE}/episodes?filter[mediaId]=${kitsuId}&sort=number&page[limit]=${limit}&page[offset]=${(i + 1) * limit}`, { headers: H })
-            .then(r => r.json()).then(j => j.data ?? [])
-        )
-      )
-      allEps = allEps.concat(...extras)
-    }
-
-    const epMap = {}
-    allEps.forEach(ep => {
-      const num = ep.attributes?.number
-      if (!num) return
-      epMap[num] = {
-        thumbnail: ep.attributes?.thumbnail?.original ?? null,
-        title:     ep.attributes?.canonicalTitle ?? null,
-        airdate:   ep.attributes?.airdate ?? null,
-      }
-    })
-    return epMap
-  } catch {
-    return {}
-  }
-}
-
 function IconCheck() {
   return (
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
@@ -101,28 +55,26 @@ export function WatchPanel({ item, onEp, onStatus }) {
     setActiveEp(null)
 
     ;(async () => {
-      const [anilist, kitsuEps] = await Promise.all([
-        fetchAnilistData(item.id),
-        fetchKitsuEpisodes(item.id).catch(() => ({})),
-      ])
+      const anilist = await fetchAnilistData(item.id)
       if (cancelled) return
       if (!anilist) { setState('notFound'); return }
       setAnilistId(anilist.anilistId)
       setEpCount(anilist.episodes)
       setEpDuration(anilist.duration)
 
-      // Base: AniList streamingEpisodes
+      // Build episode map from AniList streamingEpisodes (thumbnails + titles)
       const epMap = {}
       anilist.streamingEpisodes.forEach(ep => {
         const num = parseEpNum(ep.title)
-        if (num) epMap[num] = { thumbnail: ep.thumbnail ?? null, title: ep.title ?? null }
+        if (num) epMap[num] = { thumbnail: ep.thumbnail ?? null, title: ep.title ?? null, airdate: null }
       })
-      // Override/enrich with Kitsu (real frames + airdates)
-      Object.entries(kitsuEps).forEach(([num, data]) => {
-        epMap[num] = {
-          thumbnail: data.thumbnail || epMap[num]?.thumbnail || null,
-          title:     data.title     || epMap[num]?.title     || null,
-          airdate:   data.airdate   || null,
+      // Add airdates from airingSchedule (Unix timestamp → date string)
+      anilist.airingSchedule.forEach(({ episode, airingAt }) => {
+        const airdate = new Date(airingAt * 1000).toISOString().split('T')[0]
+        if (epMap[episode]) {
+          epMap[episode].airdate = airdate
+        } else {
+          epMap[episode] = { thumbnail: null, title: null, airdate }
         }
       })
       setStreamEps(epMap)

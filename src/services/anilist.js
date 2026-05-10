@@ -23,6 +23,7 @@ export async function fetchAnilistData(malId) {
         episodes
         duration
         streamingEpisodes { title thumbnail }
+        airingSchedule { nodes { episode airingAt } }
       }
     }
   `, { malId })
@@ -33,6 +34,7 @@ export async function fetchAnilistData(malId) {
     episodes:          media.episodes ?? null,
     duration:          media.duration ?? null,
     streamingEpisodes: media.streamingEpisodes ?? [],
+    airingSchedule:    media.airingSchedule?.nodes ?? [],
   }
 }
 
