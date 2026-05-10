@@ -1,17 +1,18 @@
-const ANN_RSS = 'https://www.animenewsnetwork.com/all/rss.xml'
+import { supabase } from './supabase'
 
+// Legacy CORS proxies — used only if the Edge Function is unavailable
+const ANN_RSS = 'https://www.animenewsnetwork.com/all/rss.xml'
 const PROXIES = [
-  url => `https://api.codetabs.com/v1/proxy/?quest=${encodeURIComponent(url)}`,
   url => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
   url => `https://corsproxy.io/?${encodeURIComponent(url)}`,
 ]
 
 const CAT_COLOR = {
-  'Anime':  '#BF5AF2',
-  'Manga':  '#FF9F0A',
-  'Game':   '#34C759',
-  'Music':  '#FF2D55',
-  'News':   '#0A84FF',
+  'Anime': '#BF5AF2',
+  'Manga': '#FF9F0A',
+  'Game':  '#34C759',
+  'Music': '#FF2D55',
+  'News':  '#0A84FF',
 }
 
 function stripHtml(str) {
@@ -24,7 +25,7 @@ function stripHtml(str) {
 
 function parseItems(text) {
   if (!text.includes('<item')) return []
-  const doc  = new DOMParser().parseFromString(text, 'text/xml')
+  const doc = new DOMParser().parseFromString(text, 'text/xml')
   return [...doc.querySelectorAll('item')].slice(0, 40).map(item => {
     const title    = stripHtml(item.querySelector('title')?.textContent ?? '')
     const link     = item.querySelector('link')?.textContent?.trim() ?? ''
@@ -44,12 +45,24 @@ function parseItems(text) {
   }).filter(i => i.title && i.link)
 }
 
-export async function fetchAnnNews() {
+async function fetchViaEdgeFunction() {
+  if (!supabase) throw new Error('Supabase not configured')
+  const { data, error } = await supabase.functions.invoke('fetch-ann-news')
+  if (error) throw error
+  if (!Array.isArray(data) || data.length === 0) throw new Error('Empty response')
+  // Edge Function returns date as ISO string — convert back to Date objects
+  return data.map(item => ({
+    ...item,
+    date: item.date ? new Date(item.date) : null,
+  }))
+}
+
+async function fetchViaProxy() {
   for (const makeUrl of PROXIES) {
     try {
       const res = await fetch(makeUrl(ANN_RSS))
       if (!res.ok) continue
-      const text = await res.text()
+      const text  = await res.text()
       const items = parseItems(text)
       if (items.length > 0) return items
     } catch {
@@ -57,4 +70,12 @@ export async function fetchAnnNews() {
     }
   }
   throw new Error('All proxies failed')
+}
+
+export async function fetchAnnNews() {
+  try {
+    return await fetchViaEdgeFunction()
+  } catch {
+    return fetchViaProxy()
+  }
 }

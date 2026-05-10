@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import { useLibrary } from './hooks/useLibrary'
 import { ThemeProvider, useTheme } from './context/ThemeContext'
 import { AuthProvider, useAuth } from './context/AuthContext'
@@ -17,6 +17,22 @@ import { FriendProfilePage } from './pages/FriendProfilePage'
 import { CommunityPage } from './pages/CommunityPage'
 import { loadPremiumStatus, isAdmin } from './services/premium'
 import { getProfile } from './services/friends'
+import { fetchAnimeById } from './services/jikan'
+
+const VALID_PAGES = new Set(['seasonal','top','calendar','search','profile','news','community'])
+
+function parseHash(hash) {
+  const h = (hash || '').replace(/^#/, '')
+  if (h.startsWith('anime-')) {
+    const id = parseInt(h.slice(6))
+    if (!isNaN(id)) return { page: 'seasonal', detailId: id }
+  }
+  return { page: VALID_PAGES.has(h) ? h : 'seasonal', detailId: null }
+}
+
+function buildHash(page, detailId) {
+  return detailId !== null ? `#anime-${detailId}` : `#${page}`
+}
 
 function AppInner() {
   const { T } = useTheme()
@@ -28,8 +44,9 @@ function AppInner() {
     importFromMAL, addToData,
   } = useLibrary()
 
-  const [page,     setPage]     = useState('seasonal')
-  const [detailId, setDetailId] = useState(null)
+  const initHash = parseHash(window.location.hash)
+  const [page,     setPage]     = useState(initHash.page)
+  const [detailId, setDetailId] = useState(initHash.detailId)
   const [typeF,    setTypeF]    = useState('all')
   const [toast,    setToast]    = useState(null)
   const [heroIdx,  setHeroIdx]  = useState(0)
@@ -41,6 +58,46 @@ function AppInner() {
   const [userProfile, setUserProfile] = useState(null)
 
   const notify = msg => { setToast(msg); setTimeout(() => setToast(null), 2400) }
+
+  // ── Hash-based routing ──────────────────────────────────────────────────────
+
+  const firstPush = useRef(true)
+
+  // Sync state → URL hash (replaceState on first call to avoid spurious history entry)
+  useEffect(() => {
+    if (friendId !== null) return // friend profiles are transient, don't hash them
+    const desired = buildHash(page, detailId)
+    if (window.location.hash === desired) return
+    if (firstPush.current) {
+      firstPush.current = false
+      history.replaceState(null, '', desired)
+    } else {
+      history.pushState(null, '', desired)
+    }
+  }, [page, detailId, friendId])
+
+  // Browser back/forward → update state
+  useEffect(() => {
+    function onPop() {
+      const { page: p, detailId: d } = parseHash(window.location.hash)
+      setPage(p)
+      setDetailId(d)
+      setFriendId(null)
+      setFriendshipId(null)
+      window.scrollTo({ top: 0, behavior: 'instant' })
+    }
+    window.addEventListener('popstate', onPop)
+    return () => window.removeEventListener('popstate', onPop)
+  }, [])
+
+  // Deep-link: fetch anime data if we landed on #anime-{id} but data isn't loaded yet
+  useEffect(() => {
+    if (detailId === null) return
+    if (data.find(i => i.id === detailId)) return
+    fetchAnimeById(detailId).then(addToData).catch(() => {})
+  }, [detailId, data.length])
+
+  // ───────────────────────────────────────────────────────────────────────────
 
   useEffect(() => {
     if (!user) { setIsPremium(false); return }
@@ -107,12 +164,19 @@ function AppInner() {
           onOpen={(item) => { setFriendId(null); setFriendshipId(null); openDetail(item) }}
           onNavigate={navigate}/>
       ) : detailId !== null ? (
-        <AnimePage
-          item={data.find(d => d.id === detailId)}
-          onClose={() => setDetailId(null)}
-          onStatus={handleStatus} onScore={setScore} onEp={setEp} onNotes={setNotes}
-          onOpen={openDetail} isPremium={isPremium}
-          onLogin={() => setShowAuth(true)} />
+        (() => {
+          const detailItem = data.find(d => d.id === detailId)
+          return detailItem
+            ? <AnimePage
+                item={detailItem}
+                onClose={() => setDetailId(null)}
+                onStatus={handleStatus} onScore={setScore} onEp={setEp} onNotes={setNotes}
+                onOpen={openDetail} isPremium={isPremium}
+                onLogin={() => setShowAuth(true)} />
+            : <div style={{ padding: '120px 28px', textAlign: 'center', color: T.sub, fontSize: 14 }}>
+                Loading…
+              </div>
+        })()
       ) : (
         <div className="main-content" style={{ padding: '0 28px' }}>
           {page === 'seasonal' && (
