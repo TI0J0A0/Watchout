@@ -186,7 +186,11 @@ export function WatchPanel({ item, onEp, onStatus }) {
     return () => window.removeEventListener('message', handleMessage)
   }, [activeEp, item.id, item.userEp, item.userStatus, onEp, onStatus])
 
-  const count    = epCount ?? (item.userEp ?? 0) + 1
+  const maxFromStreamEps = Object.keys(streamEps).reduce((max, k) => {
+    const n = Number(k)
+    return isNaN(n) ? max : Math.max(max, n)
+  }, 0)
+  const count    = epCount ?? Math.max(maxFromStreamEps, (item.userEp ?? 0) + 1)
   const episodes = Array.from({ length: count }, (_, i) => i + 1)
 
   // Filter to only aired episodes
