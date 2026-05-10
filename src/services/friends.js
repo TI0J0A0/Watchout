@@ -21,6 +21,17 @@ export async function getProfile(userId) {
   return data ?? null
 }
 
+export async function checkDisplayNameAvailable(displayName, currentUserId) {
+  if (!supabase || !displayName?.trim()) return null
+  const { data } = await supabase
+    .from('profiles')
+    .select('id')
+    .ilike('display_name', displayName.trim())
+    .neq('id', currentUserId)
+    .limit(1)
+  return (data?.length ?? 0) === 0
+}
+
 export async function searchProfiles(query) {
   if (!supabase || !query) return []
   const { data } = await supabase

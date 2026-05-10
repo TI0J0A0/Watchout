@@ -12,6 +12,7 @@ import { supabase } from '../services/supabase'
 import {
   upsertProfile, getFriendsWithProfiles, getPendingRequests,
   searchProfiles, sendFriendRequest, acceptFriendRequest, deleteFriendship,
+  checkDisplayNameAvailable,
 } from '../services/friends'
 import { ADMIN_EMAIL, isAdmin, adminSearchUsers, grantPremium, revokePremium } from '../services/premium'
 import { computeTasteProfile, personalityText } from '../utils/tasteProfile'
@@ -50,6 +51,9 @@ export function ProfilePage({ library, onOpen, onStatus, onLogin, onViewFriend =
   const [presetImgs,    setPresetImgs]    = useState({})
   const [bannerLoading, setBannerLoading] = useState(null)
   const [avatarBroken,  setAvatarBroken]  = useState(false)
+  const [nameAvailable, setNameAvailable] = useState(null)
+  const [nameChecking,  setNameChecking]  = useState(false)
+  const nameCheckTimer = useRef(null)
 
   const [friends,            setFriends]            = useState([])
   const [friendsLoading,     setFriendsLoading]     = useState(true)
@@ -89,6 +93,21 @@ export function ProfilePage({ library, onOpen, onStatus, onLogin, onViewFriend =
   }, [editOpen ? draft.avatarUrl : committed.avatarUrl])
 
   useEffect(() => {
+    if (!editOpen) { setNameAvailable(null); return }
+    const trimmed = draft.displayName?.trim() ?? ''
+    const original = committed.displayName?.trim() ?? ''
+    if (!trimmed || trimmed === original) { setNameAvailable(null); return }
+    setNameChecking(true)
+    clearTimeout(nameCheckTimer.current)
+    nameCheckTimer.current = setTimeout(async () => {
+      const available = await checkDisplayNameAvailable(trimmed, user?.id).catch(() => null)
+      setNameAvailable(available)
+      setNameChecking(false)
+    }, 500)
+    return () => clearTimeout(nameCheckTimer.current)
+  }, [draft.displayName, editOpen])
+
+  useEffect(() => {
     if (!editOpen) return
     const fields = AVATAR_PRESETS.map(p => `c${p.anilistId}:Character(id:${p.anilistId}){image{large}}`).join(' ')
     fetch('https://graphql.anilist.co', {
@@ -125,9 +144,10 @@ export function ProfilePage({ library, onOpen, onStatus, onLogin, onViewFriend =
 
   const active = editOpen ? draft : committed
 
-  const openEdit   = () => { setDraft({ ...committed }); setEditOpen(true) }
-  const cancelEdit = () => setEditOpen(false)
+  const openEdit   = () => { setDraft({ ...committed }); setNameAvailable(null); setEditOpen(true) }
+  const cancelEdit = () => { setNameAvailable(null); setEditOpen(false) }
   const saveEdit   = async () => {
+    if (nameAvailable === false) return
     setSaving(true)
     if (supabase) {
       await supabase.auth.updateUser({ data: draft }).catch(console.error)
@@ -451,10 +471,21 @@ export function ProfilePage({ library, onOpen, onStatus, onLogin, onViewFriend =
 
           {/* Display name */}
           <div style={{ marginBottom:20 }}>
-            <p style={{ fontSize:12, fontWeight:600, color:T.sub,
-              letterSpacing:'.04em', textTransform:'uppercase', marginBottom:8 }}>
-              {t('profile.displayName')}
-            </p>
+            <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:8 }}>
+              <p style={{ fontSize:12, fontWeight:600, color:T.sub,
+                letterSpacing:'.04em', textTransform:'uppercase' }}>
+                {t('profile.displayName')}
+              </p>
+              {nameChecking && (
+                <span style={{ fontSize:11, color:T.sub }}>verificando…</span>
+              )}
+              {!nameChecking && nameAvailable === true && (
+                <span style={{ fontSize:11, fontWeight:600, color:'#30D158' }}>✓ disponível</span>
+              )}
+              {!nameChecking && nameAvailable === false && (
+                <span style={{ fontSize:11, fontWeight:600, color:'#FF3B30' }}>✗ já em uso</span>
+              )}
+            </div>
             <input
               type="text" placeholder={username}
               value={draft.displayName}
@@ -462,7 +493,8 @@ export function ProfilePage({ library, onOpen, onStatus, onLogin, onViewFriend =
               onChange={e => setDraft(d => ({ ...d, displayName: e.target.value }))}
               style={{ width:'100%', padding:'10px 14px', borderRadius:12, fontSize:14,
                 background: dark ? 'rgba(255,255,255,.07)' : 'rgba(0,0,0,.05)',
-                border:`1px solid ${T.bord}`, color:T.txt, outline:'none',
+                border:`1px solid ${nameAvailable === false ? '#FF3B30' : T.bord}`,
+                color:T.txt, outline:'none',
                 fontFamily:'inherit', boxSizing:'border-box' }}
             />
           </div>
@@ -628,11 +660,13 @@ export function ProfilePage({ library, onOpen, onStatus, onLogin, onViewFriend =
             <p style={{ fontSize:11, color:T.sub, marginTop:6 }}>{t('profile.selectPinned')}</p>
           </div>
 
-          <button onClick={saveEdit} disabled={saving}
-            style={{ padding:'10px 28px', borderRadius:22, border:'none', cursor:'pointer',
-              background:'#0A84FF', color:'#fff', fontSize:14, fontWeight:600,
-              opacity: saving ? .6 : 1, transition:'opacity .2s' }}>
-            {saving ? t('profile.saving') : t('profile.save')}
+          <button onClick={saveEdit} disabled={saving || nameAvailable === false || nameChecking}
+            style={{ padding:'10px 28px', borderRadius:22, border:'none',
+              cursor: (saving || nameAvailable === false || nameChecking) ? 'not-allowed' : 'pointer',
+              background: nameAvailable === false ? '#FF3B30' : '#0A84FF',
+              color:'#fff', fontSize:14, fontWeight:600,
+              opacity: (saving || nameChecking) ? .6 : 1, transition:'opacity .2s,background .2s' }}>
+            {saving ? t('profile.saving') : nameAvailable === false ? 'Nome indisponível' : t('profile.save')}
           </button>
         </div>
       )}
