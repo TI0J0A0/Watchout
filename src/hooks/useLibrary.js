@@ -17,7 +17,19 @@ export function useLibrary() {
 
   useEffect(() => {
     fetchSeasonal()
-      .then(items => setData(mergeWithUserData(items)))
+      .then(items => {
+        setData(prev => {
+          const prevById = Object.fromEntries(prev.map(i => [i.id, i]))
+          const merged = mergeWithUserData(items).map(i =>
+            prevById[i.id]?.userStatus != null
+              ? { ...i, userStatus: prevById[i.id].userStatus, userScore: prevById[i.id].userScore, userEp: prevById[i.id].userEp, userNotes: prevById[i.id].userNotes }
+              : i
+          )
+          const newIds = new Set(merged.map(i => i.id))
+          const extras = prev.filter(i => !newIds.has(i.id))
+          return [...merged, ...extras]
+        })
+      })
       .catch(() => {})
       .finally(() => setLoading(false))
   }, [])
@@ -31,7 +43,7 @@ export function useLibrary() {
           const seasonalIds = new Set(prev.map(i => i.id))
           const updated = prev.map(i =>
             byId[i.id]
-              ? { ...i, userStatus: byId[i.id].userStatus, userScore: byId[i.id].userScore, userEp: byId[i.id].userEp }
+              ? { ...i, userStatus: byId[i.id].userStatus, userScore: byId[i.id].userScore, userEp: byId[i.id].userEp, userNotes: byId[i.id].userNotes }
               : i
           )
           const extra = library.filter(i => !seasonalIds.has(i.id))
