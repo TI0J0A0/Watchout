@@ -64,7 +64,14 @@ export async function loadUserLibrary() {
     .eq('user_id', user.id)
     .order('updated_at', { ascending: false })
   if (error) throw error
-  return data.map(fromRow)
+  // Deduplicate by anime_id in case DB has stale duplicate rows
+  const seen = new Set()
+  const unique = data.filter(row => {
+    if (seen.has(row.anime_id)) return false
+    seen.add(row.anime_id)
+    return true
+  })
+  return unique.map(fromRow)
 }
 
 export async function upsertAnime(userId, item) {
