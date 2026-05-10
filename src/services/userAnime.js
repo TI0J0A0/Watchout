@@ -1,25 +1,32 @@
 import { supabase } from './supabase'
 
-function toRow(userId, item) {
+function toAnimeRow(item) {
+  return {
+    id:        item.id,
+    title:     item.title,
+    img:       item.img,
+    type:      item.type,
+    eps:       item.eps,
+    duration:  item.duration,
+    score:     item.score,
+    color:     item.color,
+    color_b:   item.colorB,
+    genres:    item.genres,
+    studio:    item.studio,
+    year:      item.year,
+    airing:    item.airing,
+    air_day:   item.airDay,
+    synopsis:  item.synopsis,
+    streaming: item.streaming,
+    members:   item.members,
+    updated_at: new Date().toISOString(),
+  }
+}
+
+function toUserAnimeRow(userId, item) {
   return {
     user_id:     userId,
     anime_id:    item.id,
-    title:       item.title,
-    img:         item.img,
-    type:        item.type,
-    eps:         item.eps,
-    duration:    item.duration,
-    score:       item.score,
-    color:       item.color,
-    color_b:     item.colorB,
-    genres:      item.genres,
-    studio:      item.studio,
-    year:        item.year,
-    airing:      item.airing,
-    air_day:     item.airDay,
-    synopsis:    item.synopsis,
-    streaming:   item.streaming,
-    members:     item.members,
     status:      item.userStatus,
     user_score:  item.userScore,
     ep_progress: item.userEp || 0,
@@ -29,24 +36,25 @@ function toRow(userId, item) {
 }
 
 function fromRow(row) {
+  const a = row.animes || {}
   return {
     id:         row.anime_id,
-    title:      row.title,
-    img:        row.img,
-    type:       row.type,
-    eps:        row.eps,
-    duration:   row.duration,
-    score:      row.score,
-    color:      row.color,
-    colorB:     row.color_b,
-    genres:     row.genres || [],
-    studio:     row.studio,
-    year:       row.year,
-    airing:     row.airing,
-    airDay:     row.air_day,
-    synopsis:   row.synopsis,
-    streaming:  row.streaming || [],
-    members:    row.members,
+    title:      a.title,
+    img:        a.img,
+    type:       a.type,
+    eps:        a.eps,
+    duration:   a.duration,
+    score:      a.score,
+    color:      a.color,
+    colorB:     a.color_b,
+    genres:     a.genres || [],
+    studio:     a.studio,
+    year:       a.year,
+    airing:     a.airing,
+    airDay:     a.air_day,
+    synopsis:   a.synopsis,
+    streaming:  a.streaming || [],
+    members:    a.members,
     userStatus: row.status,
     userScore:  row.user_score,
     userEp:     row.ep_progress || 0,
@@ -60,37 +68,43 @@ export async function loadUserLibrary() {
   if (!user) return []
   const { data, error } = await supabase
     .from('user_anime')
-    .select('*')
+    .select('*, animes(*)')
     .eq('user_id', user.id)
     .order('updated_at', { ascending: false })
   if (error) throw error
-  // Deduplicate by anime_id in case DB has stale duplicate rows
   const seen = new Set()
-  const unique = data.filter(row => {
+  return data.filter(row => {
     if (seen.has(row.anime_id)) return false
     seen.add(row.anime_id)
     return true
-  })
-  return unique.map(fromRow)
+  }).map(fromRow)
 }
 
 export async function upsertAnime(userId, item) {
   if (!supabase) return
-  const { error } = await supabase
+  const { error: e1 } = await supabase
+    .from('animes')
+    .upsert(toAnimeRow(item), { onConflict: 'id' })
+  if (e1) throw e1
+  const { error: e2 } = await supabase
     .from('user_anime')
-    .upsert(toRow(userId, item), { onConflict: 'user_id,anime_id' })
-  if (error) throw error
+    .upsert(toUserAnimeRow(userId, item), { onConflict: 'user_id,anime_id' })
+  if (e2) throw e2
 }
 
 export async function upsertAnimesBatch(userId, items) {
   if (!supabase || items.length === 0) return
   const CHUNK = 50
   for (let i = 0; i < items.length; i += CHUNK) {
-    const rows = items.slice(i, i + CHUNK).map(item => toRow(userId, item))
-    const { error } = await supabase
+    const chunk = items.slice(i, i + CHUNK)
+    const { error: e1 } = await supabase
+      .from('animes')
+      .upsert(chunk.map(toAnimeRow), { onConflict: 'id' })
+    if (e1) throw e1
+    const { error: e2 } = await supabase
       .from('user_anime')
-      .upsert(rows, { onConflict: 'user_id,anime_id' })
-    if (error) throw error
+      .upsert(chunk.map(item => toUserAnimeRow(userId, item)), { onConflict: 'user_id,anime_id' })
+    if (e2) throw e2
   }
 }
 
@@ -108,7 +122,7 @@ export async function loadFriendLibrary(userId) {
   if (!supabase) return []
   const { data } = await supabase
     .from('user_anime')
-    .select('*')
+    .select('*, animes(*)')
     .eq('user_id', userId)
     .order('updated_at', { ascending: false })
   return (data ?? []).map(fromRow)

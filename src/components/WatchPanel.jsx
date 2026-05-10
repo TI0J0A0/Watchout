@@ -111,16 +111,13 @@ export function WatchPanel({ item, onEp, onStatus }) {
   const count    = epCount ?? Math.max(maxFromStreamEps, (item.userEp ?? 0) + 1)
   const episodes = Array.from({ length: count }, (_, i) => i + 1)
 
-  // Filter to only aired episodes
+  // Filter out episodes with a confirmed future airdate — everything else shows
   const today = new Date().toISOString().split('T')[0]
-  const hasAirdates = Object.values(streamEps).some(e => e?.airdate)
-  const airedEps = hasAirdates
-    ? episodes.filter(ep => {
-        const airdate = streamEps[ep]?.airdate
-        if (!airdate) return !item.airing // no date: show if completed, skip if airing
-        return airdate <= today
-      })
-    : episodes
+  const airedEps = episodes.filter(ep => {
+    const airdate = streamEps[ep]?.airdate
+    if (!airdate) return true   // no known date = assume released
+    return airdate <= today     // has date = show only if already aired
+  })
   const pendingCount = Math.max(0, (epCount ?? 0) - airedEps.length)
 
   const embedUrl = activeEp !== null && anilistId
