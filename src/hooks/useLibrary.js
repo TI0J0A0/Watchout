@@ -14,13 +14,15 @@ export function useLibrary() {
   const [loading, setLoading]   = useState(true)
   const [topLoaded, setTopLoaded] = useState(false)
   const noteTimer = useRef(null)
+  const supabaseLoaded = useRef(false)
 
   useEffect(() => {
     fetchSeasonal()
       .then(items => {
         setData(prev => {
           const prevById = Object.fromEntries(prev.map(i => [i.id, i]))
-          const merged = mergeWithUserData(items).map(i =>
+          const baseItems = supabaseLoaded.current ? items : mergeWithUserData(items)
+          const merged = baseItems.map(i =>
             prevById[i.id]?.userStatus != null
               ? { ...i, userStatus: prevById[i.id].userStatus, userScore: prevById[i.id].userScore, userEp: prevById[i.id].userEp, userNotes: prevById[i.id].userNotes }
               : i
@@ -38,13 +40,14 @@ export function useLibrary() {
     if (!user) return
     loadUserLibrary()
       .then(library => {
+        supabaseLoaded.current = true
         setData(prev => {
           const byId = Object.fromEntries(library.map(i => [i.id, i]))
           const seasonalIds = new Set(prev.map(i => i.id))
           const updated = prev.map(i =>
             byId[i.id]
               ? { ...i, userStatus: byId[i.id].userStatus, userScore: byId[i.id].userScore, userEp: byId[i.id].userEp, userNotes: byId[i.id].userNotes }
-              : i
+              : { ...i, userStatus: null, userScore: null, userEp: 0, userNotes: '' }
           )
           const extra = library.filter(i => !seasonalIds.has(i.id))
           return [...updated, ...extra]
