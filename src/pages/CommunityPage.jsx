@@ -488,19 +488,22 @@ function FeedbackSection({ user, onLogin, T, dark }) {
 }
 
 function NewFeedbackForm({ user, onCreated, onCancel, T, dark }) {
-  const [type,  setType]  = useState('idea')
-  const [title, setTitle] = useState('')
-  const [desc,  setDesc]  = useState('')
-  const [saving, setSaving] = useState(false)
-  const [error, setError]   = useState('')
+  const [type,    setType]    = useState('idea')
+  const [title,   setTitle]   = useState('')
+  const [desc,    setDesc]    = useState('')
+  const [saving,  setSaving]  = useState(false)
+  const [error,   setError]   = useState('')
+  const [success, setSuccess] = useState(false)
 
   async function handleSubmit() {
-    if (!title.trim() || !desc.trim()) { setError('Title and description are required.'); return }
+    if (!title.trim() || !desc.trim()) { setError('Título e descrição são obrigatórios.'); return }
     setSaving(true)
+    setError('')
     try {
       await createFeedback({ userId: user.id, type, title: title.trim(), description: desc.trim() })
-      onCreated()
-    } catch { setError('Error sending. Please try again.') }
+      setSuccess(true)
+      setTimeout(() => onCreated(), 1500)
+    } catch { setError('Erro ao enviar. Tente novamente.') }
     setSaving(false)
   }
 
@@ -543,19 +546,36 @@ function NewFeedbackForm({ user, onCreated, onCancel, T, dark }) {
 
         {error && <p style={{ fontSize: 13, color: '#FF3B30' }}>{error}</p>}
 
-        <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
-          <button onClick={onCancel} style={{
-            padding: '8px 18px', borderRadius: 10, border: `1px solid ${T.bord}`,
-            background: 'transparent', color: T.sub, fontSize: 13, cursor: 'pointer',
-          }}>Cancel</button>
-          <button onClick={handleSubmit} disabled={saving}
-            style={{
-              padding: '8px 18px', borderRadius: 10, border: 'none', cursor: 'pointer',
-              background: '#34C759', color: '#fff', fontSize: 13, fontWeight: 600,
-            }}>
-            {saving ? 'Sending…' : 'Send'}
-          </button>
-        </div>
+        {success && (
+          <div style={{
+            padding: '12px 16px', borderRadius: 12,
+            background: 'rgba(48,209,88,.12)', border: '1px solid rgba(48,209,88,.3)',
+            display: 'flex', alignItems: 'center', gap: 8,
+          }}>
+            <span style={{ fontSize: 16 }}>✓</span>
+            <p style={{ fontSize: 13, fontWeight: 600, color: '#30D158' }}>
+              Ticket enviado! Nossa equipe vai analisar em breve.
+            </p>
+          </div>
+        )}
+
+        {!success && (
+          <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+            <button onClick={onCancel} style={{
+              padding: '8px 18px', borderRadius: 10, border: `1px solid ${T.bord}`,
+              background: 'transparent', color: T.sub, fontSize: 13, cursor: 'pointer',
+            }}>Cancelar</button>
+            <button onClick={handleSubmit} disabled={saving}
+              style={{
+                padding: '8px 18px', borderRadius: 10, border: 'none',
+                cursor: saving ? 'not-allowed' : 'pointer',
+                background: '#34C759', color: '#fff', fontSize: 13, fontWeight: 600,
+                opacity: saving ? .6 : 1,
+              }}>
+              {saving ? 'Enviando…' : 'Enviar ticket'}
+            </button>
+          </div>
+        )}
       </div>
     </div>
   )
