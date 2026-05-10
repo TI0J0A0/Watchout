@@ -86,7 +86,7 @@ export function ProfilePage({ library, onOpen, onStatus, onLogin, onViewFriend =
 
   useEffect(() => {
     setAvatarBroken(false)
-  }, [active.avatarUrl])
+  }, [editOpen ? draft.avatarUrl : committed.avatarUrl])
 
   useEffect(() => {
     if (!editOpen) return
