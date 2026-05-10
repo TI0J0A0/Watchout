@@ -72,11 +72,16 @@ export function ProfilePage({ library, onOpen, onStatus, onLogin, onViewFriend =
   useEffect(() => {
     if (!user) return
     setFriendsLoading(true)
-    Promise.all([getFriendsWithProfiles(), getPendingRequests()])
+    Promise.all([getFriendsWithProfiles(user.id), getPendingRequests(user.id)])
       .then(([f, p]) => { setFriends(f); setPendingRequests(p) })
       .catch(() => {})
       .finally(() => setFriendsLoading(false))
-  }, [user])
+  }, [user?.id])
+
+  useEffect(() => {
+    if (!user?.id) return
+    setCommitted(initMeta(user))
+  }, [user?.id])
 
   useEffect(() => {
     if (!editOpen) return
@@ -223,7 +228,7 @@ export function ProfilePage({ library, onOpen, onStatus, onLogin, onViewFriend =
 
   const handleSendRequest = async (addresseeId) => {
     try {
-      await sendFriendRequest(addresseeId)
+      await sendFriendRequest(user.id, addresseeId)
       setSentRequests(prev => new Set([...prev, addresseeId]))
     } catch {}
   }
@@ -232,7 +237,7 @@ export function ProfilePage({ library, onOpen, onStatus, onLogin, onViewFriend =
     try {
       await acceptFriendRequest(friendshipId)
       setPendingRequests(prev => prev.filter(r => r.id !== friendshipId))
-      getFriendsWithProfiles().then(setFriends).catch(() => {})
+      getFriendsWithProfiles(user.id).then(setFriends).catch(() => {})
     } catch {}
   }
 

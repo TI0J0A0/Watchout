@@ -31,23 +31,21 @@ export async function searchProfiles(query) {
   return data ?? []
 }
 
-export async function sendFriendRequest(addresseeId) {
-  if (!supabase) return
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return
+export async function sendFriendRequest(requesterId, addresseeId) {
+  if (!supabase || !requesterId) return
   const { error } = await supabase
     .from('friendships')
-    .insert({ requester_id: user.id, addressee_id: addresseeId })
+    .insert({ requester_id: requesterId, addressee_id: addresseeId })
   if (error) throw error
 
-  const requesterProfile = await getProfile(user.id)
-  const name = requesterProfile?.display_name || requesterProfile?.username || user.email
+  const requesterProfile = await getProfile(requesterId)
+  const name = requesterProfile?.display_name || requesterProfile?.username || ''
   createNotification(
     addresseeId,
     'friend_request',
     `${name} quer ser seu amigo`,
     null,
-    { requester_id: user.id },
+    { requester_id: requesterId },
   ).catch(() => {})
 }
 
@@ -67,28 +65,26 @@ export async function deleteFriendship(friendshipId) {
   if (error) throw error
 }
 
-export async function getFriendsWithProfiles() {
-  if (!supabase) return []
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return []
+export async function getFriendsWithProfiles(userId) {
+  if (!supabase || !userId) return []
 
   const { data: friendships } = await supabase
     .from('friendships')
     .select('*')
     .eq('status', 'accepted')
-    .or(`requester_id.eq.${user.id},addressee_id.eq.${user.id}`)
+    .or(`requester_id.eq.${userId},addressee_id.eq.${userId}`)
 
   if (!friendships?.length) return []
 
   const otherIds = friendships.map(f =>
-    f.requester_id === user.id ? f.addressee_id : f.requester_id
+    f.requester_id === userId ? f.addressee_id : f.requester_id
   )
 
   const { data: profiles } = await supabase
     .from('profiles').select('*').in('id', otherIds)
 
   return friendships.map(f => {
-    const otherId = f.requester_id === user.id ? f.addressee_id : f.requester_id
+    const otherId = f.requester_id === userId ? f.addressee_id : f.requester_id
     return {
       id:           otherId,
       friendshipId: f.id,
@@ -97,16 +93,14 @@ export async function getFriendsWithProfiles() {
   })
 }
 
-export async function getPendingRequests() {
-  if (!supabase) return []
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return []
+export async function getPendingRequests(userId) {
+  if (!supabase || !userId) return []
 
   const { data: requests } = await supabase
     .from('friendships')
     .select('*')
     .eq('status', 'pending')
-    .eq('addressee_id', user.id)
+    .eq('addressee_id', userId)
 
   if (!requests?.length) return []
 

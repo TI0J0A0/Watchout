@@ -81,7 +81,7 @@ export function useLibrary() {
         })()
       })
       .catch(console.error)
-  }, [user])
+  }, [user?.id])
 
   useEffect(() => {
     if (!user && data.length > 0) saveUserData(data)

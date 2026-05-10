@@ -56,9 +56,12 @@ function fromRow(row) {
 
 export async function loadUserLibrary() {
   if (!supabase) return []
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return []
   const { data, error } = await supabase
     .from('user_anime')
     .select('*')
+    .eq('user_id', user.id)
     .order('updated_at', { ascending: false })
   if (error) throw error
   return data.map(fromRow)
