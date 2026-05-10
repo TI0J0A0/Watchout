@@ -49,6 +49,7 @@ export function ProfilePage({ library, onOpen, onStatus, onLogin, onViewFriend =
   const [saving,    setSaving]    = useState(false)
   const [presetImgs,    setPresetImgs]    = useState({})
   const [bannerLoading, setBannerLoading] = useState(null)
+  const [avatarBroken,  setAvatarBroken]  = useState(false)
 
   const [friends,            setFriends]            = useState([])
   const [friendsLoading,     setFriendsLoading]     = useState(true)
@@ -82,6 +83,10 @@ export function ProfilePage({ library, onOpen, onStatus, onLogin, onViewFriend =
     if (!user?.id) return
     setCommitted(initMeta(user))
   }, [user?.id])
+
+  useEffect(() => {
+    setAvatarBroken(false)
+  }, [active.avatarUrl])
 
   useEffect(() => {
     if (!editOpen) return
@@ -357,14 +362,17 @@ export function ProfilePage({ library, onOpen, onStatus, onLogin, onViewFriend =
           <div style={{ position:'absolute', inset:3, borderRadius:'50%', background:T.bg }}/>
           {/* avatar content */}
           <div style={{ position:'absolute', inset:6, borderRadius:'50%',
-            overflow: active.avatarUrl ? 'hidden' : 'visible',
-            background: active.avatarUrl
+            overflow: (active.avatarUrl && !avatarBroken) ? 'hidden' : 'visible',
+            background: (active.avatarUrl && !avatarBroken)
               ? 'transparent'
               : `linear-gradient(135deg,${avatarGrad[0]},${avatarGrad[1]})`,
             display:'flex', alignItems:'center', justifyContent:'center',
             fontSize:22, fontWeight:700, color:'#fff' }}>
-            {active.avatarUrl
-              ? <img src={active.avatarUrl} alt="" style={{ width:'100%', height:'100%', objectFit:'cover' }}/>
+            {(active.avatarUrl && !avatarBroken)
+              ? <img src={active.avatarUrl} alt=""
+                  style={{ width:'100%', height:'100%', objectFit:'cover' }}
+                  onError={() => setAvatarBroken(true)}
+                />
               : initials
             }
           </div>
