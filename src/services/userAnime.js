@@ -36,7 +36,8 @@ function toUserAnimeRow(userId, item) {
 }
 
 function fromRow(row) {
-  const a = row.animes || {}
+  // row.animes is populated after split migration; fall back to row columns if null
+  const a = row.animes || row
   return {
     id:         row.anime_id,
     title:      a.title,

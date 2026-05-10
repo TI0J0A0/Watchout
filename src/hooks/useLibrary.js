@@ -29,7 +29,9 @@ export function useLibrary() {
           )
           const newIds = new Set(merged.map(i => i.id))
           const extras = prev.filter(i => !newIds.has(i.id))
-          return [...merged, ...extras]
+          const combined = [...merged, ...extras]
+          const seen = new Set()
+          return combined.filter(i => { if (seen.has(i.id)) return false; seen.add(i.id); return true })
         })
       })
       .catch(() => {})
@@ -50,7 +52,10 @@ export function useLibrary() {
               : { ...i, userStatus: null, userScore: null, userEp: 0, userNotes: '' }
           )
           const extra = library.filter(i => !seasonalIds.has(i.id))
-          return [...updated, ...extra]
+          const merged = [...updated, ...extra]
+          // Deduplicate by id keeping first occurrence
+          const seen = new Set()
+          return merged.filter(i => { if (seen.has(i.id)) return false; seen.add(i.id); return true })
         })
 
         // Proactively notify about episodes airing today — fire-and-forget
