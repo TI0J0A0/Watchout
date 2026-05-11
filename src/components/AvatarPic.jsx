@@ -1,11 +1,17 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { AVATAR_GRADS } from '../constants'
 
 export function AvatarPic({ profile, size = 40, animated = false }) {
   const [imgError, setImgError] = useState(false)
+
+  useEffect(() => {
+    setImgError(false)
+  }, [profile?.avatar_url])
+
   const grad = AVATAR_GRADS[profile?.avatar_grad ?? 0] ?? AVATAR_GRADS[0]
   const label = (profile?.display_name || profile?.username || '?').slice(0, 2).toUpperCase()
   const showImg = profile?.avatar_url && !imgError
+
   return (
     <div style={{
       width: size, height: size, borderRadius: '50%', flexShrink: 0,

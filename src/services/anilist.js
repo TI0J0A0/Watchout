@@ -82,10 +82,10 @@ export async function searchAnilistCharacters(search) {
     query($search: String) {
       Page(perPage: 16) {
         characters(search: $search, sort: FAVOURITES_DESC) {
-          nodes { id name { full } image { large } }
+          id name { full } image { large }
         }
       }
     }
   `, search ? { search } : {})
-  return data?.Page?.characters?.nodes ?? []
+  return data?.Page?.characters ?? []
 }

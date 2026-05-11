@@ -90,7 +90,10 @@ export function ProfilePage({ library, onOpen, onStatus, onLogin, onViewFriend =
 
   useEffect(() => {
     if (!user?.id) return
-    setCommitted(initMeta(user))
+    const meta = initMeta(user)
+    setCommitted(meta)
+    // Garante que a linha profiles existe — sem isso amigos vêem só iniciais
+    upsertProfile(user, meta).catch(() => {})
   }, [user?.id])
 
   useEffect(() => {

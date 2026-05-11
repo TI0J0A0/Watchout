@@ -1,26 +1,43 @@
-import { createContext, useContext } from 'react'
+import { createContext, useContext, useEffect, useState } from 'react'
 
 const ThemeContext = createContext(null)
 
-export function ThemeProvider({ children }) {
-  const dark = true
-  const setDark = () => {}
+const PALETTES = {
+  dark: {
+    bg:    '#000',
+    surf:  '#1C1C1E',
+    surf2: '#2C2C2E',
+    txt:   '#F5F5F7',
+    sub:   '#98989D',
+    bord:  'rgba(255,255,255,.1)',
+  },
+  light: {
+    bg:    '#F2F2F7',
+    surf:  '#FFFFFF',
+    surf2: '#E5E5EA',
+    txt:   '#000000',
+    sub:   '#6E6E73',
+    bord:  'rgba(0,0,0,.1)',
+  },
+}
 
-  const T = {
-    bg:    "#000",
-    surf:  "#1C1C1E",
-    surf2: "#2C2C2E",
-    txt:   "#F5F5F7",
-    sub:   "#98989D",
-    bord:  "rgba(255,255,255,.1)",
-    dark,
-  };
+export function ThemeProvider({ children }) {
+  const [dark, setDark] = useState(true)
+  const palette = dark ? PALETTES.dark : PALETTES.light
+  const T = { ...palette, dark }
+
+  useEffect(() => {
+    const root = document.documentElement
+    Object.entries(palette).forEach(([k, v]) => root.style.setProperty(`--${k}`, v))
+    root.style.colorScheme = dark ? 'dark' : 'light'
+    root.classList.toggle('dark', dark)
+  }, [dark])
 
   return (
     <ThemeContext.Provider value={{ T, dark, setDark }}>
       {children}
     </ThemeContext.Provider>
-  );
+  )
 }
 
-export const useTheme = () => useContext(ThemeContext);
+export const useTheme = () => useContext(ThemeContext)
