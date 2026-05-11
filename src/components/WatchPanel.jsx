@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { useTheme } from '../context/ThemeContext'
 import { useIsMobile } from '../hooks/useIsMobile'
 import { fetchAnilistData } from '../services/anilist'
+import { fetchSkipTimes } from '../services/aniskip'
 
 function parseEpNum(title) {
   const m = title?.match(/Episode\s+(\d+)/i)
@@ -42,9 +43,21 @@ export function WatchPanel({ item, onEp, onStatus }) {
   const [lang,      setLang]      = useState('sub')
   const [quality,   setQuality]   = useState('auto')
   const [hoveredEp, setHoveredEp] = useState(null)
+  const [currentTime,   setCurrentTime]   = useState(0)
+  const [skipTimes,     setSkipTimes]     = useState({ op: null, ed: null })
+  const [skipDismissed, setSkipDismissed] = useState(false)
 
-  const markedRef = useRef(false)
-  useEffect(() => { markedRef.current = false }, [activeEp])
+  const markedRef   = useRef(false)
+  const durationRef = useRef(0)
+  const iframeRef   = useRef(null)
+
+  useEffect(() => {
+    markedRef.current = false
+    setCurrentTime(0)
+    setSkipDismissed(false)
+    setSkipTimes({ op: null, ed: null })
+    durationRef.current = 0
+  }, [activeEp])
 
   useEffect(() => {
     let cancelled = false
@@ -85,11 +98,26 @@ export function WatchPanel({ item, onEp, onStatus }) {
   }, [item.id])
 
   useEffect(() => {
+    if (activeEp === null || !item.id) return
+    fetchSkipTimes(item.id, activeEp).then(setSkipTimes)
+  }, [activeEp, item.id])
+
+  useEffect(() => {
     if (activeEp === null) return
     function handleMessage(event) {
       if (event.origin !== 'https://megaplay.buzz') return
       let data = event.data
       if (typeof data === 'string') { try { data = JSON.parse(data) } catch { return } }
+
+      // Track playback position for skip buttons
+      if (data.type === 'watching-log' && data.duration > 0) {
+        durationRef.current = data.duration
+        setCurrentTime(data.currentTime)
+      }
+      if (data.event === 'time' && typeof data.percent === 'number' && durationRef.current > 0) {
+        setCurrentTime(data.percent * durationRef.current)
+      }
+
       let reached85 = false
       if (data.type === 'watching-log' && data.duration > 0) reached85 = data.currentTime / data.duration >= 0.85
       if (data.event === 'time' && typeof data.percent === 'number')  reached85 = data.percent >= 0.85
@@ -119,6 +147,19 @@ export function WatchPanel({ item, onEp, onStatus }) {
     return airdate <= today     // has date = show only if already aired
   })
   const pendingCount = Math.max(0, (epCount ?? 0) - airedEps.length)
+
+  function seek(time) {
+    const win = iframeRef.current?.contentWindow
+    if (!win) return
+    win.postMessage({ event: 'seek', time }, 'https://megaplay.buzz')
+    win.postMessage({ type: 'seek', time }, 'https://megaplay.buzz')
+  }
+
+  const showSkipIntro = !skipDismissed && activeEp !== null && skipTimes.op !== null &&
+    currentTime >= skipTimes.op.startTime && currentTime <= skipTimes.op.endTime
+
+  const showSkipOutro = !skipDismissed && activeEp !== null && skipTimes.ed !== null &&
+    currentTime >= skipTimes.ed.startTime && currentTime <= skipTimes.ed.endTime
 
   const embedUrl = activeEp !== null && anilistId
     ? `https://megaplay.buzz/stream/ani/${anilistId}/${activeEp}/${lang}${quality !== 'auto' ? `?quality=${quality}` : ''}`
@@ -184,6 +225,7 @@ export function WatchPanel({ item, onEp, onStatus }) {
             <div style={{ position: 'relative', paddingBottom: '56.25%', borderRadius: 14,
               overflow: 'hidden', background: '#000', marginBottom: 20 }}>
               <iframe
+                ref={iframeRef}
                 key={`${anilistId}-${activeEp}-${lang}-${quality}`}
                 src={embedUrl}
                 style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', border: 'none' }}
@@ -191,6 +233,43 @@ export function WatchPanel({ item, onEp, onStatus }) {
                 sandbox="allow-scripts allow-same-origin allow-presentation allow-forms"
                 allowFullScreen
               />
+
+              {/* Skip Intro button */}
+              {(showSkipIntro || showSkipOutro) && (
+                <button
+                  onClick={() => {
+                    seek(showSkipIntro ? skipTimes.op.endTime : skipTimes.ed.endTime)
+                    setSkipDismissed(true)
+                  }}
+                  style={{
+                    position: 'absolute',
+                    bottom: 56,
+                    right: 16,
+                    padding: '8px 18px',
+                    borderRadius: 8,
+                    border: '1.5px solid rgba(255,255,255,.55)',
+                    background: 'rgba(20,20,20,.75)',
+                    backdropFilter: 'blur(8px)',
+                    color: '#fff',
+                    fontSize: 13,
+                    fontWeight: 600,
+                    letterSpacing: '.02em',
+                    cursor: 'pointer',
+                    zIndex: 10,
+                    transition: 'background .15s, border-color .15s',
+                  }}
+                  onMouseEnter={e => {
+                    e.currentTarget.style.background = 'rgba(255,255,255,.18)'
+                    e.currentTarget.style.borderColor = 'rgba(255,255,255,.9)'
+                  }}
+                  onMouseLeave={e => {
+                    e.currentTarget.style.background = 'rgba(20,20,20,.75)'
+                    e.currentTarget.style.borderColor = 'rgba(255,255,255,.55)'
+                  }}
+                >
+                  {showSkipIntro ? 'Skip Intro ›' : 'Skip Outro ›'}
+                </button>
+              )}
             </div>
           )}
 
