@@ -106,6 +106,15 @@ export function Nav({ page, setPage, libraryCount, userProfile, onLogin, onShowM
           ))}
         </div>
 
+        {/* Right */}
+        <div style={{display:"flex",gap:8,alignItems:"center",marginLeft:8}}>
+          {libraryCount>0&&(
+            <div className="hide-sm" style={{padding:"4px 10px",borderRadius:20,
+              background:"rgba(0,122,255,.12)",fontSize:12,fontWeight:600,color:"#0A84FF"}}>
+              {t('nav.titles', { count: libraryCount })}
+            </div>
+          )}
+
           {/* Search icon — desktop only */}
           <button className="t hbtn hide-sm" onClick={()=>setPage("search")}
             style={{width:34,height:34,borderRadius:"50%",border:`1px solid ${page==="search"?"#0A84FF":T.bord}`,
@@ -130,7 +139,7 @@ export function Nav({ page, setPage, libraryCount, userProfile, onLogin, onShowM
                 <div className="sc" style={{position:"absolute",top:"calc(100% + 8px)",right:0,
                   background:T.surf,borderRadius:14,padding:"6px",zIndex:300,minWidth:200,
                   border:`1px solid ${T.bord}`,
-                  boxShadow:`0 10px 40px rgba(0,0,0,${dark?.4:.14})`}}>
+                  boxShadow: `0 10px 40px rgba(0,0,0,${dark ? .4 : .14})`}}>
                   <div style={{padding:"10px 12px",borderBottom:`1px solid ${T.bord}`,marginBottom:4}}>
                     <p style={{fontSize:11,color:T.sub,marginBottom:2}}>{t('nav.connectedAs')}</p>
                     <p style={{fontSize:13,fontWeight:600,color:T.txt,
