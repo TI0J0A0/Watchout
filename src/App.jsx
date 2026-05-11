@@ -59,6 +59,15 @@ function AppInner() {
 
   const notify = msg => { setToast(msg); setTimeout(() => setToast(null), 2400) }
 
+
+useEffect(() => {
+    // Remove permanentemente o rasto de visitante do navegador de todos os utilizadores.
+    // Garante que a lista exibe exclusivamente o que está a ser gerido no Supabase.
+    if (localStorage.getItem('watchout_v2')) {
+      localStorage.removeItem('watchout_v2')
+    }
+  }, [])
+
   // ── Hash-based routing ──────────────────────────────────────────────────────
 
   const firstPush = useRef(true)

@@ -103,9 +103,11 @@ export function useLibrary() {
       .catch(console.error)
   }, [user?.id])
 
-  useEffect(() => {
-    if (!user && data.length > 0) saveUserData(data)
-  }, [data, user])
+  //desabilado por hora -  erro de sync local storage
+//  useEffect(() => {
+//   if (!user && data.length > 0) saveUserData(data)
+//  }, [data, user])
+//
 
   const loadTop = () => {
     if (topLoaded) return
@@ -118,23 +120,37 @@ export function useLibrary() {
     setData(d => d.find(i => i.id === item.id) ? d : [...d, item])
   }
 
-  const setStatus = (id, s) => {
+const setStatus = (id, s) => {
+    // 1. Bloqueia a execução imediatamente se não houver utilizador logado
+    if (!user) {
+      // Podes retornar null ou uma mensagem para o Toast avisar o utilizador
+      return 'Inicie sessão para guardar animes na sua lista' 
+    }
+
     const it = data.find(i => i.id === id)
     if (!it) return null
+
     const removing = it.userStatus === s
     const updated = {
       ...it,
       userStatus: removing ? null : s,
       userEp: (!removing && s === 'completed' && it.eps) ? it.eps : it.userEp,
     }
+
+    // 2. Atualiza o estado local na interface
     setData(d => d.map(i => i.id === id ? updated : i))
-    if (user) {
-      if (removing) removeAnime(user.id, id).catch(console.error)
-      else          upsertAnime(user.id, updated).catch(console.error)
+
+    // 3. Como já garantimos que o 'user' existe no início, 
+    // removemos o "if (user)" extra e chamamos o Supabase diretamente
+    if (removing) {
+      removeAnime(user.id, id).catch(console.error)
+    } else {
+      upsertAnime(user.id, updated).catch(console.error)
     }
+
     return removing ? t('common.removedFromList') : `${it.title} → ${t(`status.${s}`)}`
   }
-
+  
   const setScore = (id, v) => {
     const it = data.find(i => i.id === id)
     if (!it) return
