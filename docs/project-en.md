@@ -63,9 +63,17 @@
 |---|---|---|
 | `vite` | ^6.3.5 | Bundler / dev server |
 | `@vitejs/plugin-react` | ^4.3.4 | JSX plugin for Vite |
+| `tailwindcss` | ^4.x | CSS utilities and design tokens |
+| `@tailwindcss/vite` | ^4.x | Tailwind v4 Vite integration (no PostCSS needed) |
 
-### No CSS framework
-All styling is done via **inline styles** (native CSS-in-JS) plus a minimal set of utility classes in `index.css`.
+### Tailwind CSS v4
+Styling uses **Tailwind CSS v4** (Vite plugin, no `tailwind.config.js`) alongside inline styles with `ThemeContext` values for legacy components. Theme colors are exposed as CSS custom properties on `:root` and mapped to Tailwind color tokens via `@theme inline` in `index.css`.
+
+| Approach | When to use |
+|---|---|
+| `className="bg-surf text-txt"` | New or migrated components |
+| `style={{ background: T.surf }}` | Legacy components (still work) |
+| `.fu`, `.sc`, `.card`, `.shimmer` | Animations and hover states (stay in `index.css`) |
 
 ### Scripts
 ```bash
@@ -359,14 +367,18 @@ Used in the profile avatar picker.
 query($search: String) {
   Page(perPage: 16) {
     characters(search: $search, sort: FAVOURITES_DESC) {
-      nodes { id name { full } image { large } }
+      id name { full } image { large }
     }
   }
 }
 ```
 
-- `search = null` → returns the 16 most popular characters globally (default state).
+> **AniList schema note:** `Page.characters` returns a flat `Character[]` array — **not** a `CharacterConnection` with `.nodes`. Using `.nodes` causes a 400 error. By contrast, `Media.characters` (per-anime lookup) returns a `CharacterConnection` and requires `.edges[].node`.
+
+- `search = null` → returns the 16 most popular characters globally.
 - `search = "Naruto"` → filters by name.
+
+Returns: `Character[]` with `{ id, name: { full }, image: { large } }`
 
 ---
 
@@ -843,16 +855,50 @@ const { user, loading, signIn, signUp, signOut, resetPassword } = useAuth()
 ```javascript
 const { T, dark, setDark } = useTheme()
 
-// T contains the current theme colors:
+// T contains the active theme colors:
 T.bg     // Main background
 T.surf   // Surface (cards)
 T.surf2  // Secondary surface (inputs, badges)
 T.txt    // Primary text
 T.sub    // Secondary text
 T.bord   // Border color
+T.dark   // Boolean — true = dark mode
 ```
 
-> **Note:** Only dark mode is currently implemented. `setDark` exists but the light theme does not have complete values defined.
+**How it works internally:**
+
+1. `PALETTES.dark` and `PALETTES.light` define the hex values for each token
+2. `useState(true)` controls the active theme (`setDark` is fully functional)
+3. A `useEffect` syncs CSS custom properties on `document.documentElement`:
+
+```javascript
+// Runs every time dark changes
+Object.entries(palette).forEach(([k, v]) =>
+  root.style.setProperty(`--${k}`, v)   // --bg, --surf, --surf2, --txt, --sub, --bord
+)
+root.style.colorScheme = dark ? 'dark' : 'light'
+root.classList.toggle('dark', dark)      // enables Tailwind dark: utilities
+```
+
+**Tailwind tokens mapped (via `@theme inline` in `index.css`):**
+
+| CSS var | Tailwind utility |
+|---|---|
+| `var(--bg)` | `bg-bg`, `text-bg`, `border-bg` |
+| `var(--surf)` | `bg-surf`, `text-surf` |
+| `var(--surf2)` | `bg-surf2` |
+| `var(--txt)` | `text-txt` |
+| `var(--sub)` | `text-sub` |
+| `var(--bord)` | `border-bord` |
+
+Legacy components using `style={{ background: T.surf }}` continue to work. New components can use `className="bg-surf dark:bg-surf2"`.
+
+**Light palette** (ready to wire up a toggle):
+```javascript
+// PALETTES.light in ThemeContext.jsx
+bg:    '#F2F2F7', surf:  '#FFFFFF', surf2: '#E5E5EA',
+txt:   '#000000', sub:   '#6E6E73', bord:  'rgba(0,0,0,.1)'
+```
 
 ---
 
@@ -941,6 +987,18 @@ committed / draft    // Profile metadata (before/after editing)
 editOpen             // Edit modal open
 charQuery / charResults / charLoading  // Character search for avatar
 pinnedBanner         // AniList banner of pinned anime
+```
+
+**Guaranteed `profiles` row:**
+```javascript
+// Runs on login and user change — creates/updates the profiles row
+// Without this, friends see only initials for users who never edited their profile
+useEffect(() => {
+  if (!user?.id) return
+  const meta = initMeta(user)
+  setCommitted(meta)
+  upsertProfile(user, meta).catch(() => {})
+}, [user?.id])
 ```
 
 **Profile banner priority order:**
@@ -1074,9 +1132,21 @@ Modal that accepts an XML file exported from MyAnimeList. Parses it and calls `i
 ### `AvatarPic.jsx`
 
 ```javascript
-<AvatarPic profile={profileObject} size={40} />
+<AvatarPic profile={profileObject} size={40} animated={false} />
 // Renders image (avatar_url) or gradient + initials (avatar_grad)
 ```
+
+`profile` must be in snake_case format (object from the Supabase `profiles` table):
+```javascript
+{ avatar_url: String | null, avatar_grad: Number, display_name: String, username: String }
+```
+
+**Fallback behavior (in order):**
+1. If `avatar_url` is set and loads → shows image with `objectFit: cover`
+2. If `avatar_url` fails (`onError`) → shows gradient + initials
+3. If `avatar_url` is null/empty → shows gradient (`AVATAR_GRADS[avatar_grad]`) + initials
+
+**Auto-reset:** A `useEffect` resets the error state (`imgError`) whenever `avatar_url` changes, ensuring any new URL is always attempted even if the previous one failed.
 
 ---
 
@@ -1267,6 +1337,10 @@ npm run build
 
 ### Vite configuration (`vite.config.js`)
 ```javascript
+import tailwindcss from '@tailwindcss/vite'
+
+plugins: [react(), tailwindcss()]  // Tailwind v4 via Vite plugin (no PostCSS)
+
 // Manual chunk splitting — avoids a single large bundle
 build.rollupOptions.output.manualChunks = {
   'vendor-react':    ['react', 'react-dom'],
@@ -1399,30 +1473,46 @@ SUPABASE_ANON_KEY=eyJ...
 ### Flow: Avatar selection with character search
 
 ```
-1. User opens the profile edit modal
+1. User logs in / ProfilePage mounts
       │
       ▼
-2. useEffect [editOpen]
-      └── searchAnilistCharacters(null) → AniList Page(perPage:16, sort:FAVOURITES_DESC)
+1b. useEffect [user.id]
+      └── upsertProfile(user, meta) → ensures a row exists in profiles table
+      │
+      ▼
+2. User opens the edit modal → editOpen = true
+      │
+      ▼
+3. useEffect [editOpen]
+      └── searchAnilistCharacters(null)
+            → POST https://graphql.anilist.co
+            → query: Page(perPage:16) { characters(sort:FAVOURITES_DESC) { id name { full } image { large } } }
+            → Page.characters returns a flat array (NOT .nodes)
             └── setCharResults([top 16 most popular characters])
       │
       ▼
-3. Grid of 16 characters is displayed
+4. Grid of 16 characters displayed
 
-4. User types in the search field → setCharQuery("Gojo")
+5. User types in the search field → setCharQuery("Gojo")
       │
       ▼
-5. useEffect [charQuery] — 500ms debounce
-      └── searchAnilistCharacters("Gojo") → AniList with search: "Gojo"
+6. useEffect [charQuery] — 500ms debounce
+      └── searchAnilistCharacters("Gojo") → filters by name
             └── setCharResults([new 16 results])
       │
       ▼
-6. User clicks a character
+7. User clicks a character
       └── setDraft(d => ({ ...d, avatarUrl: node.image.large }))
       │
       ▼
-7. User saves → upsertProfile(user, draft) → Supabase profiles
+8. User saves
+      ├── supabase.auth.updateUser({ data: draft })  → user_metadata.avatarUrl
+      └── upsertProfile(user, draft)                 → profiles.avatar_url
 ```
+
+**Where the avatar is displayed:**
+- Own profile (ProfilePage): reads `active.avatarUrl` — camelCase from `user_metadata`
+- Friend profiles (FriendProfilePage, friends list): `<AvatarPic profile={...}>` reads `profile.avatar_url` — snake_case from the `profiles` table
 
 ---
 
@@ -1531,10 +1621,22 @@ NotificationBell polling: fetchNotifications() every 60s
 
 ### Styling and theming
 
-- Do not use external CSS — use inline styles with values from `T` (ThemeContext)
-- For animations: use classes from `index.css` (`.fu`, `.sc`, `.hf`, `.card`, `.shimmer`)
-- For responsiveness: use `useIsMobile()` or media queries via `className` with CSS in `index.css`
-- Breakpoints: `≤640px` = mobile, `641–900px` = tablet, `>900px` = desktop
+**New approach (Tailwind CSS v4):**
+- New components → use Tailwind utilities: `className="bg-surf text-txt rounded-xl"`
+- Available color tokens: `bg-bg`, `bg-surf`, `bg-surf2`, `text-txt`, `text-sub`, `border-bord`
+- Automatic dark mode via `dark:` prefix (e.g. `dark:bg-surf2`) — driven by the `.dark` class on `<html>`
+
+**Legacy approach (still valid):**
+- Inline styles with `T` values: `style={{ background: T.surf, color: T.txt }}`
+- For animations: use classes from `index.css` (`.fu`, `.sc`, `.hf`, `.card`, `.shimmer`, `.t`)
+- For responsiveness: `useIsMobile()` or media queries in `index.css`
+
+**Breakpoints:** `≤640px` = mobile, `641–900px` = tablet, `>900px` = desktop
+
+**Adding a new color token to the theme:**
+1. Add the value to `PALETTES.dark` and `PALETTES.light` in `ThemeContext.jsx`
+2. The `useEffect` will automatically propagate it via `root.style.setProperty('--newKey', value)`
+3. Add `--color-newKey: var(--newKey)` to the `@theme inline` block in `index.css`
 
 ### Project conventions
 

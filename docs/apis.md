@@ -2,8 +2,8 @@
 
 ## 1. Jikan API (MyAnimeList)
 
-**Base URL:** `https://api.jikan.moe/v4`  
-**Autenticação:** Nenhuma (pública)  
+**Base URL:** `https://api.jikan.moe/v4`
+**Autenticação:** Nenhuma (pública, rate limit ~3 req/s)
 **Arquivo:** `src/services/jikan.js`
 
 API não-oficial do MyAnimeList. É a principal fonte de metadados de animes no app.
@@ -18,7 +18,6 @@ API não-oficial do MyAnimeList. É a principal fonte de metadados de animes no 
 | `/anime?status=airing&order_by=members` | Animes populares em exibição |
 | `/anime?genres=<id>` | Filtro por gênero |
 | `/anime/<id>` | Detalhes de um anime específico |
-| `/anime/<id>/characters` | Personagens (usado para avatares) |
 | `/anime/<id>/recommendations` | Recomendações |
 
 **Dados retornados:** título, score, episódios, gêneros, estúdio, imagem de capa, plataformas de streaming, sinopse, membros, trailer.
@@ -27,41 +26,86 @@ API não-oficial do MyAnimeList. É a principal fonte de metadados de animes no 
 
 ## 2. AniList GraphQL API
 
-**Base URL:** `https://graphql.anilist.co`  
-**Autenticação:** Nenhuma (pública)  
-**Arquivos:** `src/pages/AnimePage.jsx`, `src/pages/ProfilePage.jsx`, `src/components/WatchPanel.jsx`, `supabase/functions/anikoto/index.ts`
+**Base URL:** `https://graphql.anilist.co`
+**Autenticação:** Nenhuma (pública)
+**Arquivo:** `src/services/anilist.js`
 
-Usada para complementar dados que o Jikan não fornece ou fornece incompleto.
+Usada para complementar dados que o Jikan não fornece ou fornece incompleto. Todas as chamadas são `POST` com `Content-Type: application/json`.
 
-| Query | Uso |
-|-------|-----|
-| `Media(idMal: $malId)` | Converte MAL ID → AniList ID, busca contagem de episódios, duração e thumbnails dos episódios |
-| `Media(idMal: $id).bannerImage` | Banner da página do anime |
-| `Character(id: $id)` | Avatares de personagens para seleção de perfil |
+### Queries utilizadas
+
+#### `Media(idMal: $malId)` — Dados de episódios e schedule
+
+```graphql
+query($malId: Int) {
+  Media(idMal: $malId, type: ANIME) {
+    id
+    episodes
+    duration
+    streamingEpisodes { title thumbnail }
+    airingSchedule { nodes { episode airingAt } }
+  }
+}
+```
+
+Usada pelo `WatchPanel` para obter thumbnails de episódios e schedule de exibição.
+
+#### `Media(idMal: $malId)` — Banner + Personagens do anime
+
+```graphql
+query($malId: Int) {
+  Media(idMal: $malId, type: ANIME) {
+    bannerImage
+    characters(sort: FAVOURITES_DESC, perPage: 16) {
+      edges {
+        role
+        node { name { full } image { large } }
+        voiceActors(language: JAPANESE) { name { full } image { large } }
+      }
+    }
+  }
+}
+```
+
+Usada pelo `AnimePage` — `Media.characters` retorna `CharacterConnection`, acesso via `.edges[].node`.
+
+#### `Media(idMal: $malId).bannerImage` — Banner leve
+
+```graphql
+query($malId: Int) { Media(idMal: $malId, type: ANIME) { bannerImage } }
+```
+
+Usada em `SeasonalPage` (hero) e `ProfilePage` (banner do anime pinado).
+
+#### `Page.characters` — Busca global de personagens para avatar
+
+```graphql
+query($search: String) {
+  Page(perPage: 16) {
+    characters(search: $search, sort: FAVOURITES_DESC) {
+      id name { full } image { large }
+    }
+  }
+}
+```
+
+Usada no seletor de avatar do `ProfilePage`.
+
+> **IMPORTANTE — diferença de schema:**
+> - `Page.characters` → retorna `Character[]` diretamente (**sem** `.nodes`)
+> - `Media.characters` → retorna `CharacterConnection` (com `.edges` e `.nodes`)
+>
+> Usar `.nodes` em `Page.characters` causa **erro 400** da API.
+
+- `search = null` → retorna os 16 personagens mais favoritados globalmente
+- `search = "texto"` → filtra por nome
 
 ---
 
-## 3. Kitsu API
+## 3. MegaPlay (Streaming)
 
-**Base URL:** `https://kitsu.io/api/edge`  
-**Autenticação:** Nenhuma (pública)  
-**Arquivo:** `src/components/WatchPanel.jsx`
-
-Usada exclusivamente para dados detalhados de episódios ao abrir o painel de assistir.
-
-| Endpoint | Uso |
-|----------|-----|
-| `/mappings?filter[externalId]={malId}&filter[externalSite]=myanimelist/anime` | Converte MAL ID → Kitsu ID |
-| `/episodes?filter[mediaId]={kitsuId}&sort=number` | Lista de episódios com thumbnail, título e data de estreia |
-
-**Dados retornados:** thumbnail real do episódio, título canônico, airdate.
-
----
-
-## 4. MegaPlay (Streaming)
-
-**Base URL:** `https://megaplay.buzz/stream/ani`  
-**Autenticação:** Nenhuma  
+**Base URL:** `https://megaplay.buzz/stream/ani`
+**Autenticação:** Nenhuma
 **Arquivo:** `src/components/WatchPanel.jsx`
 
 Player de streaming embedado via `<iframe>`. Recebe eventos via `postMessage` para rastrear o progresso assistido.
@@ -73,14 +117,26 @@ Player de streaming embedado via `<iframe>`. Recebe eventos via `postMessage` pa
 | idioma | `sub`, `dub`, `pt-br`, `es` |
 | qualidade | `auto`, `1080`, `720`, `480` |
 
-**Comunicação:** O iframe envia um evento `complete` via `postMessage` quando o episódio termina, disparando a marcação automática de episódio assistido.
+**Eventos postMessage interceptados pelo WatchPanel:**
+
+```javascript
+// Progresso de tempo (principal)
+{ type: 'watching-log', duration: 1440, currentTime: 1250 }
+// → Se currentTime/duration >= 0.85 → marca episódio como assistido
+
+// Porcentagem alternativa
+{ event: 'time', percent: 0.87 }
+
+// Conclusão
+{ event: 'complete' }
+```
 
 ---
 
-## 5. Anime News Network (ANN) RSS
+## 4. Anime News Network (ANN) RSS
 
-**URL:** `https://www.animenewsnetwork.com/all/rss.xml`  
-**Autenticação:** Nenhuma (pública)  
+**URL:** `https://www.animenewsnetwork.com/all/rss.xml`
+**Autenticação:** Nenhuma (pública)
 **Arquivo:** `src/services/ann.js`
 
 Feed RSS de notícias de anime. Como o ANN bloqueia CORS, o app usa proxies em cascata com fallback automático:
@@ -93,33 +149,25 @@ Feed RSS de notícias de anime. Como o ANN bloqueia CORS, o app usa proxies em c
 
 ---
 
-## 6. YouTube (Thumbnails)
+## 5. Supabase
 
-**URL:** `https://img.youtube.com/vi/{videoId}/maxresdefault.jpg`  
-**Autenticação:** Nenhuma  
-**Arquivos:** `src/pages/SeasonalPage.jsx`, `src/pages/ProfilePage.jsx`
-
-Não é uma chamada de API — apenas uma URL pública de thumbnail. O app extrai o ID do vídeo da URL do trailer (retornada pelo Jikan) e monta a URL do thumbnail diretamente.
-
----
-
-## 7. Supabase
-
-**Base URL:** `VITE_SUPABASE_URL` (variável de ambiente)  
-**Autenticação:** JWT via `VITE_SUPABASE_ANON_KEY`  
+**Base URL:** `VITE_SUPABASE_URL` (variável de ambiente)
+**Autenticação:** JWT via `VITE_SUPABASE_ANON_KEY`
 **Arquivo:** `src/services/supabase.js`
 
 Backend principal do app.
 
 | Serviço | Uso |
 |---------|-----|
-| Auth | Login, cadastro, sessão do usuário |
+| Auth | Login, cadastro, sessão do usuário, `user_metadata` (avatarUrl, displayName, etc.) |
 | Database (PostgreSQL) | Biblioteca do usuário, perfis, amizades, comunidade, notificações |
-| Edge Functions | `anikoto` — proxy server-side para AniList com cache e controle premium |
+| Edge Functions | `anikoto` — proxy server-side para AniList com cache e controle premium (legado) |
 
 ### Edge Function: `anikoto`
 
-Roda no servidor Supabase. Recebe um MAL ID, consulta o AniList e cacheia o resultado por 24h na tabela `anikoto_cache`. Exige autenticação JWT e verifica se o usuário é premium.
+Roda no servidor Supabase (Deno). Recebe um MAL ID, consulta o AniList e cacheia o resultado por 24h na tabela `anikoto_cache`. Exige autenticação JWT e verifica se o usuário é premium.
+
+> **Nota:** A Edge Function é legada. O `WatchPanel` agora chama o AniList diretamente via `fetchAnilistData()`. A função ainda existe mas só é chamada via `getAnilistData()` em `premium.js` como fallback.
 
 ---
 
@@ -138,9 +186,7 @@ SUPABASE_SERVICE_ROLE_KEY  # Chave de serviço — usada apenas nas Edge Functio
 | API | Tipo | Auth | Finalidade principal |
 |-----|------|------|----------------------|
 | Jikan | REST | Não | Metadados, busca, temporadas |
-| AniList | GraphQL | Não | IDs, episódios, banners, avatares |
-| Kitsu | REST | Não | Thumbnails e airdates de episódios |
+| AniList | GraphQL | Não | IDs, episódios, banners, avatares de personagens |
 | MegaPlay | Embed iframe | Não | Streaming de episódios |
 | ANN | RSS | Não | Feed de notícias |
-| YouTube | CDN estática | Não | Thumbnail de trailers |
 | Supabase | REST + WS | Sim (JWT) | Banco de dados, auth, backend |
