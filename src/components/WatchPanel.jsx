@@ -165,9 +165,7 @@ export function WatchPanel({ item, onEp, onStatus }) {
     ? `https://megaplay.buzz/stream/ani/${anilistId}/${activeEp}/${lang}${quality !== 'auto' ? `?quality=${quality}` : ''}`
     : null
 
-  const LANGS = isMobile
-    ? [{ code: 'sub', label: 'Sub' }, { code: 'dub', label: 'EN' }, { code: 'pt-br', label: 'PT' }]
-    : [{ code: 'sub', label: 'Sub' }, { code: 'dub', label: 'EN' }, { code: 'pt-br', label: 'PT-BR' }, { code: 'es', label: 'ES' }]
+  const LANGS = [{ code: 'sub', label: 'Sub' }, { code: 'dub', label: 'Dub' }]
 
   return (
     <div style={{ marginBottom: 28 }}>
