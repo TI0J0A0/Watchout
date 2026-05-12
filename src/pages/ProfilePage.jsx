@@ -15,7 +15,7 @@ import {
   searchProfiles, sendFriendRequest, acceptFriendRequest, deleteFriendship,
   checkDisplayNameAvailable,
 } from '../services/friends'
-import { ADMIN_EMAIL, isAdmin, adminSearchUsers, grantPremium, revokePremium } from '../services/premium'
+import { ADMIN_EMAIL, isAdmin, fetchUsers, grantPremium, revokePremium } from '../services/premium'
 import { computeTasteProfile, personalityText } from '../utils/tasteProfile'
 
 
@@ -296,7 +296,7 @@ export function ProfilePage({ library, onOpen, onStatus, onLogin, onViewFriend =
     if (!q.trim()) { setAdminResults([]); return }
     setAdminLoading(true)
     try {
-      const results = await adminSearchUsers(q)
+      const { data: results } = await fetchUsers({ query: q })
       setAdminResults(results.filter(p => p.id !== user?.id))
     } catch {}
     setAdminLoading(false)
