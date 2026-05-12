@@ -19,6 +19,7 @@ import { loadPremiumStatus, isAdmin } from './services/premium'
 import { getProfile } from './services/friends'
 import { fetchAnimeById } from './services/jikan'
 import { AdminPage } from './pages/AdminPage'
+import { AnnouncementBanner } from './components/AnnouncementBanner'
 
 const VALID_PAGES = new Set(['seasonal', 'top', 'calendar', 'search', 'profile', 'news', 'community', 'admin'])
 
@@ -165,6 +166,8 @@ function AppInner() {
         libraryCount={library.length}
         userProfile={userProfile}
         onLogin={() => setShowAuth(true)} onShowMAL={() => setShowMAL(true)} />
+
+      <AnnouncementBanner page={page} />
 
       {friendId !== null ? (
         <FriendProfilePage

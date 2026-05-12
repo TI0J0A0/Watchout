@@ -23,6 +23,11 @@ export async function revokePremium(profileId) {
   await supabase.from('profiles').update({ is_premium: false }).eq('id', profileId)
 }
 
+export async function toggleBanUser(userId, banned) {
+  if (!supabase) return
+  await supabase.from('profiles').update({ is_banned: banned }).eq('id', userId)
+}
+
 export async function adminSearchUsers(query) {
   if (!supabase || !query) return []
   const { data } = await supabase

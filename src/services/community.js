@@ -60,6 +60,12 @@ export async function deleteTopic(id) {
   await supabase.from('forum_topics').delete().eq('id', id)
 }
 
+export async function deleteTopicWithPosts(id) {
+  if (!supabase) return
+  await supabase.from('forum_posts').delete().eq('topic_id', id)
+  await supabase.from('forum_topics').delete().eq('id', id)
+}
+
 export async function deletePost(id) {
   if (!supabase) return
   await supabase.from('forum_posts').delete().eq('id', id)
@@ -110,6 +116,11 @@ export async function fetchMyVotes(userId) {
 export async function updateFeedbackStatus(id, status) {
   if (!supabase) return
   await supabase.from('feedback').update({ status }).eq('id', id)
+}
+
+export async function deleteFeedback(id) {
+  if (!supabase) return
+  await supabase.from('feedback').delete().eq('id', id)
 }
 
 // ── Anime Comments ─────────────────────────────────────────────────────────────
