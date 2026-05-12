@@ -35,7 +35,6 @@ export function WatchPanel({ item, onEp, onStatus }) {
   const isMobile = useIsMobile()
 
   const [state,     setState]     = useState('loading')
-  const [anilistId, setAnilistId] = useState(null)
   const [epCount,   setEpCount]   = useState(null)
   const [epDuration,setEpDuration]= useState(null)
   const [streamEps, setStreamEps] = useState({})
@@ -62,7 +61,6 @@ export function WatchPanel({ item, onEp, onStatus }) {
   useEffect(() => {
     let cancelled = false
     setState('loading')
-    setAnilistId(null)
     setEpCount(null)
     setStreamEps({})
     setActiveEp(null)
@@ -71,7 +69,6 @@ export function WatchPanel({ item, onEp, onStatus }) {
       const anilist = await fetchAnilistData(item.id)
       if (cancelled) return
       if (!anilist) { setState('notFound'); return }
-      setAnilistId(anilist.anilistId)
       setEpCount(anilist.episodes)
       setEpDuration(anilist.duration)
 
@@ -161,8 +158,8 @@ export function WatchPanel({ item, onEp, onStatus }) {
   const showSkipOutro = !skipDismissed && activeEp !== null && skipTimes.ed !== null &&
     currentTime >= skipTimes.ed.startTime && currentTime <= skipTimes.ed.endTime
 
-  const embedUrl = activeEp !== null && anilistId
-    ? `https://megaplay.buzz/stream/ani/${anilistId}/${activeEp}/${lang}${quality !== 'auto' ? `?quality=${quality}` : ''}`
+  const embedUrl = activeEp !== null
+    ? `https://megaplay.buzz/stream/mal/${item.id}/${activeEp}/${lang}${quality !== 'auto' ? `?quality=${quality}` : ''}`
     : null
 
   const LANGS = [{ code: 'sub', label: 'Sub' }, { code: 'dub', label: 'Dub' }]
@@ -224,7 +221,7 @@ export function WatchPanel({ item, onEp, onStatus }) {
               overflow: 'hidden', background: '#000', marginBottom: 20 }}>
               <iframe
                 ref={iframeRef}
-                key={`${anilistId}-${activeEp}-${lang}-${quality}`}
+                key={`${item.id}-${activeEp}-${lang}-${quality}`}
                 src={embedUrl}
                 style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', border: 'none' }}
                 allow="autoplay; fullscreen; picture-in-picture"
