@@ -301,15 +301,16 @@ export function WatchPanel({ item, onEp, onStatus }) {
                   <div style={{ position: 'relative', aspectRatio: '16/9', overflow: 'hidden',
                     background: dark ? '#2C2C2E' : '#e0e0e0' }}>
 
-                    {thumbnail ? (
+                    <div style={{ width: '100%', height: '100%', display: 'flex',
+                      alignItems: 'center', justifyContent: 'center', position: 'absolute', inset: 0 }}>
+                      <span style={{ fontSize: 26, opacity: 0.2 }}>▶</span>
+                    </div>
+                    {thumbnail && (
                       <img src={thumbnail} alt="" loading="lazy"
-                        style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block',
+                        onError={e => { e.currentTarget.style.display = 'none' }}
+                        style={{ position: 'absolute', inset: 0, width: '100%', height: '100%',
+                          objectFit: 'cover', display: 'block',
                           opacity: watched && !active ? 0.5 : 1, transition: 'opacity .2s' }}/>
-                    ) : (
-                      <div style={{ width: '100%', height: '100%', display: 'flex',
-                        alignItems: 'center', justifyContent: 'center' }}>
-                        <span style={{ fontSize: 26, opacity: 0.2 }}>▶</span>
-                      </div>
                     )}
 
                     {/* Watched overlay */}
