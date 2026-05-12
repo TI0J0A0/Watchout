@@ -14,7 +14,7 @@ export function AdminPage() {
         if (tab === 'topics') {
             fetchTopics().then(setTopics).finally(() => setLoading(false))
         } else {
-            fetchFeedback().then(setFeedbacks).finally(() => setLoading(false))
+            fetchFeedback().then(setFeedback).finally(() => setLoading(false))
         }
     }, [tab])
 
@@ -25,7 +25,7 @@ export function AdminPage() {
     }
 
     async function handleStatusChange(id, status) {
-        await updateFeedback(id, status);
+        await updateFeedbackStatus(id, status);
         setFeedback(prev => prev.map(f => f.id === id ? { ...f, status } : f));
     }
 
@@ -69,7 +69,7 @@ export function AdminPage() {
                         </div>
                     ))}
 
-                    {tab === 'feedbacks' && feedbacks.map(item => (
+                    {tab === 'feedbacks' && feedback.map(item => (
                         <div key={item.id} style={{
                             padding: 16, borderRadius: 12, background: T.surf, border: `1px solid ${T.bord}`,
                             display: 'flex', justifyContent: 'space-between', alignItems: 'center'

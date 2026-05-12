@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext'
 import { useClickOutside } from '../hooks/useClickOutside'
 import { AvatarPic } from './AvatarPic'
 import { NotificationBell } from './NotificationBell'
+import { isAdmin } from '../services/premium'
 
 const PAGE_ICONS = {
   seasonal: (
@@ -159,6 +160,14 @@ export function Nav({ page, setPage, libraryCount, userProfile, onLogin, onShowM
                       color:T.txt,fontSize:13.5,fontWeight:500,alignItems:"center",gap:8}}>
                     <span style={{fontSize:15}}>⇪</span> {t('nav.importMAL')}
                   </button>
+                  {isAdmin(user) && (
+                    <button className="t rbtn" onClick={() => { setPage("admin"); setMenu(false) }}
+                      style={{ display:"flex", width:"100%", padding:"9px 12px", borderRadius:9,
+                        border:"none", cursor:"pointer", background:"transparent",
+                        color:"#FF9F0A", fontSize:13.5, fontWeight:600, alignItems:"center", gap:8 }}>
+                      <span style={{ fontSize:15 }}>⚙️</span> Painel Admin
+                    </button>
+                  )}
                   <button className="t" onClick={()=>{signOut();setMenu(false)}}
                     style={{display:"flex",width:"100%",padding:"9px 12px",borderRadius:9,
                       border:"none",cursor:"pointer",background:"transparent",
@@ -187,15 +196,6 @@ export function Nav({ page, setPage, libraryCount, userProfile, onLogin, onShowM
       </div>
     </nav>
 
-
-    {isAdmin(user) && (
-  <button className="t rbtn" onClick={() => { setPage("admin"); setMenu(false) }}
-    style={{ display:"flex", width:"100%", padding:"9px 12px", borderRadius:9,
-      border:"none", cursor:"pointer", background:"transparent",
-      color:"#FF9F0A", fontSize:13.5, fontWeight:600, alignItems:"center", gap:8 }}>
-    <span style={{ fontSize:15 }}>⚙️</span> Painel Admin
-  </button>
-)}
 
     {/* Mobile bottom tab bar */}
     <div className="mobile-nav" style={{
