@@ -18,8 +18,9 @@ import { CommunityPage } from './pages/CommunityPage'
 import { loadPremiumStatus, isAdmin } from './services/premium'
 import { getProfile } from './services/friends'
 import { fetchAnimeById } from './services/jikan'
+import { AdminPage } from './pages/AdminPage'
 
-const VALID_PAGES = new Set(['seasonal','top','calendar','search','profile','news','community'])
+const VALID_PAGES = new Set(['seasonal', 'top', 'calendar', 'search', 'profile', 'news', 'community'])
 
 function parseHash(hash) {
   const h = (hash || '').replace(/^#/, '')
@@ -29,6 +30,9 @@ function parseHash(hash) {
   }
   return { page: VALID_PAGES.has(h) ? h : 'seasonal', detailId: null }
 }
+
+const VALID_PAGES = new Set(['seasonal', 'top', 'calendar', 'search', 'profile', 'news', 'community', 'admin'])
+
 
 function buildHash(page, detailId) {
   return detailId !== null ? `#anime-${detailId}` : `#${page}`
@@ -45,22 +49,22 @@ function AppInner() {
   } = useLibrary()
 
   const initHash = parseHash(window.location.hash)
-  const [page,     setPage]     = useState(initHash.page)
+  const [page, setPage] = useState(initHash.page)
   const [detailId, setDetailId] = useState(initHash.detailId)
-  const [typeF,    setTypeF]    = useState('all')
-  const [toast,    setToast]    = useState(null)
-  const [heroIdx,  setHeroIdx]  = useState(0)
-  const [showAuth,     setShowAuth]     = useState(false)
-  const [showMAL,      setShowMAL]      = useState(false)
-  const [friendId,     setFriendId]     = useState(null)
+  const [typeF, setTypeF] = useState('all')
+  const [toast, setToast] = useState(null)
+  const [heroIdx, setHeroIdx] = useState(0)
+  const [showAuth, setShowAuth] = useState(false)
+  const [showMAL, setShowMAL] = useState(false)
+  const [friendId, setFriendId] = useState(null)
   const [friendshipId, setFriendshipId] = useState(null)
-  const [isPremium,    setIsPremium]    = useState(false)
+  const [isPremium, setIsPremium] = useState(false)
   const [userProfile, setUserProfile] = useState(null)
 
   const notify = msg => { setToast(msg); setTimeout(() => setToast(null), 2400) }
 
 
-useEffect(() => {
+  useEffect(() => {
     // Remove permanentemente o rasto de visitante do navegador de todos os utilizadores.
     // Garante que a lista exibe exclusivamente o que está a ser gerido no Supabase.
     if (localStorage.getItem('watchout_v2')) {
@@ -103,7 +107,7 @@ useEffect(() => {
   useEffect(() => {
     if (detailId === null) return
     if (data.find(i => i.id === detailId)) return
-    fetchAnimeById(detailId).then(addToData).catch(() => {})
+    fetchAnimeById(detailId).then(addToData).catch(() => { })
   }, [detailId, data.length])
 
   // ───────────────────────────────────────────────────────────────────────────
@@ -111,17 +115,17 @@ useEffect(() => {
   useEffect(() => {
     if (!user) { setIsPremium(false); return }
     if (isAdmin(user)) { setIsPremium(true); return }
-    loadPremiumStatus(user.id).then(setIsPremium).catch(() => {})
+    loadPremiumStatus(user.id).then(setIsPremium).catch(() => { })
   }, [user?.id])
 
   useEffect(() => {
     if (!user) { setUserProfile(null); return }
-    getProfile(user.id).then(setUserProfile).catch(() => {})
+    getProfile(user.id).then(setUserProfile).catch(() => { })
   }, [user?.id])
 
   const refreshProfile = () => {
     if (!user) return
-    getProfile(user.id).then(setUserProfile).catch(() => {})
+    getProfile(user.id).then(setUserProfile).catch(() => { })
   }
 
   useEffect(() => {
@@ -149,7 +153,7 @@ useEffect(() => {
     if (msg) notify(msg)
   }
 
-  const library  = useMemo(() => data.filter(i => i.userStatus), [data])
+  const library = useMemo(() => data.filter(i => i.userStatus), [data])
   const seasonal = useMemo(() => data.filter(i => typeF === 'all' || i.type === typeF), [data, typeF])
 
   const hero = airingItems[heroIdx % Math.max(airingItems.length, 1)] || data[0]
@@ -163,7 +167,7 @@ useEffect(() => {
       <Nav page={page} setPage={navigate}
         libraryCount={library.length}
         userProfile={userProfile}
-        onLogin={() => setShowAuth(true)} onShowMAL={() => setShowMAL(true)}/>
+        onLogin={() => setShowAuth(true)} onShowMAL={() => setShowMAL(true)} />
 
       {friendId !== null ? (
         <FriendProfilePage
@@ -171,20 +175,20 @@ useEffect(() => {
           friendshipId={friendshipId}
           onClose={() => { setFriendId(null); setFriendshipId(null) }}
           onOpen={(item) => { setFriendId(null); setFriendshipId(null); openDetail(item) }}
-          onNavigate={navigate}/>
+          onNavigate={navigate} />
       ) : detailId !== null ? (
         (() => {
           const detailItem = data.find(d => d.id === detailId)
           return detailItem
             ? <AnimePage
-                item={detailItem}
-                onClose={() => setDetailId(null)}
-                onStatus={handleStatus} onScore={setScore} onEp={setEp} onNotes={setNotes}
-                onOpen={openDetail} isPremium={isPremium}
-                onLogin={() => setShowAuth(true)} />
+              item={detailItem}
+              onClose={() => setDetailId(null)}
+              onStatus={handleStatus} onScore={setScore} onEp={setEp} onNotes={setNotes}
+              onOpen={openDetail} isPremium={isPremium}
+              onLogin={() => setShowAuth(true)} />
             : <div style={{ padding: '120px 28px', textAlign: 'center', color: T.sub, fontSize: 14 }}>
-                Loading…
-              </div>
+              Loading…
+            </div>
         })()
       ) : (
         <div className="main-content" style={{ padding: '0 28px' }}>
@@ -192,28 +196,32 @@ useEffect(() => {
             <SeasonalPage
               seasonal={seasonal} data={data} hero={hero} heroIdx={heroIdx} setHeroIdx={setHeroIdx}
               airingItems={airingItems} typeF={typeF} setTypeF={setTypeF}
-              loading={loading} onOpen={openDetail} onStatus={handleStatus}/>
+              loading={loading} onOpen={openDetail} onStatus={handleStatus} />
+          )}
+
+          {page === 'admin' && user && isAdmin(user) && (
+            <AdminPage />
           )}
           {page === 'top' && (
-            <TopPage topData={topData} loading={!topLoaded} onOpen={openDetail}/>
+            <TopPage topData={topData} loading={!topLoaded} onOpen={openDetail} />
           )}
           {page === 'calendar' && (
-            <CalendarPage data={data} onOpen={openDetail}/>
+            <CalendarPage data={data} onOpen={openDetail} />
           )}
           {page === 'search' && (
             <SearchPage
               onOpen={openDetail} onStatus={handleStatus}
-              onAddToData={addToData}/>
+              onAddToData={addToData} />
           )}
           {page === 'profile' && (
             <ProfilePage
               library={library}
               onOpen={openDetail} onStatus={handleStatus} onLogin={() => setShowAuth(true)}
               onViewFriend={(id, fid) => { setFriendId(id); setFriendshipId(fid) }}
-              onProfileSaved={refreshProfile}/>
+              onProfileSaved={refreshProfile} />
           )}
           {page === 'news' && (
-            <NewsPage data={data} loading={loading} onOpen={openDetail}/>
+            <NewsPage data={data} loading={loading} onOpen={openDetail} />
           )}
           {page === 'community' && (
             <CommunityPage onLogin={() => setShowAuth(true)} />
@@ -221,9 +229,9 @@ useEffect(() => {
         </div>
       )}
 
-      {toast    && <Toast message={toast}/>}
-      {showAuth && <AuthPage onClose={() => setShowAuth(false)}/>}
-      {showMAL  && <MALImport onImport={importFromMAL} onClose={() => setShowMAL(false)}/>}
+      {toast && <Toast message={toast} />}
+      {showAuth && <AuthPage onClose={() => setShowAuth(false)} />}
+      {showMAL && <MALImport onImport={importFromMAL} onClose={() => setShowMAL(false)} />}
     </div>
   )
 }
@@ -232,7 +240,7 @@ export default function App() {
   return (
     <AuthProvider>
       <ThemeProvider>
-        <AppInner/>
+        <AppInner />
       </ThemeProvider>
     </AuthProvider>
   )

@@ -187,6 +187,16 @@ export function Nav({ page, setPage, libraryCount, userProfile, onLogin, onShowM
       </div>
     </nav>
 
+
+    {isAdmin(user) && (
+  <button className="t rbtn" onClick={() => { setPage("admin"); setMenu(false) }}
+    style={{ display:"flex", width:"100%", padding:"9px 12px", borderRadius:9,
+      border:"none", cursor:"pointer", background:"transparent",
+      color:"#FF9F0A", fontSize:13.5, fontWeight:600, alignItems:"center", gap:8 }}>
+    <span style={{ fontSize:15 }}>⚙️</span> Painel Admin
+  </button>
+)}
+
     {/* Mobile bottom tab bar */}
     <div className="mobile-nav" style={{
       background: dark ? 'rgba(18,18,18,.95)' : 'rgba(245,245,247,.96)',
