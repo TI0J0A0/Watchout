@@ -368,21 +368,27 @@ export function AnimePage({ item, onClose, onStatus, onScore, onEp, onNotes, onO
           </div>
         )}
 
-        {item.userStatus && item.eps && (
+        {item.userStatus && (
           <div>
             <p style={{ fontSize: 11, color: T.sub, marginBottom: 7, fontWeight: 500 }}>{t('anime.progress')}</p>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <button onClick={() => onEp(item.id, Math.max(0, (item.userEp || 0) - 1))}
                 style={{ width: 28, height: 28, borderRadius: 8, border: 'none', background: `${item.color}22`, color: item.color, fontSize: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>−</button>
               <span style={{ fontSize: 16, fontWeight: 700, color: item.color, minWidth: 52, textAlign: 'center' }}>
-                {item.userEp || 0}<span style={{ fontSize: 12, color: T.sub, fontWeight: 400 }}>/{item.eps}</span>
+                {item.userEp || 0}
+                {item.eps
+                  ? <span style={{ fontSize: 12, color: T.sub, fontWeight: 400 }}>/{item.eps}</span>
+                  : <span style={{ fontSize: 12, color: T.sub, fontWeight: 400 }}> ep</span>
+                }
               </span>
-              <button onClick={() => onEp(item.id, Math.min(item.eps, (item.userEp || 0) + 1))}
+              <button onClick={() => onEp(item.id, Math.min(item.eps ?? Infinity, (item.userEp || 0) + 1))}
                 style={{ width: 28, height: 28, borderRadius: 8, border: 'none', background: `${item.color}22`, color: item.color, fontSize: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>+</button>
             </div>
-            <div style={{ marginTop: 8, height: 4, borderRadius: 2, background: `${item.color}20`, width: 140 }}>
-              <div style={{ height: '100%', borderRadius: 2, background: item.color, width: `${((item.userEp || 0) / item.eps) * 100}%`, transition: 'width .3s ease' }}/>
-            </div>
+            {item.eps && (
+              <div style={{ marginTop: 8, height: 4, borderRadius: 2, background: `${item.color}20`, width: 140 }}>
+                <div style={{ height: '100%', borderRadius: 2, background: item.color, width: `${((item.userEp || 0) / item.eps) * 100}%`, transition: 'width .3s ease' }}/>
+              </div>
+            )}
           </div>
         )}
       </div>

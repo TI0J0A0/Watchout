@@ -109,13 +109,6 @@ export function Nav({ page, setPage, libraryCount, userProfile, onLogin, onShowM
 
         {/* Right */}
         <div style={{display:"flex",gap:8,alignItems:"center",marginLeft:8}}>
-          {libraryCount>0&&(
-            <div className="hide-sm" style={{padding:"4px 10px",borderRadius:20,
-              background:"rgba(0,122,255,.12)",fontSize:12,fontWeight:600,color:"#0A84FF"}}>
-              {t('nav.titles', { count: libraryCount })}
-            </div>
-          )}
-
           {/* Search icon — desktop only */}
           <button className="t hbtn hide-sm" onClick={()=>setPage("search")}
             style={{width:34,height:34,borderRadius:"50%",border:`1px solid ${page==="search"?"#0A84FF":T.bord}`,

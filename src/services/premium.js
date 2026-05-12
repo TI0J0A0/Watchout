@@ -28,14 +28,20 @@ export async function toggleBanUser(userId, banned) {
   await supabase.from('profiles').update({ is_banned: banned }).eq('id', userId)
 }
 
-export async function adminSearchUsers(query) {
-  if (!supabase || !query) return []
-  const { data } = await supabase
+const PAGE_SIZE = 20
+
+export async function fetchUsers({ query = '', page = 0 } = {}) {
+  if (!supabase) return { data: [], count: 0 }
+  let q = supabase
     .from('profiles')
-    .select('id, username, display_name, avatar_url, avatar_grad, is_premium')
-    .or(`username.ilike.%${query}%,display_name.ilike.%${query}%`)
-    .limit(10)
-  return data ?? []
+    .select('id, username, display_name, avatar_url, avatar_grad, is_premium, is_banned', { count: 'exact' })
+    .order('created_at', { ascending: false })
+    .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1)
+  if (query.trim())
+    q = q.or(`username.ilike.%${query}%,display_name.ilike.%${query}%`)
+  const { data, count, error } = await q
+  if (error) throw error
+  return { data: data ?? [], count: count ?? 0 }
 }
 
 export async function getAnilistData(malId) {

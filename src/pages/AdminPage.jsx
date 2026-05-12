@@ -4,7 +4,7 @@ import {
   fetchTopics, deleteTopicWithPosts,
   fetchFeedback, updateFeedbackStatus, deleteFeedback,
 } from '../services/community'
-import { adminSearchUsers, grantPremium, revokePremium, toggleBanUser } from '../services/premium'
+import { fetchUsers, grantPremium, revokePremium, toggleBanUser } from '../services/premium'
 import { fetchAnnouncements, createAnnouncement, deleteAnnouncement } from '../services/announcements'
 
 const TABS = [
@@ -25,7 +25,10 @@ export function AdminPage() {
   const [feedbackLoading, setFeedbackLoading]   = useState(false)
 
   const [userQuery, setUserQuery]           = useState('')
+  const [userDraft, setUserDraft]           = useState('')
   const [users, setUsers]                   = useState([])
+  const [userCount, setUserCount]           = useState(0)
+  const [userPage, setUserPage]             = useState(0)
   const [usersLoading, setUsersLoading]     = useState(false)
 
   const [announcements, setAnnouncements]   = useState([])
@@ -46,6 +49,14 @@ export function AdminPage() {
     }
   }, [tab])
 
+  useEffect(() => {
+    if (tab !== 'users') return
+    setUsersLoading(true)
+    fetchUsers({ query: userQuery, page: userPage })
+      .then(({ data, count }) => { setUsers(data); setUserCount(count) })
+      .finally(() => setUsersLoading(false))
+  }, [tab, userQuery, userPage])
+
   async function handleDeleteTopic(id) {
     if (!confirm('Deletar tópico e todas as respostas?')) return
     await deleteTopicWithPosts(id)
@@ -63,11 +74,10 @@ export function AdminPage() {
     setFeedback(prev => prev.filter(f => f.id !== id))
   }
 
-  async function handleUserSearch(e) {
+  function handleUserSearch(e) {
     e.preventDefault()
-    if (!userQuery.trim()) return
-    setUsersLoading(true)
-    adminSearchUsers(userQuery).then(setUsers).finally(() => setUsersLoading(false))
+    setUserPage(0)
+    setUserQuery(userDraft)
   }
 
   async function handlePremium(userId, current) {
@@ -197,54 +207,99 @@ export function AdminPage() {
       )}
 
       {/* ── Usuários ── */}
-      {tab === 'users' && (
-        <div>
-          <form onSubmit={handleUserSearch} style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
-            <input
-              value={userQuery}
-              onChange={e => setUserQuery(e.target.value)}
-              placeholder="Buscar por username ou nome..."
-              style={{ ...input, flex: 1 }}
-            />
-            <button type="submit"
-              style={{ padding: '10px 20px', background: '#0A84FF', color: '#fff', border: 'none', borderRadius: 10, fontWeight: 600, cursor: 'pointer' }}>
-              Buscar
-            </button>
-          </form>
-          {usersLoading && <p style={{ color: T.sub }}>Buscando...</p>}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {users.length === 0 && !usersLoading && userQuery && (
-              <p style={{ color: T.sub }}>Nenhum usuário encontrado.</p>
-            )}
-            {users.map(u => (
-              <div key={u.id} style={card}>
-                <div style={{ flex: 1, minWidth: 0, paddingRight: 12 }}>
-                  <p style={{ fontWeight: 600, color: T.txt, margin: '0 0 3px', display: 'flex', flexWrap: 'wrap', gap: 5, alignItems: 'center' }}>
-                    {u.display_name || u.username}
-                    {u.is_premium && (
-                      <span style={{ fontSize: 10, background: '#FF9F0A22', color: '#FF9F0A', padding: '2px 6px', borderRadius: 4 }}>PREMIUM</span>
-                    )}
-                    {u.is_banned && (
-                      <span style={{ fontSize: 10, background: '#FF3B3022', color: '#FF3B30', padding: '2px 6px', borderRadius: 4 }}>BANIDO</span>
-                    )}
-                  </p>
-                  <p style={{ fontSize: 12, color: T.sub, margin: 0 }}>@{u.username}</p>
+      {tab === 'users' && (() => {
+        const totalPages = Math.ceil(userCount / 20)
+        return (
+          <div>
+            {/* Buscador */}
+            <form onSubmit={handleUserSearch} style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+              <input
+                value={userDraft}
+                onChange={e => setUserDraft(e.target.value)}
+                placeholder="Filtrar por username ou nome..."
+                style={{ ...input, flex: 1 }}
+              />
+              <button type="submit"
+                style={{ padding: '10px 20px', background: '#0A84FF', color: '#fff', border: 'none', borderRadius: 10, fontWeight: 600, cursor: 'pointer' }}>
+                Buscar
+              </button>
+              {userQuery && (
+                <button type="button" onClick={() => { setUserDraft(''); setUserQuery(''); setUserPage(0) }}
+                  style={{ padding: '10px 14px', background: T.surf, color: T.sub, border: `1px solid ${T.bord}`, borderRadius: 10, fontWeight: 600, cursor: 'pointer' }}>
+                  ✕
+                </button>
+              )}
+            </form>
+
+            {/* Contador */}
+            <p style={{ fontSize: 12, color: T.sub, margin: '0 0 12px' }}>
+              {usersLoading ? 'Carregando...' : `${userCount} usuário${userCount !== 1 ? 's' : ''}${userQuery ? ` para "${userQuery}"` : ''}`}
+            </p>
+
+            {/* Lista */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {!usersLoading && users.length === 0 && (
+                <p style={{ color: T.sub }}>Nenhum usuário encontrado.</p>
+              )}
+              {users.map(u => (
+                <div key={u.id} style={card}>
+                  <div style={{ flex: 1, minWidth: 0, paddingRight: 12 }}>
+                    <p style={{ fontWeight: 600, color: T.txt, margin: '0 0 3px', display: 'flex', flexWrap: 'wrap', gap: 5, alignItems: 'center' }}>
+                      {u.display_name || u.username}
+                      {u.is_premium && (
+                        <span style={{ fontSize: 10, background: '#FF9F0A22', color: '#FF9F0A', padding: '2px 6px', borderRadius: 4 }}>PREMIUM</span>
+                      )}
+                      {u.is_banned && (
+                        <span style={{ fontSize: 10, background: '#FF3B3022', color: '#FF3B30', padding: '2px 6px', borderRadius: 4 }}>BANIDO</span>
+                      )}
+                    </p>
+                    <p style={{ fontSize: 12, color: T.sub, margin: 0 }}>@{u.username}</p>
+                  </div>
+                  <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+                    <button onClick={() => handlePremium(u.id, u.is_premium)}
+                      style={chip(u.is_premium ? '#FF9F0A' : '#30D158')}>
+                      {u.is_premium ? 'Revogar Premium' : 'Dar Premium'}
+                    </button>
+                    <button onClick={() => handleBan(u.id, u.is_banned)}
+                      style={chip(u.is_banned ? '#30D158' : '#FF3B30')}>
+                      {u.is_banned ? 'Desbanir' : 'Banir'}
+                    </button>
+                  </div>
                 </div>
-                <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
-                  <button onClick={() => handlePremium(u.id, u.is_premium)}
-                    style={chip(u.is_premium ? '#FF9F0A' : '#30D158')}>
-                    {u.is_premium ? 'Revogar Premium' : 'Dar Premium'}
-                  </button>
-                  <button onClick={() => handleBan(u.id, u.is_banned)}
-                    style={chip(u.is_banned ? '#30D158' : '#FF3B30')}>
-                    {u.is_banned ? 'Desbanir' : 'Banir'}
-                  </button>
-                </div>
+              ))}
+            </div>
+
+            {/* Paginação */}
+            {totalPages > 1 && (
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12, marginTop: 24 }}>
+                <button
+                  disabled={userPage === 0}
+                  onClick={() => setUserPage(p => p - 1)}
+                  style={{
+                    padding: '8px 18px', borderRadius: 9, border: `1px solid ${T.bord}`,
+                    background: T.surf, color: userPage === 0 ? T.sub : T.txt,
+                    fontWeight: 600, cursor: userPage === 0 ? 'default' : 'pointer', opacity: userPage === 0 ? 0.4 : 1,
+                  }}>
+                  ← Anterior
+                </button>
+                <span style={{ fontSize: 13, color: T.sub, minWidth: 80, textAlign: 'center' }}>
+                  {userPage + 1} / {totalPages}
+                </span>
+                <button
+                  disabled={userPage >= totalPages - 1}
+                  onClick={() => setUserPage(p => p + 1)}
+                  style={{
+                    padding: '8px 18px', borderRadius: 9, border: `1px solid ${T.bord}`,
+                    background: T.surf, color: userPage >= totalPages - 1 ? T.sub : T.txt,
+                    fontWeight: 600, cursor: userPage >= totalPages - 1 ? 'default' : 'pointer', opacity: userPage >= totalPages - 1 ? 0.4 : 1,
+                  }}>
+                  Próximo →
+                </button>
               </div>
-            ))}
+            )}
           </div>
-        </div>
-      )}
+        )
+      })()}
 
       {/* ── Comunicados ── */}
       {tab === 'announcements' && (
