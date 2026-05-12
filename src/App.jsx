@@ -20,7 +20,7 @@ import { getProfile } from './services/friends'
 import { fetchAnimeById } from './services/jikan'
 import { AdminPage } from './pages/AdminPage'
 
-const VALID_PAGES = new Set(['seasonal', 'top', 'calendar', 'search', 'profile', 'news', 'community'])
+const VALID_PAGES = new Set(['seasonal', 'top', 'calendar', 'search', 'profile', 'news', 'community', 'admin'])
 
 function parseHash(hash) {
   const h = (hash || '').replace(/^#/, '')
@@ -30,9 +30,6 @@ function parseHash(hash) {
   }
   return { page: VALID_PAGES.has(h) ? h : 'seasonal', detailId: null }
 }
-
-const VALID_PAGES = new Set(['seasonal', 'top', 'calendar', 'search', 'profile', 'news', 'community', 'admin'])
-
 
 function buildHash(page, detailId) {
   return detailId !== null ? `#anime-${detailId}` : `#${page}`
