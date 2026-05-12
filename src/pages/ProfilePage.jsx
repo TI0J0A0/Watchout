@@ -15,7 +15,7 @@ import {
   searchProfiles, sendFriendRequest, acceptFriendRequest, deleteFriendship,
   checkDisplayNameAvailable,
 } from '../services/friends'
-import { ADMIN_EMAIL, isAdmin, fetchUsers, grantPremium, revokePremium } from '../services/premium'
+import { ADMIN_EMAIL, isAdmin, grantPremium, revokePremium } from '../services/premium'
 import { computeTasteProfile, personalityText } from '../utils/tasteProfile'
 
 
@@ -69,12 +69,7 @@ export function ProfilePage({ library, onOpen, onStatus, onLogin, onViewFriend =
   const [friendSearchLoading,setFriendSearchLoading]= useState(false)
   const [sentRequests,       setSentRequests]       = useState(new Set())
 
-  const [adminQuery,         setAdminQuery]         = useState('')
-  const [adminResults,       setAdminResults]       = useState([])
-  const [adminLoading,       setAdminLoading]       = useState(false)
-  const [adminUpdating,      setAdminUpdating]      = useState(null)
-
-  const [libF,      setLibF]      = useState('all')
+const [libF,      setLibF]      = useState('all')
   const [libSort,   setLibSort]   = useState('title')
   const [libSearch, setLibSearch] = useState('')
   const libSectionRef = useRef(null)
@@ -291,30 +286,14 @@ export function ProfilePage({ library, onOpen, onStatus, onLogin, onViewFriend =
     setFriendResults([])
   }
 
-  const handleAdminSearch = async (q) => {
-    setAdminQuery(q)
-    if (!q.trim()) { setAdminResults([]); return }
-    setAdminLoading(true)
-    try {
-      const { data: results } = await fetchUsers({ query: q })
-      setAdminResults(results.filter(p => p.id !== user?.id))
-    } catch {}
-    setAdminLoading(false)
-  }
-
   const handleTogglePremium = async (profile) => {
-    setAdminUpdating(profile.id)
     try {
       if (profile.is_premium) {
         await revokePremium(profile.id)
       } else {
         await grantPremium(profile.id)
       }
-      setAdminResults(prev => prev.map(p =>
-        p.id === profile.id ? { ...p, is_premium: !p.is_premium } : p
-      ))
     } catch {}
-    setAdminUpdating(null)
   }
 
   if (!user) {
@@ -1107,68 +1086,6 @@ export function ProfilePage({ library, onOpen, onStatus, onLogin, onViewFriend =
             {t('profile.explorePrompt')}
           </p>
         </div>
-      )}
-
-      {/* ── Admin Panel ── */}
-      {isAdmin(user) && (
-        <section style={{ marginBottom:36 }}>
-          <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:14 }}>
-            <span style={{ fontSize:16 }}>⚙</span>
-            <h2 style={{ fontSize:18, fontWeight:700, color:T.txt, letterSpacing:'-.02em' }}>
-              {t('admin.title')}
-            </h2>
-          </div>
-
-          <div style={{ padding:'16px 18px', borderRadius:16,
-            background: dark ? 'rgba(255,159,10,.07)' : 'rgba(255,159,10,.06)',
-            border:'1px solid rgba(255,159,10,.2)' }}>
-
-            <input
-              type="text"
-              placeholder={t('admin.searchUsers')}
-              value={adminQuery}
-              onChange={e => handleAdminSearch(e.target.value)}
-              style={{ width:'100%', padding:'9px 13px', borderRadius:12, fontSize:13,
-                background: dark ? 'rgba(255,255,255,.07)' : 'rgba(0,0,0,.05)',
-                border:`1px solid ${T.bord}`, color:T.txt, outline:'none',
-                fontFamily:'inherit', boxSizing:'border-box', marginBottom:10 }}
-            />
-
-            {adminLoading && (
-              <p style={{ fontSize:12, color:T.sub, textAlign:'center', padding:'6px 0' }}>…</p>
-            )}
-
-            <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
-              {adminResults.map(profile => (
-                <div key={profile.id}
-                  style={{ display:'flex', alignItems:'center',
-                    justifyContent:'space-between', padding:'8px 0',
-                    borderBottom:`1px solid ${T.bord}` }}>
-                  <div style={{ display:'flex', alignItems:'center', gap:9 }}>
-                    <AvatarPic profile={profile} size={34}/>
-                    <div>
-                      <p style={{ fontSize:13, fontWeight:600, color:T.txt }}>
-                        {profile.display_name || profile.username}
-                      </p>
-                      <p style={{ fontSize:11, color:T.sub }}>@{profile.username}</p>
-                    </div>
-                  </div>
-                  <button className="t"
-                    disabled={adminUpdating === profile.id}
-                    onClick={() => handleTogglePremium(profile)}
-                    style={{ padding:'5px 13px', borderRadius:14, border:'none', cursor:'pointer',
-                      fontSize:12, fontWeight:600,
-                      opacity: adminUpdating === profile.id ? .5 : 1,
-                      background: profile.is_premium
-                        ? 'rgba(255,59,48,.12)' : 'rgba(255,159,10,.15)',
-                      color: profile.is_premium ? '#FF3B30' : '#FF9F0A' }}>
-                    {profile.is_premium ? t('admin.revokePremium') : t('admin.grantPremium')}
-                  </button>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
       )}
 
       {/* ── Add Friend Modal ── */}

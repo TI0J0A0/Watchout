@@ -44,6 +44,12 @@ const PAGE_ICONS = {
       <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/>
     </svg>
   ),
+  categories: (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/>
+      <rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>
+    </svg>
+  ),
 }
 
 export function Nav({ page, setPage, libraryCount, userProfile, onLogin, onShowMAL }) {
@@ -55,21 +61,23 @@ export function Nav({ page, setPage, libraryCount, userProfile, onLogin, onShowM
   useClickOutside(menuRef, () => setMenu(false))
 
   const PAGES = [
-    ["seasonal",  t('nav.discover')],
-    ["top",       t('nav.top')],
-    ["calendar",  t('nav.calendar')],
-    ["search",    t('nav.search')],
-    ["news",      t('nav.news')],
-    ["community", "Community"],
+    ["seasonal",   t('nav.discover')],
+    ["top",        t('nav.top')],
+    ["calendar",   t('nav.calendar')],
+    ["categories", "Categories"],
+    ["search",     t('nav.search')],
+    ["news",       t('nav.news')],
+    ["community",  "Community"],
   ]
 
   const MOBILE_LABELS = {
-    seasonal:  t('nav.discover'),
-    top:       'Top',
-    calendar:  t('nav.calendar').slice(0, 6),
-    search:    t('nav.search'),
-    news:      t('nav.news'),
-    community: 'Comm.',
+    seasonal:   t('nav.discover'),
+    top:        'Top',
+    calendar:   t('nav.calendar').slice(0, 6),
+    categories: 'Categ.',
+    search:     t('nav.search'),
+    news:       t('nav.news'),
+    community:  'Comm.',
   }
 
   const initials = user?.email?.slice(0, 2).toUpperCase() ?? ''

@@ -19,9 +19,10 @@ import { loadPremiumStatus, isAdmin } from './services/premium'
 import { getProfile } from './services/friends'
 import { fetchAnimeById } from './services/jikan'
 import { AdminPage } from './pages/AdminPage'
+import { CategoriesPage } from './pages/CategoriesPage'
 import { AnnouncementBanner } from './components/AnnouncementBanner'
 
-const VALID_PAGES = new Set(['seasonal', 'top', 'calendar', 'search', 'profile', 'news', 'community', 'admin'])
+const VALID_PAGES = new Set(['seasonal', 'top', 'calendar', 'categories', 'search', 'profile', 'news', 'community', 'admin'])
 
 function parseHash(hash) {
   const h = (hash || '').replace(/^#/, '')
@@ -197,6 +198,10 @@ function AppInner() {
               seasonal={seasonal} data={data} hero={hero} heroIdx={heroIdx} setHeroIdx={setHeroIdx}
               airingItems={airingItems} typeF={typeF} setTypeF={setTypeF}
               loading={loading} onOpen={openDetail} onStatus={handleStatus} />
+          )}
+
+          {page === 'categories' && (
+            <CategoriesPage library={library} onOpen={openDetail} onStatus={handleStatus} />
           )}
 
           {page === 'admin' && user && isAdmin(user) && (
