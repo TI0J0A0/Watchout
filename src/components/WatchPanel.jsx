@@ -46,9 +46,11 @@ export function WatchPanel({ item, onEp, onStatus }) {
   const [skipTimes,     setSkipTimes]     = useState({ op: null, ed: null })
   const [skipDismissed, setSkipDismissed] = useState(false)
 
-  const markedRef   = useRef(false)
-  const durationRef = useRef(0)
-  const iframeRef   = useRef(null)
+  const markedRef    = useRef(false)
+  const durationRef  = useRef(0)
+  const iframeRef    = useRef(null)
+  const pendingSeek  = useRef(0)
+  const saveTimer    = useRef(null)
 
   useEffect(() => {
     markedRef.current = false
@@ -57,6 +59,18 @@ export function WatchPanel({ item, onEp, onStatus }) {
     setSkipTimes({ op: null, ed: null })
     durationRef.current = 0
   }, [activeEp])
+
+  // Auto-resume from saved progress when player becomes ready
+  useEffect(() => {
+    if (state !== 'ready') return
+    try {
+      const saved = JSON.parse(localStorage.getItem(`watchout_resume_${item.id}`))
+      if (saved?.ep && saved?.time > 60) {
+        pendingSeek.current = saved.time
+        setActiveEp(saved.ep)
+      }
+    } catch {}
+  }, [state])
 
   useEffect(() => {
     let cancelled = false
@@ -106,10 +120,21 @@ export function WatchPanel({ item, onEp, onStatus }) {
       let data = event.data
       if (typeof data === 'string') { try { data = JSON.parse(data) } catch { return } }
 
-      // Track playback position for skip buttons
+      // Track playback position for skip buttons + progress save
       if (data.type === 'watching-log' && data.duration > 0) {
         durationRef.current = data.duration
         setCurrentTime(data.currentTime)
+
+        const pct = data.currentTime / data.duration
+        if (data.currentTime > 60 && pct < 0.9) {
+          clearTimeout(saveTimer.current)
+          saveTimer.current = setTimeout(() => {
+            localStorage.setItem(`watchout_resume_${item.id}`, JSON.stringify({ ep: activeEp, time: Math.floor(data.currentTime) }))
+          }, 2000)
+        } else if (pct >= 0.9) {
+          clearTimeout(saveTimer.current)
+          localStorage.removeItem(`watchout_resume_${item.id}`)
+        }
       }
       if (data.event === 'time' && typeof data.percent === 'number' && durationRef.current > 0) {
         setCurrentTime(data.percent * durationRef.current)
@@ -227,6 +252,13 @@ export function WatchPanel({ item, onEp, onStatus }) {
                 allow="autoplay; fullscreen; picture-in-picture"
                 sandbox="allow-scripts allow-same-origin allow-presentation allow-forms"
                 allowFullScreen
+                onLoad={() => {
+                  if (pendingSeek.current > 0) {
+                    const t = pendingSeek.current
+                    pendingSeek.current = 0
+                    setTimeout(() => seek(t), 2000)
+                  }
+                }}
               />
 
               {/* Skip Intro button */}
