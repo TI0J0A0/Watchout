@@ -9,7 +9,7 @@ import { ShelfRow } from '../components/ShelfRow'
 import { WatchPanel } from '../components/WatchPanel'
 import { StatBox } from '../components/StatBox'
 import { fmt, fmtTime } from '../utils'
-import { fetchRecommendations } from '../services/jikan'
+import { fetchRecommendations, fetchRelations, fetchAnimeById } from '../services/jikan'
 import { fetchAnilistBanner } from '../services/anilist'
 import { fetchAnimeComments, createAnimeComment, deleteAnimeComment } from '../services/community'
 
@@ -172,6 +172,7 @@ export function AnimePage({ item, onClose, onStatus, onScore, onEp, onNotes, onO
   const [synExpand, setSynExpand] = useState(false)
   const [noteText,  setNoteText]  = useState(item?.userNotes ?? '')
   const [noteSaved, setNoteSaved] = useState(false)
+  const [relations, setRelations] = useState([])
   const menuRef      = useRef(null)
   const noteSaveTimer = useRef(null)
   useClickOutside(menuRef, () => setMenu(false))
@@ -185,7 +186,9 @@ export function AnimePage({ item, onClose, onStatus, onScore, onEp, onNotes, onO
     setBanner(null)
     setNoteText(item?.userNotes ?? '')
     setNoteSaved(false)
+    setRelations([])
     fetchRecommendations(item.id).then(setRecs).catch(() => {})
+    fetchRelations(item.id).then(setRelations).catch(() => {})
     fetchAnilistBanner(item.id)
       .then(({ bannerImage, characters }) => {
         setBanner(bannerImage)
@@ -261,6 +264,34 @@ export function AnimePage({ item, onClose, onStatus, onScore, onEp, onNotes, onO
           }}>{item.eps} {t('anime.eps')}</span>
         )}
       </div>
+
+      {relations.length > 0 && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 14 }}>
+          {relations.map(rel => (
+            <button key={rel.malId} onClick={async () => {
+              const full = await fetchAnimeById(rel.malId).catch(() => null)
+              if (full) onOpen(full)
+            }} style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              padding: '9px 14px', borderRadius: 10, border: `1px solid ${item.color}40`,
+              background: `${item.color}12`, cursor: 'pointer', textAlign: 'left', width: '100%',
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ fontSize: 13 }}>{rel.relation === 'Sequel' ? '⏭' : '⏮'}</span>
+                <div>
+                  <p style={{ fontSize: 10, fontWeight: 700, color: item.color, margin: '0 0 1px', textTransform: 'uppercase', letterSpacing: '.04em' }}>
+                    {rel.relation === 'Sequel' ? 'Next Season' : 'Previous Season'}
+                  </p>
+                  <p style={{ fontSize: 12, fontWeight: 600, color: T.txt, margin: 0 }}>
+                    {rel.name}
+                  </p>
+                </div>
+              </div>
+              <span style={{ fontSize: 14, color: item.color, flexShrink: 0 }}>→</span>
+            </button>
+          ))}
+        </div>
+      )}
 
       {item.score && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>

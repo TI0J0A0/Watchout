@@ -118,6 +118,18 @@ export async function fetchAnimeById(id) {
   return mapAnime(data)
 }
 
+export async function fetchRelations(id) {
+  const { data } = await get(`/anime/${id}/relations`)
+  const related = []
+  for (const rel of (data ?? [])) {
+    if (rel.relation !== 'Sequel' && rel.relation !== 'Prequel') continue
+    for (const entry of (rel.entry ?? [])) {
+      if (entry.type === 'anime') related.push({ relation: rel.relation, malId: entry.mal_id, name: entry.name })
+    }
+  }
+  return related
+}
+
 export async function fetchRecommendations(id) {
   const { data } = await get(`/anime/${id}/recommendations`);
   return data.slice(0, 10).map(r => {
