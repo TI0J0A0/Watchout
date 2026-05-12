@@ -92,10 +92,11 @@ export function SeasonalPage({
       return next
     })
   }
+  const EXCLUDE_STATUSES = new Set(['watching', 'completed', 'dropped'])
   const coldItems = useMemo(() => {
     if (!coldPicks.length) return []
     return seasonal
-      .filter(a => !a.userStatus && a.genres?.some(g => coldPicks.includes(g)))
+      .filter(a => !EXCLUDE_STATUSES.has(a.userStatus) && a.genres?.some(g => coldPicks.includes(g)))
       .slice(0, 10)
   }, [seasonal, coldPicks])
 
@@ -315,6 +316,15 @@ export function SeasonalPage({
             />
           )}
 
+          {continueWatching.length > 0 && (
+            <ShelfRow
+              emoji="▶"
+              title={t('seasonal.continueWatching')}
+              subtitle={t('seasonal.continueWatchingSubtitle')}
+              items={continueWatching} loading={false}
+              onOpen={onOpen} onStatus={onStatus}/>
+          )}
+
           {/* Cold Start — shown for logged-in users with no taste profile yet */}
           {!tasteProfile && user && (
             <>
@@ -353,15 +363,6 @@ export function SeasonalPage({
                 />
               )}
             </>
-          )}
-
-          {continueWatching.length > 0 && (
-            <ShelfRow
-              emoji="▶"
-              title={t('seasonal.continueWatching')}
-              subtitle={t('seasonal.continueWatchingSubtitle')}
-              items={continueWatching} loading={false}
-              onOpen={onOpen} onStatus={onStatus}/>
           )}
 
           <ShelfRow

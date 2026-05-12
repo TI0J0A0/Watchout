@@ -28,7 +28,7 @@ export const MediaCard = memo(function MediaCard({ item, delay, onOpen, onStatus
         boxShadow:`0 ${isShelf?4:2}px ${isShelf?20:16}px rgba(0,0,0,${T.dark?(isShelf?.18:.16):(isShelf?.08:.07)})`,
         marginBottom:10,
       }}>
-        <div style={{position:"relative",paddingTop:"133%",overflow:"hidden"}}>
+        <div style={{position:"relative",paddingTop:"142%",overflow:"hidden"}}>
           {item.img ? (
             <img className="cimg t" src={item.img} alt="" loading="lazy"
               style={{position:"absolute",inset:0,width:"100%",height:"100%",objectFit:"cover"}}/>
