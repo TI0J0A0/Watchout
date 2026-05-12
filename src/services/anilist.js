@@ -1,5 +1,16 @@
 const GQL = 'https://graphql.anilist.co'
 
+export function getAnilistHeroImages(media) {
+  return {
+    bannerImage: media?.bannerImage ?? null,
+    coverImage: media?.coverImage?.extraLarge ?? null,
+  }
+}
+
+export function getAnilistHeroImage(media) {
+  return media?.bannerImage ?? media?.coverImage?.extraLarge ?? null
+}
+
 async function gql(query, variables = {}) {
   try {
     const res = await fetch(GQL, {
@@ -70,10 +81,20 @@ export async function fetchAnilistBanner(malId) {
 
 // Lightweight — only bannerImage, used in SeasonalPage / ProfilePage
 export async function fetchAnilistBannerOnly(malId) {
+  const images = await fetchAnilistHeroImages(malId)
+  return images.bannerImage ?? images.coverImage ?? null
+}
+
+export async function fetchAnilistHeroImages(malId) {
   const data = await gql(`
-    query($malId: Int) { Media(idMal: $malId, type: ANIME) { bannerImage } }
+    query($malId: Int) {
+      Media(idMal: $malId, type: ANIME) {
+        bannerImage
+        coverImage { extraLarge }
+      }
+    }
   `, { malId })
-  return data?.Media?.bannerImage ?? null
+  return getAnilistHeroImages(data?.Media)
 }
 
 // Character search for avatar picker — pass null/empty for global popular

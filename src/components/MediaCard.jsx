@@ -22,9 +22,13 @@ export const MediaCard = memo(function MediaCard({ item, delay, onOpen, onStatus
       flexShrink: isShelf ? 0 : undefined,
       width: isShelf ? (isMobile ? 130 : 178) : undefined,
     }}>
-      <div className="card t" onClick={()=>onOpen(item)} style={{
-        borderRadius: isShelf ? 16 : 18,
+      <div className="card media-card t" role="button" tabIndex={0}
+        onClick={()=>onOpen(item)}
+        onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onOpen(item) } }}
+        style={{
+        borderRadius: isShelf ? 18 : 22,
         overflow:"hidden",background:T.surf,
+        border:`1px solid ${T.bord}`,
         boxShadow:`0 ${isShelf?4:2}px ${isShelf?20:16}px rgba(0,0,0,${T.dark?(isShelf?.18:.16):(isShelf?.08:.07)})`,
         marginBottom:10,
       }}>
@@ -39,8 +43,8 @@ export const MediaCard = memo(function MediaCard({ item, delay, onOpen, onStatus
               <span style={{fontSize:32,opacity:.6}}>📺</span>
             </div>
           )}
-          <div style={{position:"absolute",inset:0,
-            background:`linear-gradient(to top,rgba(0,0,0,.58) 0%,transparent ${isShelf?50:52}%)`}}/>
+          <div className="media-card-gradient" style={{position:"absolute",inset:0,
+            background:`linear-gradient(to top,rgba(0,0,0,.76) 0%,rgba(0,0,0,.28) 34%,transparent ${isShelf?58:60}%)`}}/>
 
           {/* Score */}
           <div style={{position:"absolute",top:isShelf?8:9,right:isShelf?8:9,padding:"3px 7px",

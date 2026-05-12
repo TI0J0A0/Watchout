@@ -4,12 +4,12 @@ const ThemeContext = createContext(null)
 
 const PALETTES = {
   dark: {
-    bg:    '#000',
-    surf:  '#1C1C1E',
-    surf2: '#2C2C2E',
-    txt:   '#F5F5F7',
-    sub:   '#98989D',
-    bord:  'rgba(255,255,255,.1)',
+    bg:    '#050509',
+    surf:  '#101018',
+    surf2: '#151522',
+    txt:   '#F8FAFC',
+    sub:   '#A1A1AA',
+    bord:  'rgba(255,255,255,.08)',
   },
   light: {
     bg:    '#F2F2F7',

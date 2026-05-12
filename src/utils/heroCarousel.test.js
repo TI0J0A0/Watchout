@@ -1,0 +1,53 @@
+import test from 'node:test'
+import assert from 'node:assert/strict'
+import {
+  getHeroBadge,
+  getHeroMeta,
+  getHeroCta,
+  getHeroImage,
+  getCarouselIndex,
+} from './heroCarousel.js'
+
+test('getHeroBadge returns ON AIR for airing titles and TRENDING otherwise', () => {
+  assert.equal(getHeroBadge({ airing: true }), 'ON AIR')
+  assert.equal(getHeroBadge({ airing: false }), 'TRENDING')
+  assert.equal(getHeroBadge(null), 'TRENDING')
+})
+
+test('getHeroMeta builds a compact metadata line from available fields', () => {
+  const item = {
+    rating: 'R - 17+',
+    streaming: ['Crunchyroll', 'Netflix'],
+    genres: ['Action', 'Romance', 'Fantasy'],
+  }
+
+  assert.equal(getHeroMeta(item), '17+ • Crunchyroll | Netflix • Action, Romance')
+})
+
+test('getHeroMeta falls back when optional data is missing', () => {
+  assert.equal(getHeroMeta({}), '16+ • Sub | Dub • Anime')
+})
+
+test('getHeroCta prompts add only when the hero is not already in the list', () => {
+  assert.deepEqual(getHeroCta({ userStatus: null }), {
+    label: 'Add to List',
+    canAdd: true,
+  })
+  assert.deepEqual(getHeroCta({ userStatus: 'watching' }, s => `status:${s}`), {
+    label: 'status:watching',
+    canAdd: false,
+  })
+})
+
+test('getHeroImage prefers banner imagery and falls back to poster image', () => {
+  assert.equal(getHeroImage({ img: 'poster.jpg' }, 'banner.jpg', 'thumb.jpg'), 'banner.jpg')
+  assert.equal(getHeroImage({ img: 'poster.jpg' }, null, 'thumb.jpg'), 'thumb.jpg')
+  assert.equal(getHeroImage({ img: 'poster.jpg' }, null, null), 'poster.jpg')
+})
+
+test('getCarouselIndex wraps previous and next indexes', () => {
+  assert.equal(getCarouselIndex(0, 5, -1), 4)
+  assert.equal(getCarouselIndex(4, 5, 1), 0)
+  assert.equal(getCarouselIndex(2, 5, 1), 3)
+  assert.equal(getCarouselIndex(2, 0, 1), 0)
+})

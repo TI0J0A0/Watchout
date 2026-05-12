@@ -83,22 +83,26 @@ export function Nav({ page, setPage, libraryCount, userProfile, onLogin, onShowM
   const initials = user?.email?.slice(0, 2).toUpperCase() ?? ''
   return (
     <>
-    <nav style={{position:"sticky",top:0,zIndex:200,
-      background:dark?"rgba(0,0,0,.88)":"rgba(245,245,247,.88)",
-      backdropFilter:"blur(20px) saturate(180%)",
-      borderBottom:`1px solid ${T.bord}`}}>
+    <nav style={{position:"fixed",top:0,left:0,right:0,zIndex:200,
+      background:dark?"rgba(5,5,9,.75)":"rgba(245,245,247,.88)",
+      backdropFilter:"blur(18px) saturate(160%)",
+      borderBottom:`1px solid ${dark ? 'rgba(255,255,255,.08)' : T.bord}`,
+      boxShadow: dark ? "0 14px 40px rgba(0,0,0,.22)" : "none"}}>
       <div style={{display:"flex",alignItems:"center",
         padding:"0 28px",height:56}}>
 
         {/* Logo */}
         <div onClick={() => setPage("seasonal")}
-          style={{display:"flex",alignItems:"center",gap:8,marginRight:24,flexShrink:0,cursor:"pointer"}}>
-          <div style={{width:22,height:22,borderRadius:5,
-            background:"linear-gradient(135deg,#0A84FF,#BF5AF2)",
-            display:"flex",alignItems:"center",justifyContent:"center"}}>
-            <span style={{fontSize:12,fontWeight:800,color:"#fff",lineHeight:1}}>w</span>
+          style={{display:"flex",alignItems:"center",gap:9,marginRight:26,flexShrink:0,cursor:"pointer"}}>
+          <div style={{width:26,height:26,borderRadius:8,
+            background:"linear-gradient(135deg,#8B5CF6 0%,#A78BFA 48%,#6D28D9 100%)",
+            boxShadow:"0 0 22px rgba(139,92,246,.36)",
+            display:"flex",alignItems:"center",justifyContent:"center",transform:"skew(-8deg)"}}>
+            <span style={{fontSize:14,fontWeight:900,color:"#fff",lineHeight:1,transform:"skew(8deg)"}}>W</span>
           </div>
-          <span style={{fontSize:17,fontWeight:600,color:T.txt,letterSpacing:"-.02em"}}>watchout</span>
+          <span style={{fontSize:18,fontWeight:800,letterSpacing:0,
+            background:"linear-gradient(90deg,#F8FAFC 0%,#F8FAFC 48%,#8B5CF6 49%,#A78BFA 100%)",
+            WebkitBackgroundClip:"text",backgroundClip:"text",color:"transparent"}}>Watchout</span>
         </div>
 
         {/* Links */}
@@ -108,8 +112,8 @@ export function Nav({ page, setPage, libraryCount, userProfile, onLogin, onShowM
               style={{padding:"6px 14px",borderRadius:20,border:"none",fontSize:13,
                 whiteSpace:"nowrap",flexShrink:0,
                 fontWeight: page===id ? 600 : 500,
-                background: page===id ? "rgba(10,132,255,.14)" : "transparent",
-                color: page===id ? "#0A84FF" : T.sub}}>
+                background: page===id ? "rgba(139,92,246,.16)" : "transparent",
+                color: page===id ? "#A78BFA" : T.sub}}>
               {l}
             </button>
           ))}
@@ -119,10 +123,10 @@ export function Nav({ page, setPage, libraryCount, userProfile, onLogin, onShowM
         <div style={{display:"flex",gap:8,alignItems:"center",marginLeft:8}}>
           {/* Search icon — desktop only */}
           <button className="t hbtn hide-sm" onClick={()=>setPage("search")}
-            style={{width:34,height:34,borderRadius:"50%",border:`1px solid ${page==="search"?"#0A84FF":T.bord}`,
-              background:page==="search"?"rgba(10,132,255,.14)":T.surf,
+            style={{width:34,height:34,borderRadius:"50%",border:`1px solid ${page==="search"?"#8B5CF6":T.bord}`,
+              background:page==="search"?"rgba(139,92,246,.16)":T.surf,
               display:"flex",alignItems:"center",justifyContent:"center",
-              flexShrink:0,color:page==="search"?"#0A84FF":T.sub}}>
+              flexShrink:0,color:page==="search"?"#A78BFA":T.sub}}>
             {PAGE_ICONS.search}
           </button>
 
@@ -182,12 +186,12 @@ export function Nav({ page, setPage, libraryCount, userProfile, onLogin, onShowM
             <>
               <button className="t hbtn hide-sm" onClick={onLogin}
                 style={{padding:"6px 14px",borderRadius:20,
-                  fontSize:13,fontWeight:500,background:"#0A84FF",color:"#fff",border:"none",flexShrink:0}}>
+                  fontSize:13,fontWeight:600,background:"#8B5CF6",color:"#fff",border:"none",flexShrink:0}}>
                 {t('nav.signIn')}
               </button>
               <button className="t show-sm" onClick={onLogin}
                 style={{width:32,height:32,borderRadius:"50%",border:"none",flexShrink:0,
-                  background:"#0A84FF",color:"#fff",fontSize:15,cursor:"pointer",
+                  background:"#8B5CF6",color:"#fff",fontSize:15,cursor:"pointer",
                   alignItems:"center",justifyContent:"center"}}>
                 ↗
               </button>
@@ -196,13 +200,14 @@ export function Nav({ page, setPage, libraryCount, userProfile, onLogin, onShowM
         </div>
       </div>
     </nav>
+    <div aria-hidden="true" className="nav-spacer" />
 
 
     {/* Mobile bottom tab bar */}
     <div className="mobile-nav" style={{
-      background: dark ? 'rgba(18,18,18,.95)' : 'rgba(245,245,247,.96)',
-      borderTop: `1px solid ${T.bord}`,
-      backdropFilter: 'blur(20px) saturate(180%)',
+      background: dark ? 'rgba(5,5,9,.82)' : 'rgba(245,245,247,.96)',
+      borderTop: `1px solid ${dark ? 'rgba(255,255,255,.08)' : T.bord}`,
+      backdropFilter: 'blur(18px) saturate(160%)',
     }}>
       {PAGES.map(([id, label]) => {
         const active = page === id
@@ -212,12 +217,12 @@ export function Nav({ page, setPage, libraryCount, userProfile, onLogin, onShowM
               flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center',
               justifyContent: 'center', gap: 4, padding: '8px 4px 6px',
               border: 'none', background: 'transparent', cursor: 'pointer',
-              color: active ? '#0A84FF' : T.sub, position: 'relative',
+              color: active ? '#A78BFA' : T.sub, position: 'relative',
             }}>
             {active && (
               <div style={{
                 position: 'absolute', top: 0, left: '50%', transform: 'translateX(-50%)',
-                width: 20, height: 3, borderRadius: '0 0 3px 3px', background: '#0A84FF',
+                width: 20, height: 3, borderRadius: '0 0 3px 3px', background: '#8B5CF6',
               }}/>
             )}
             <span style={{ lineHeight: 1, opacity: active ? 1 : 0.65 }}>{PAGE_ICONS[id]}</span>
