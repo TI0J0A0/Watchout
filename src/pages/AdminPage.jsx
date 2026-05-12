@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useTheme } from "../context/ThemeContext";
-import { fetchTopics, deleteTopic, fetchFeedback, updateFeedback } from '../services/community'
+import { fetchTopics, deleteTopic, fetchFeedback, updateFeedbackStatus } from '../services/community'
 
 export function AdminPage() {
     const { T, dark } = useTheme();
