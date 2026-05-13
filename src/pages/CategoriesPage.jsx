@@ -3,6 +3,7 @@ import { useTheme } from '../context/ThemeContext'
 import { fetchByGenre } from '../services/jikan'
 import { MediaCard } from '../components/MediaCard'
 import { LoadingGrid } from '../components/LoadingGrid'
+import { getGenreById } from '../constants/browse'
 
 const GENRES = [
   { id: 1,  name: 'Action',         icon: '⚔️' },
@@ -49,15 +50,21 @@ function getMostWatchedGenre(library) {
   return Object.entries(count).sort((a, b) => b[1] - a[1])[0][0]
 }
 
-export function CategoriesPage({ library, onOpen, onStatus }) {
+export function CategoriesPage({ library, onOpen, onStatus, initialGenreId }) {
   const { T, dark } = useTheme()
   const [mode, setMode]             = useState('genre')
-  const [selectedId, setSelectedId] = useState(GENRES[0].id)
+  const [selectedId, setSelectedId] = useState(() => getGenreById(initialGenreId).id)
   const [animes, setAnimes]         = useState([])
   const [loading, setLoading]       = useState(false)
   const [surprise, setSurprise]     = useState(null)
   const [surpriseLoading, setSurpriseLoading] = useState(false)
   const [topGenre, setTopGenre]     = useState(null)
+
+  useEffect(() => {
+    if (!initialGenreId) return
+    setMode('genre')
+    setSelectedId(getGenreById(initialGenreId).id)
+  }, [initialGenreId])
 
   useEffect(() => {
     if (mode !== 'genre') return

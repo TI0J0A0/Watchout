@@ -21,6 +21,7 @@ import { fetchAnimeById } from './services/jikan'
 import { AdminPage } from './pages/AdminPage'
 import { CategoriesPage } from './pages/CategoriesPage'
 import { AnnouncementBanner } from './components/AnnouncementBanner'
+import { getGenreById } from './constants/browse'
 
 const VALID_PAGES = new Set(['seasonal', 'top', 'calendar', 'categories', 'search', 'profile', 'news', 'community', 'admin'])
 
@@ -59,6 +60,8 @@ function AppInner() {
   const [friendshipId, setFriendshipId] = useState(null)
   const [isPremium, setIsPremium] = useState(false)
   const [userProfile, setUserProfile] = useState(null)
+  const [selectedGenreId, setSelectedGenreId] = useState(null)
+  const [selectedArchiveYear, setSelectedArchiveYear] = useState(null)
 
   const notify = msg => { setToast(msg); setTimeout(() => setToast(null), 2400) }
 
@@ -141,6 +144,16 @@ function AppInner() {
 
   const navigate = (p) => { setPage(p); setDetailId(null); setFriendId(null); setFriendshipId(null) }
 
+  const openCategory = (genreId) => {
+    setSelectedGenreId(getGenreById(genreId).id)
+    navigate('categories')
+  }
+
+  const openArchiveYear = (year) => {
+    setSelectedArchiveYear(year)
+    navigate('seasonal')
+  }
+
   const openDetail = (item) => {
     addToData(item)
     setDetailId(item.id)
@@ -166,6 +179,8 @@ function AppInner() {
       <Nav page={page} setPage={navigate}
         libraryCount={library.length}
         userProfile={userProfile}
+        onSelectCategory={openCategory}
+        onSelectArchiveYear={openArchiveYear}
         onLogin={() => setShowAuth(true)} onShowMAL={() => setShowMAL(true)} />
 
       <AnnouncementBanner page={page} />
@@ -197,11 +212,13 @@ function AppInner() {
             <SeasonalPage
               seasonal={seasonal} data={data} hero={hero} heroIdx={heroIdx} setHeroIdx={setHeroIdx}
               airingItems={airingItems} typeF={typeF} setTypeF={setTypeF}
-              loading={loading} onOpen={openDetail} onStatus={handleStatus} />
+              loading={loading} onOpen={openDetail} onStatus={handleStatus}
+              initialArchiveYear={selectedArchiveYear} />
           )}
 
           {page === 'categories' && (
-            <CategoriesPage library={library} onOpen={openDetail} onStatus={handleStatus} />
+            <CategoriesPage library={library} onOpen={openDetail} onStatus={handleStatus}
+              initialGenreId={selectedGenreId} />
           )}
 
           {page === 'admin' && user && isAdmin(user) && (

@@ -12,6 +12,7 @@ import { fetchKitsuCoverByMalId } from '../services/kitsu'
 import { useOnScreen } from '../hooks/useOnScreen'
 import { computeTasteProfile, matchScore, personalityText } from '../utils/tasteProfile'
 import { getHeroImage } from '../utils/heroCarousel'
+import { ARCHIVE_YEARS } from '../constants/browse'
 
 function LazyShelf({ children }) {
   const [ref, visible] = useOnScreen('300px')
@@ -33,15 +34,13 @@ const DISCOVER_KEYS = [
 ]
 
 const SEASON_KEYS = ['winter', 'spring', 'summer', 'fall']
-const CUR_YEAR = new Date().getFullYear()
-const ARCH_YEARS = [CUR_YEAR, CUR_YEAR - 1, CUR_YEAR - 2, CUR_YEAR - 3]
 
 const EMPTY_SECTIONS = Object.fromEntries(DISCOVER_KEYS.map(s => [s.key, []]))
 
 export function SeasonalPage({
   seasonal, data, hero, heroIdx, setHeroIdx, airingItems,
   typeF, setTypeF, loading,
-  onOpen, onStatus,
+  onOpen, onStatus, initialArchiveYear,
 }) {
   const { T } = useTheme()
   const { t } = useTranslation()
@@ -110,6 +109,12 @@ export function SeasonalPage({
   const [archLoading, setArchLoading] = useState(false)
   const [heroBanner, setHeroBanner] = useState(null)
   const [heroKitsuCover, setHeroKitsuCover] = useState(null)
+
+  useEffect(() => {
+    if (!initialArchiveYear) return
+    setArchYear(initialArchiveYear)
+    setArchSeason(prev => prev || 'spring')
+  }, [initialArchiveYear])
 
   useEffect(() => {
     let cancelled = false
@@ -204,7 +209,7 @@ export function SeasonalPage({
           style={pillStyle(archYear === null)}>
           {t('seasonal.current')}
         </button>
-        {ARCH_YEARS.map(y => (
+        {ARCHIVE_YEARS.map(y => (
           <button key={y} className="pill t"
             onClick={() => { setArchYear(y); if (!archSeason) setArchSeason('spring') }}
             style={pillStyle(archYear === y)}>
