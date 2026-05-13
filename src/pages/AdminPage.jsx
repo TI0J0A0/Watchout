@@ -78,6 +78,8 @@ export function AdminPage() {
   const [heroSearchResults, setHeroSearchResults] = useState([])
   const [heroSearchLoading, setHeroSearchLoading] = useState(false)
   const [heroSearchError, setHeroSearchError] = useState('')
+  const [heroFeedback, setHeroFeedback] = useState('')
+  const [heroError, setHeroError] = useState('')
   const [newHero, setNewHero] = useState({
     animeId: '',
     imageUrl: '',
@@ -177,7 +179,16 @@ export function AdminPage() {
   async function handleCreateHero(e) {
     e.preventDefault()
     const animeId = Number(newHero.animeId)
-    if (!animeId || !newHero.imageUrl.trim()) return
+    setHeroFeedback('')
+    setHeroError('')
+    if (!animeId) {
+      setHeroError('Selecione ou informe um anime valido antes de adicionar.')
+      return
+    }
+    if (!newHero.imageUrl.trim()) {
+      setHeroError('Informe uma URL de imagem para o hero.')
+      return
+    }
     setHeroSaving(true)
     try {
       const created = await createHeroEntry({
@@ -187,8 +198,13 @@ export function AdminPage() {
         active: newHero.active,
         hideTitle: newHero.hideTitle,
       })
-      if (created) setHeroEntries(prev => [...prev, created].sort((a, b) => a.sort_order - b.sort_order))
+      if (created) {
+        setHeroEntries(prev => [...prev, created].sort((a, b) => a.sort_order - b.sort_order))
+        setHeroFeedback(`Anime #${created.anime_id} adicionado ao hero.`)
+      }
       setNewHero({ animeId: '', imageUrl: '', sortOrder: 0, active: true, hideTitle: true })
+    } catch (error) {
+      setHeroError(error?.message || 'Falha ao adicionar anime ao hero.')
     } finally {
       setHeroSaving(false)
     }
@@ -223,10 +239,15 @@ export function AdminPage() {
 
   async function handleSaveHeroSettings() {
     setHeroSettingsSaving(true)
+    setHeroFeedback('')
+    setHeroError('')
     try {
       const next = Math.min(20, Math.max(1, Number(heroMaxItems) || 1))
       const updated = await updateHeroSettings({ maxItems: next })
       setHeroMaxItems(updated.max_items)
+      setHeroFeedback(`Limite do hero atualizado para ${updated.max_items}.`)
+    } catch (error) {
+      setHeroError(error?.message || 'Falha ao salvar o limite do hero.')
     } finally {
       setHeroSettingsSaving(false)
     }
@@ -253,8 +274,10 @@ export function AdminPage() {
     setNewHero(prev => ({
       ...prev,
       animeId: String(item.id ?? ''),
-      imageUrl: prev.imageUrl || item.imageUrl || '',
+      imageUrl: item.imageUrl || prev.imageUrl || '',
     }))
+    setHeroError('')
+    setHeroFeedback(`Anime selecionado: ${item.title} (#${item.id}).`)
   }
 
   const card = {
@@ -490,7 +513,7 @@ export function AdminPage() {
             placeholder="Máximo no hero"
             style={{ ...input, width: 150 }}
           />
-          <button onClick={handleSaveHeroSettings}
+          <button type="button" onClick={handleSaveHeroSettings}
             style={{ padding: '10px 18px', background: '#0A84FF', color: '#fff', border: 'none', borderRadius: 10, fontWeight: 700, cursor: heroSettingsSaving ? 'default' : 'pointer', opacity: heroSettingsSaving ? 0.6 : 1 }}>
             {heroSettingsSaving ? 'Salvando...' : 'Salvar limite'}
           </button>
@@ -517,6 +540,12 @@ export function AdminPage() {
 
         {heroSearchError && (
           <p style={{ color: '#FF3B30', fontSize: 12, margin: '0 0 16px' }}>{heroSearchError}</p>
+        )}
+        {heroError && (
+          <p style={{ color: '#FF3B30', fontSize: 12, margin: '0 0 16px' }}>{heroError}</p>
+        )}
+        {heroFeedback && (
+          <p style={{ color: '#30D158', fontSize: 12, margin: '0 0 16px' }}>{heroFeedback}</p>
         )}
 
         {heroSearchResults.length > 0 && (
@@ -545,7 +574,7 @@ export function AdminPage() {
                     </p>
                   </div>
                 </div>
-                <button onClick={() => handleSelectHeroAnime(item)} style={chip('#0A84FF')}>
+                <button type="button" onClick={() => handleSelectHeroAnime(item)} style={chip('#0A84FF')}>
                   Usar este anime
                 </button>
               </div>
@@ -624,18 +653,18 @@ export function AdminPage() {
                     aria-label="Ordem do hero"
                     style={{ ...input, width: 76, padding: '6px 8px' }}
                   />
-                  <button onClick={() => handleToggleHero(entry, 'active')}
+                  <button type="button" onClick={() => handleToggleHero(entry, 'active')}
                     style={chip(entry.active ? '#30D158' : '#8E8E93')}>
                     {entry.active ? 'Ativo' : 'Inativo'}
                   </button>
-                  <button onClick={() => handleToggleHero(entry, 'hideTitle')}
+                  <button type="button" onClick={() => handleToggleHero(entry, 'hideTitle')}
                     style={chip(entry.hide_title ? '#FF9F0A' : '#0A84FF')}>
                     {entry.hide_title ? 'Título oculto' : 'Título visível'}
                   </button>
-                  <button onClick={() => handleEditHero(entry)} style={chip('#0A84FF')}>
+                  <button type="button" onClick={() => handleEditHero(entry)} style={chip('#0A84FF')}>
                     Editar
                   </button>
-                  <button onClick={() => handleDeleteHero(entry.id)} style={chip('#FF3B30')}>
+                  <button type="button" onClick={() => handleDeleteHero(entry.id)} style={chip('#FF3B30')}>
                     Remover
                   </button>
                 </div>
