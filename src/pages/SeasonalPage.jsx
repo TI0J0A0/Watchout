@@ -12,7 +12,6 @@ import { fetchKitsuCoverByMalId } from '../services/kitsu'
 import { useOnScreen } from '../hooks/useOnScreen'
 import { computeTasteProfile, matchScore, personalityText } from '../utils/tasteProfile'
 import { getHeroCta, getHeroImage, getHeroMeta } from '../utils/heroCarousel'
-import { ARCHIVE_YEARS } from '../constants/browse'
 
 function LazyShelf({ children }) {
   const [ref, visible] = useOnScreen('300px')
@@ -206,18 +205,12 @@ export function SeasonalPage({
     <div className="fu">
 
       {/* ── Archive / Season picker ── */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', paddingTop: 20, marginBottom: 8 }}>
+      {isArchive && (
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', paddingTop: 20, marginBottom: 18 }}>
         <button className="pill t" onClick={() => { setArchYear(null); setArchSeason(null) }}
           style={pillStyle(archYear === null)}>
           {t('seasonal.current')}
         </button>
-        {ARCHIVE_YEARS.map(y => (
-          <button key={y} className="pill t"
-            onClick={() => { setArchYear(y); if (!archSeason) setArchSeason('spring') }}
-            style={pillStyle(archYear === y)}>
-            {y}
-          </button>
-        ))}
         {archYear !== null && (
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
             {SEASON_KEYS.map(s => (
@@ -233,6 +226,7 @@ export function SeasonalPage({
           </div>
         )}
       </div>
+      )}
 
       {/* ── Hero (hidden in archive mode) ── */}
       {!isArchive && (
