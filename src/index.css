@@ -344,17 +344,25 @@ a:focus:not(:focus-visible) { outline: none; }
   outline-offset: 3px;
 }
 
-.hero-overlap-shelf {
-  border-radius: 18px 18px 0 0;
-  background: linear-gradient(180deg, rgba(5,5,9,.44), rgba(5,5,9,0));
-  backdrop-filter: blur(8px);
-  transition: transform .22s ease, background .22s ease, backdrop-filter .22s ease;
+.hero-section-bridge {
+  position: relative;
+  z-index: 4;
+  height: 82px;
+  margin: -48px 0 10px;
+  pointer-events: none;
+  background:
+    linear-gradient(180deg, rgba(5,5,9,0) 0%, rgba(5,5,9,.38) 42%, var(--bg-main) 100%);
 }
 
-.hero-overlap-shelf:hover {
-  transform: translateY(-4px);
-  background: linear-gradient(180deg, rgba(5,5,9,.56), rgba(5,5,9,.04));
-  backdrop-filter: blur(12px);
+.hero-section-bridge::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 10px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,.14), transparent);
+  opacity: .65;
 }
 
 /* ── Shimmer skeleton ── */

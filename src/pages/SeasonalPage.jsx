@@ -233,7 +233,7 @@ export function SeasonalPage({
       {!isArchive && (
         <section key={hero.id} className="card hf hero hero-h" onClick={() => onOpen(hero)}
           style={{
-            margin: '0 0 22px calc(50% - 50vw)', width: '100vw',
+            margin: '0 0 -34px calc(50% - 50vw)', width: '100vw',
             borderRadius: 0, overflow: 'hidden', height: 'clamp(660px, 82vh, 860px)',
             position: 'relative',
             background: `linear-gradient(135deg,${hero.color},${hero.colorB})`,
@@ -396,6 +396,8 @@ export function SeasonalPage({
         </section>
       )}
 
+      {!isArchive && <div className="hero-section-bridge" aria-hidden="true" />}
+
       {/* ── Shelves (hidden in archive mode) ── */}
 
       {!isArchive && (
@@ -416,13 +418,6 @@ export function SeasonalPage({
             subtitle={t('seasonal.airingSubtitle')}
             items={seasonal} loading={false}
             onOpen={onOpen} onStatus={onStatus}
-            className="hero-overlap-shelf"
-            style={{
-              marginTop: -58,
-              padding: '34px 0 10px',
-              position: 'relative',
-              zIndex: 5,
-            }}
             headerRight={
               <div style={{ display: 'flex', gap: 6 }}>
                 {typeFilters.map(([v, l]) => (
