@@ -6,6 +6,8 @@ import { useClickOutside } from '../hooks/useClickOutside'
 import { AvatarPic } from './AvatarPic'
 import { NotificationBell } from './NotificationBell'
 import { isAdmin } from '../services/premium'
+import funnyrollBanner from '../../img/Funnyroll Banner.png'
+import { ARCHIVE_YEARS, GENRES } from '../constants/browse'
 
 const PAGE_ICONS = {
   seasonal: (
@@ -52,13 +54,16 @@ const PAGE_ICONS = {
   ),
 }
 
-export function Nav({ page, setPage, libraryCount, userProfile, onLogin, onShowMAL }) {
+export function Nav({ page, setPage, libraryCount, userProfile, onLogin, onShowMAL, onSelectCategory, onSelectArchiveYear }) {
   const { T, dark, setDark } = useTheme()
   const { user, signOut }    = useAuth()
   const { t }                = useTranslation()
   const [menu, setMenu]      = useState(false)
+  const [browseMenu, setBrowseMenu] = useState(null)
   const menuRef              = useRef(null)
+  const browseRef            = useRef(null)
   useClickOutside(menuRef, () => setMenu(false))
+  useClickOutside(browseRef, () => setBrowseMenu(null))
 
   const PAGES = [
     ["seasonal",   t('nav.discover')],
@@ -81,6 +86,25 @@ export function Nav({ page, setPage, libraryCount, userProfile, onLogin, onShowM
   }
 
   const initials = user?.email?.slice(0, 2).toUpperCase() ?? ''
+  const navButtonStyle = (active) => ({
+    padding:"6px 14px", borderRadius:20, border:"none", fontSize:13,
+    whiteSpace:"nowrap", flexShrink:0,
+    fontWeight: active ? 600 : 500,
+    background: active ? "rgba(139,92,246,.16)" : "transparent",
+    color: active ? "#A78BFA" : T.sub,
+  })
+  const dropdownPanelStyle = {
+    position:"absolute", top:"calc(100% + 8px)", left:0,
+    background:T.surf, borderRadius:14, padding:6, zIndex:300, minWidth:220,
+    border:`1px solid ${T.bord}`,
+    boxShadow:`0 10px 40px rgba(0,0,0,${dark ? .4 : .14})`,
+  }
+  const dropdownItemStyle = {
+    display:"flex", width:"100%", padding:"9px 12px", borderRadius:9,
+    border:"none", cursor:"pointer", background:"transparent",
+    color:T.txt, fontSize:13.5, fontWeight:500, alignItems:"center", gap:8,
+    textAlign:"left",
+  }
   return (
     <>
     <nav style={{position:"fixed",top:0,left:0,right:0,zIndex:200,
@@ -94,29 +118,59 @@ export function Nav({ page, setPage, libraryCount, userProfile, onLogin, onShowM
         {/* Logo */}
         <div onClick={() => setPage("seasonal")}
           style={{display:"flex",alignItems:"center",gap:9,marginRight:26,flexShrink:0,cursor:"pointer"}}>
-          <div style={{width:26,height:26,borderRadius:8,
-            background:"linear-gradient(135deg,#8B5CF6 0%,#A78BFA 48%,#6D28D9 100%)",
-            boxShadow:"0 0 22px rgba(139,92,246,.36)",
-            display:"flex",alignItems:"center",justifyContent:"center",transform:"skew(-8deg)"}}>
-            <span style={{fontSize:14,fontWeight:900,color:"#fff",lineHeight:1,transform:"skew(8deg)"}}>W</span>
-          </div>
-          <span style={{fontSize:18,fontWeight:800,letterSpacing:0,
-            background:"linear-gradient(90deg,#F8FAFC 0%,#F8FAFC 48%,#8B5CF6 49%,#A78BFA 100%)",
-            WebkitBackgroundClip:"text",backgroundClip:"text",color:"transparent"}}>Watchout</span>
+          <img
+            src={funnyrollBanner}
+            alt="Funnyroll"
+            style={{height:34,width:154,objectFit:"contain",objectPosition:"left center",display:"block"}}
+          />
         </div>
 
         {/* Links */}
-        <div className="hide-sm" style={{display:"flex",gap:2,flex:1,overflowX:"auto",scrollbarWidth:"none"}}>
-          {PAGES.filter(([id])=>id!=="search").map(([id,l])=>(
-            <button key={id} className="navbtn t" onClick={()=>setPage(id)}
-              style={{padding:"6px 14px",borderRadius:20,border:"none",fontSize:13,
-                whiteSpace:"nowrap",flexShrink:0,
-                fontWeight: page===id ? 600 : 500,
-                background: page===id ? "rgba(139,92,246,.16)" : "transparent",
-                color: page===id ? "#A78BFA" : T.sub}}>
+        <div ref={browseRef} className="hide-sm" style={{display:"flex",gap:2,flex:1,overflowX:"visible",scrollbarWidth:"none"}}>
+          {PAGES.filter(([id])=>id!=="search" && id!=="categories").map(([id,l])=>(
+            <button key={id} className="navbtn t" onClick={()=>{setPage(id);setBrowseMenu(null)}}
+              style={navButtonStyle(page===id)}>
               {l}
             </button>
           ))}
+
+          <div style={{position:"relative",flexShrink:0}}>
+            <button className="navbtn t" onClick={()=>setBrowseMenu(browseMenu === 'categories' ? null : 'categories')}
+              style={navButtonStyle(page==="categories")}>
+              Categories ▾
+            </button>
+            {browseMenu === 'categories' && (
+              <div className="sc" style={{...dropdownPanelStyle, maxHeight:420, overflowY:"auto"}}>
+                {GENRES.map(g => (
+                  <button key={g.id} className="t rbtn" onClick={() => {
+                    onSelectCategory?.(g.id)
+                    setBrowseMenu(null)
+                  }} style={dropdownItemStyle}>
+                    <span style={{width:20,textAlign:"center"}}>{g.icon}</span> {g.name}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div style={{position:"relative",flexShrink:0}}>
+            <button className="navbtn t" onClick={()=>setBrowseMenu(browseMenu === 'years' ? null : 'years')}
+              style={navButtonStyle(false)}>
+              Years ▾
+            </button>
+            {browseMenu === 'years' && (
+              <div className="sc" style={{...dropdownPanelStyle, minWidth:150}}>
+                {ARCHIVE_YEARS.map(year => (
+                  <button key={year} className="t rbtn" onClick={() => {
+                    onSelectArchiveYear?.(year)
+                    setBrowseMenu(null)
+                  }} style={dropdownItemStyle}>
+                    {year}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Right */}
