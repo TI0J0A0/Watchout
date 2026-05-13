@@ -21,6 +21,10 @@ export function getHeroImage(item, bannerUrl, kitsuCoverUrl, trailerThumbUrl) {
   return bannerUrl || kitsuCoverUrl || trailerThumbUrl || item?.img || null
 }
 
+export function getHeroFocalPoint(item) {
+  return item?.focalPoint || '72% center'
+}
+
 export function getCarouselIndex(current, total, direction) {
   if (!total) return 0
   return (current + direction + total) % total

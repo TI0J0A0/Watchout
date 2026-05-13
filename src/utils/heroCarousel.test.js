@@ -4,6 +4,7 @@ import {
   getHeroBadge,
   getHeroMeta,
   getHeroCta,
+  getHeroFocalPoint,
   getHeroImage,
   getCarouselIndex,
 } from './heroCarousel.js'
@@ -48,6 +49,12 @@ test('getHeroImage prefers AniList, then Kitsu, then trailer thumbnail, then pos
   assert.equal(getHeroImage(item, null, 'kitsu-cover.jpg', 'thumb.jpg'), 'kitsu-cover.jpg')
   assert.equal(getHeroImage(item, null, null, 'thumb.jpg'), 'thumb.jpg')
   assert.equal(getHeroImage(item, null, null, null), 'poster.jpg')
+})
+
+test('getHeroFocalPoint prefers per-anime focal point and falls back to center-right framing', () => {
+  assert.equal(getHeroFocalPoint({ focalPoint: '78% center' }), '78% center')
+  assert.equal(getHeroFocalPoint({}), '72% center')
+  assert.equal(getHeroFocalPoint(null), '72% center')
 })
 
 test('getCarouselIndex wraps previous and next indexes', () => {

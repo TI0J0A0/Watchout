@@ -448,7 +448,8 @@ a:focus:not(:focus-visible) { outline: none; }
   }
   .watchout-hero-arrow { display: none; }
   .watchout-hero-dots { margin-top: 20px; }
-  .hero-h     { height: 520px !important; }
+  .hero-h     { height: 540px !important; }
+  .heroImage  { object-position: 62% center !important; }
   .hero-pad   { padding: 96px 20px 44px !important; max-width: 100% !important; }
   .hero-title { font-size: 34px !important; }
   .hero-sub   { font-size: 13px !important; -webkit-line-clamp: 2; }
@@ -474,6 +475,7 @@ a:focus:not(:focus-visible) { outline: none; }
   .watchout-hero-title { font-size: 46px; max-width: 560px; }
   .watchout-hero-description { max-width: 460px; }
   .watchout-hero-poster { width: 46vw; right: -2vw; opacity: .74; }
-  .hero-h     { height: 620px !important; }
+  .hero-h     { height: 640px !important; }
+  .heroImage  { object-position: 68% center !important; }
   .hero-title { font-size: 32px !important; }
 }

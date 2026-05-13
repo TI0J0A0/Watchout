@@ -11,7 +11,7 @@ import { fetchAnilistHeroImages } from '../services/anilist'
 import { fetchKitsuCoverByMalId } from '../services/kitsu'
 import { useOnScreen } from '../hooks/useOnScreen'
 import { computeTasteProfile, matchScore, personalityText } from '../utils/tasteProfile'
-import { getHeroCta, getHeroImage, getHeroMeta } from '../utils/heroCarousel'
+import { getHeroCta, getHeroFocalPoint, getHeroImage, getHeroMeta } from '../utils/heroCarousel'
 
 function LazyShelf({ children }) {
   const [ref, visible] = useOnScreen('300px')
@@ -179,6 +179,7 @@ export function SeasonalPage({
   const ytId = hero?.trailer?.match(/embed\/([^?]+)/)?.[1]
   const ytThumb = ytId ? `https://img.youtube.com/vi/${ytId}/maxresdefault.jpg` : null
   const heroBackground = getHeroImage(hero, heroBanner, heroKitsuCover, ytThumb)
+  const heroFocalPoint = getHeroFocalPoint(hero)
   const heroMeta = getHeroMeta(hero)
   const heroCta = getHeroCta(hero, status => t(`status.${status}`))
   const gridItems = isArchive
@@ -230,30 +231,30 @@ export function SeasonalPage({
 
       {/* ── Hero (hidden in archive mode) ── */}
       {!isArchive && (
-        <div key={hero.id} className="card hf hero-h" onClick={() => onOpen(hero)}
+        <section key={hero.id} className="card hf hero hero-h" onClick={() => onOpen(hero)}
           style={{
-            margin: '0 0 42px calc(50% - 50vw)', width: '100vw',
-            borderRadius: 0, overflow: 'hidden', height: 'clamp(620px, 78vh, 820px)',
+            margin: '0 0 22px calc(50% - 50vw)', width: '100vw',
+            borderRadius: 0, overflow: 'hidden', height: 'clamp(660px, 82vh, 860px)',
             position: 'relative',
             background: `linear-gradient(135deg,${hero.color},${hero.colorB})`,
             boxShadow: `0 24px 80px ${hero.color}30`
           }}>
 
           {heroBackground && (
-            <img src={heroBackground} alt="" style={{
+            <img className="heroImage" src={heroBackground} alt={hero.title} style={{
               position: 'absolute', inset: 0,
-              width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center right',
+              width: '100%', height: '100%', objectFit: 'cover', objectPosition: heroFocalPoint,
               filter: 'saturate(1.08) contrast(1.03)'
             }} />
           )}
 
-          <div style={{
+          <div className="heroOverlay" style={{
             position: 'absolute', inset: 0,
             background: 'linear-gradient(90deg, rgba(0,0,0,.86) 0%, rgba(0,0,0,.45) 48%, rgba(0,0,0,.05) 100%)'
           }} />
-          <div style={{
+          <div className="heroBottomFade" style={{
             position: 'absolute', inset: 0,
-            background: 'linear-gradient(0deg, var(--bg-main) 0%, rgba(5,5,9,.74) 22%, transparent 58%)'
+            background: 'linear-gradient(0deg, var(--bg-main) 0%, rgba(5,5,9,.82) 18%, rgba(5,5,9,.18) 48%, transparent 68%)'
           }} />
 
           {hero.userStatus && (
@@ -277,7 +278,7 @@ export function SeasonalPage({
             </div>
           )}
 
-          <div className="hero-pad" style={{
+          <div className="heroContent hero-pad" style={{
             position: 'relative', zIndex: 2,
             padding: '96px clamp(28px, 7vw, 96px) 86px',
             height: '100%', maxWidth: 520, display: 'flex', flexDirection: 'column',
@@ -392,7 +393,7 @@ export function SeasonalPage({
               </button>
             </div>
           )}
-        </div>
+        </section>
       )}
 
       {/* ── Shelves (hidden in archive mode) ── */}
