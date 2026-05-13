@@ -11,7 +11,7 @@ import { fetchAnilistHeroImages } from '../services/anilist'
 import { fetchKitsuCoverByMalId } from '../services/kitsu'
 import { useOnScreen } from '../hooks/useOnScreen'
 import { computeTasteProfile, matchScore, personalityText } from '../utils/tasteProfile'
-import { getHeroImage } from '../utils/heroCarousel'
+import { getHeroCta, getHeroImage, getHeroMeta } from '../utils/heroCarousel'
 import { ARCHIVE_YEARS } from '../constants/browse'
 
 function LazyShelf({ children }) {
@@ -180,6 +180,8 @@ export function SeasonalPage({
   const ytId = hero?.trailer?.match(/embed\/([^?]+)/)?.[1]
   const ytThumb = ytId ? `https://img.youtube.com/vi/${ytId}/maxresdefault.jpg` : null
   const heroBackground = getHeroImage(hero, heroBanner, heroKitsuCover, ytThumb)
+  const heroMeta = getHeroMeta(hero)
+  const heroCta = getHeroCta(hero, status => t(`status.${status}`))
   const gridItems = isArchive
     ? enrich(archData).filter(i => typeF === 'all' || i.type === typeF)
     : seasonal
@@ -236,26 +238,28 @@ export function SeasonalPage({
       {!isArchive && (
         <div key={hero.id} className="card hf hero-h" onClick={() => onOpen(hero)}
           style={{
-            margin: '16px 0 36px', borderRadius: 24, overflow: 'hidden', height: 460,
+            margin: '0 0 42px calc(50% - 50vw)', width: '100vw',
+            borderRadius: 0, overflow: 'hidden', height: 'clamp(620px, 78vh, 820px)',
             position: 'relative',
             background: `linear-gradient(135deg,${hero.color},${hero.colorB})`,
-            boxShadow: `0 20px 60px ${hero.color}40`
+            boxShadow: `0 24px 80px ${hero.color}30`
           }}>
 
           {heroBackground && (
             <img src={heroBackground} alt="" style={{
               position: 'absolute', inset: 0,
-              width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center'
+              width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center right',
+              filter: 'saturate(1.08) contrast(1.03)'
             }} />
           )}
 
           <div style={{
             position: 'absolute', inset: 0,
-            background: 'linear-gradient(90deg, rgba(0,0,0,.86) 0%, rgba(0,0,0,.58) 44%, rgba(0,0,0,.16) 100%)'
+            background: 'linear-gradient(90deg, rgba(0,0,0,.86) 0%, rgba(0,0,0,.45) 48%, rgba(0,0,0,.05) 100%)'
           }} />
           <div style={{
             position: 'absolute', inset: 0,
-            background: 'linear-gradient(0deg, rgba(0,0,0,.58) 0%, transparent 46%)'
+            background: 'linear-gradient(0deg, var(--bg-main) 0%, rgba(5,5,9,.74) 22%, transparent 58%)'
           }} />
 
           {hero.userStatus && (
@@ -280,8 +284,9 @@ export function SeasonalPage({
           )}
 
           <div className="hero-pad" style={{
-            position: 'relative', zIndex: 2, padding: '48px 52px',
-            height: '100%', maxWidth: 620, display: 'flex', flexDirection: 'column',
+            position: 'relative', zIndex: 2,
+            padding: '96px clamp(28px, 7vw, 96px) 86px',
+            height: '100%', maxWidth: 520, display: 'flex', flexDirection: 'column',
             justifyContent: 'flex-end', alignItems: 'flex-start'
           }}>
             {hero.airing && (
@@ -297,17 +302,43 @@ export function SeasonalPage({
               </div>
             )}
             <h1 className="hero-title" style={{
-              fontSize: 50, fontWeight: 700, color: '#fff',
-              letterSpacing: '-.03em', lineHeight: 1.05, marginBottom: 12,
-              textShadow: '0 2px 16px rgba(0,0,0,.25)'
+              fontSize: 58, fontWeight: 900, color: '#fff',
+              letterSpacing: 0, lineHeight: .98, marginBottom: 14,
+              textTransform: 'uppercase',
+              textShadow: '0 4px 28px rgba(0,0,0,.55)'
             }}>{hero.title}</h1>
+            <p style={{
+              fontSize: 13, color: 'rgba(255,255,255,.86)', fontWeight: 750,
+              lineHeight: 1.5, marginBottom: 14, textShadow: '0 2px 14px rgba(0,0,0,.5)'
+            }}>{heroMeta}</p>
             <p className="hero-sub" style={{
-              fontSize: 15, color: 'rgba(255,255,255,.82)',
-              maxWidth: 420, lineHeight: 1.55, marginBottom: 22,
+              fontSize: 15.5, color: 'rgba(255,255,255,.78)',
+              maxWidth: 500, lineHeight: 1.65, marginBottom: 26,
               display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical',
               overflow: 'hidden'
             }}>{hero.synopsis}</p>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+            <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 22 }} onClick={e => e.stopPropagation()}>
+              <button className="t" onClick={() => onOpen(hero)}
+                style={{
+                  padding: '14px 24px', borderRadius: 4, border: 'none',
+                  background: '#FF7A00', color: '#111', fontWeight: 900,
+                  fontSize: 14, textTransform: 'uppercase', letterSpacing: '.02em',
+                  boxShadow: '0 16px 38px rgba(255,122,0,.28)'
+                }}>
+                {heroCta.primaryLabel}
+              </button>
+              <button className="t" onClick={() => heroCta.canAdd && onStatus(hero.id, 'plan_to_watch')}
+                style={{
+                  padding: '13px 20px', borderRadius: 4,
+                  border: '1px solid rgba(255,255,255,.28)',
+                  background: 'rgba(255,255,255,.08)', color: '#fff',
+                  fontWeight: 850, fontSize: 14, textTransform: 'uppercase',
+                  letterSpacing: '.02em', backdropFilter: 'blur(14px)'
+                }}>
+                {heroCta.secondaryLabel}
+              </button>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 18 }}>
               <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
                 <div style={{
                   display: 'flex', alignItems: 'center', gap: 5,
@@ -326,13 +357,14 @@ export function SeasonalPage({
                 ))}
               </div>
               {airingItems.length > 1 && (
-                <div style={{ display: 'flex', gap: 5 }} onClick={e => e.stopPropagation()}>
+                <div style={{ display: 'flex', gap: 7 }} onClick={e => e.stopPropagation()}>
                   {airingItems.map((_, i) => (
                     <button key={i} onClick={() => setHeroIdx(i)}
                       style={{
-                        width: i === heroIdx ? 20 : 6, height: 6, borderRadius: 3,
+                        width: i === heroIdx ? 22 : 6, height: 6, borderRadius: 8,
                         border: 'none', padding: 0, cursor: 'pointer',
-                        background: i === heroIdx ? 'rgba(255,255,255,.9)' : 'rgba(255,255,255,.4)',
+                        minHeight: 6,
+                        background: i === heroIdx ? '#FF7A00' : 'rgba(255,255,255,.38)',
                         transition: 'all .3s ease'
                       }} />
                   ))}
@@ -340,6 +372,32 @@ export function SeasonalPage({
               )}
             </div>
           </div>
+          {airingItems.length > 1 && (
+            <div className="hero-arrows" onClick={e => e.stopPropagation()}>
+              <button className="t" onClick={() => setHeroIdx((heroIdx - 1 + airingItems.length) % airingItems.length)}
+                aria-label="Previous hero"
+                style={{
+                  position: 'absolute', left: 22, top: '50%', transform: 'translateY(-50%)',
+                  zIndex: 4, width: 42, height: 42, borderRadius: '50%',
+                  border: '1px solid rgba(255,255,255,.18)',
+                  background: 'rgba(0,0,0,.24)', color: '#fff', fontSize: 24,
+                  backdropFilter: 'blur(14px)'
+                }}>
+                {'<'}
+              </button>
+              <button className="t" onClick={() => setHeroIdx((heroIdx + 1) % airingItems.length)}
+                aria-label="Next hero"
+                style={{
+                  position: 'absolute', right: 22, top: '50%', transform: 'translateY(-50%)',
+                  zIndex: 4, width: 42, height: 42, borderRadius: '50%',
+                  border: '1px solid rgba(255,255,255,.18)',
+                  background: 'rgba(0,0,0,.24)', color: '#fff', fontSize: 24,
+                  backdropFilter: 'blur(14px)'
+                }}>
+                {'>'}
+              </button>
+            </div>
+          )}
         </div>
       )}
 

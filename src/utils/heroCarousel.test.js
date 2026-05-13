@@ -28,13 +28,15 @@ test('getHeroMeta falls back when optional data is missing', () => {
   assert.equal(getHeroMeta({}), '16+ • Sub | Dub • Anime')
 })
 
-test('getHeroCta prompts add only when the hero is not already in the list', () => {
+test('getHeroCta returns Crunchyroll-style primary and secondary actions', () => {
   assert.deepEqual(getHeroCta({ userStatus: null }), {
-    label: 'Add to List',
+    primaryLabel: 'Watch Now',
+    secondaryLabel: 'Add to List',
     canAdd: true,
   })
   assert.deepEqual(getHeroCta({ userStatus: 'watching' }, s => `status:${s}`), {
-    label: 'status:watching',
+    primaryLabel: 'Watch Now',
+    secondaryLabel: 'status:watching',
     canAdd: false,
   })
 })

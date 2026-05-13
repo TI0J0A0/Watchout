@@ -10,10 +10,11 @@ export function getHeroMeta(item) {
 }
 
 export function getHeroCta(item, translateStatus = status => status) {
-  if (item?.userStatus) {
-    return { label: translateStatus(item.userStatus), canAdd: false }
+  return {
+    primaryLabel: 'Watch Now',
+    secondaryLabel: item?.userStatus ? translateStatus(item.userStatus) : 'Add to List',
+    canAdd: !item?.userStatus,
   }
-  return { label: 'Add to List', canAdd: true }
 }
 
 export function getHeroImage(item, bannerUrl, kitsuCoverUrl, trailerThumbUrl) {
