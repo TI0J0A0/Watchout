@@ -130,6 +130,72 @@ Deno.serve(async (req) => {
     })
   }
 
+  // ── Route: animeSearch ─────────────────────────────────────────────────────
+  // Searches Jikan by anime name and returns lightweight metadata for admin UI.
+  if (route === 'animeSearch') {
+    if (!isAdmin) {
+      return new Response(JSON.stringify({ error: 'Admin required' }), {
+        status: 403, headers: { 'Content-Type': 'application/json', ...corsHeaders() },
+      })
+    }
+
+    const query: string = String(body.query ?? '').trim()
+    if (!query) {
+      return new Response(JSON.stringify({ error: 'Missing query' }), {
+        status: 400, headers: { 'Content-Type': 'application/json', ...corsHeaders() },
+      })
+    }
+
+    try {
+      const url = `https://api.jikan.moe/v4/anime?q=${encodeURIComponent(query)}&limit=8&order_by=members&sort=desc&sfw=true`
+      const res = await fetch(url, {
+        headers: { 'Accept': 'application/json', 'User-Agent': 'Watchout/1.0' },
+        signal: AbortSignal.timeout(8000),
+      })
+
+      if (!res.ok) {
+        return new Response(JSON.stringify({ error: `Jikan ${res.status}` }), {
+          status: 502, headers: { 'Content-Type': 'application/json', ...corsHeaders() },
+        })
+      }
+
+      const json = await res.json()
+      const items = (json?.data ?? []).map((anime: any) => ({
+        id: anime.mal_id ?? null,
+        title: anime.title_english || anime.title || '',
+        titleDefault: anime.title || '',
+        titleJapanese: anime.title_japanese || '',
+        titleSynonyms: anime.title_synonyms ?? [],
+        episodes: anime.episodes ?? null,
+        status: anime.status ?? null,
+        airing: anime.airing ?? false,
+        airedFrom: anime.aired?.from ?? null,
+        airedTo: anime.aired?.to ?? null,
+        year: anime.year ?? null,
+        season: anime.season ?? null,
+        type: anime.type ?? null,
+        source: anime.source ?? null,
+        rating: anime.rating ?? null,
+        score: anime.score ?? null,
+        members: anime.members ?? null,
+        studios: (anime.studios ?? []).map((studio: any) => studio.name).filter(Boolean),
+        genres: (anime.genres ?? []).map((genre: any) => genre.name).filter(Boolean),
+        synopsis: anime.synopsis ?? '',
+        imageUrl: anime.images?.jpg?.large_image_url || anime.images?.jpg?.image_url || '',
+        trailerUrl: anime.trailer?.embed_url ?? anime.trailer?.url ?? null,
+      }))
+
+      return new Response(JSON.stringify({ items }), {
+        headers: { 'Content-Type': 'application/json', ...corsHeaders() },
+      })
+    } catch (error) {
+      console.error('animeSearch error:', error)
+      return new Response(JSON.stringify({ error: 'Anime search failed' }), {
+        status: 502, headers: { 'Content-Type': 'application/json', ...corsHeaders() },
+      })
+    }
+  }
+
   return new Response(JSON.stringify({ error: 'Unknown route' }), {
     status: 400, headers: { 'Content-Type': 'application/json', ...corsHeaders() },
   })

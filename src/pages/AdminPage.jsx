@@ -8,6 +8,7 @@ import { useIsMobile } from '../hooks/useIsMobile'
 import { fetchAdminDashboard, fetchUsers, grantPremium, revokePremium, toggleBanUser } from '../services/premium'
 import { fetchAnnouncements, createAnnouncement, deleteAnnouncement } from '../services/announcements'
 import { createHeroEntry, deleteHeroEntry, fetchHeroEntries, updateHeroEntry } from '../services/heroAdmin'
+import { searchAnimeByName } from '../services/animeLookup'
 
 const DASHBOARD_TABS = ['dashboard', 'activeUsers', 'topContent', 'recentErrors']
 const USER_TABS = ['users', 'permissions', 'moderation', 'activity', 'activeUsers']
@@ -71,6 +72,9 @@ export function AdminPage() {
   const [heroEntries, setHeroEntries] = useState([])
   const [heroLoading, setHeroLoading] = useState(false)
   const [heroSaving, setHeroSaving] = useState(false)
+  const [heroSearch, setHeroSearch] = useState('')
+  const [heroSearchResults, setHeroSearchResults] = useState([])
+  const [heroSearchLoading, setHeroSearchLoading] = useState(false)
   const [newHero, setNewHero] = useState({
     animeId: '',
     imageUrl: '',
@@ -207,6 +211,26 @@ export function AdminPage() {
     if (!confirm('Remover este item do hero?')) return
     await deleteHeroEntry(id)
     setHeroEntries(prev => prev.filter(h => h.id !== id))
+  }
+
+  async function handleHeroSearch(e) {
+    e.preventDefault()
+    if (!heroSearch.trim()) return
+    setHeroSearchLoading(true)
+    try {
+      const items = await searchAnimeByName(heroSearch)
+      setHeroSearchResults(items)
+    } finally {
+      setHeroSearchLoading(false)
+    }
+  }
+
+  function handleSelectHeroAnime(item) {
+    setNewHero(prev => ({
+      ...prev,
+      animeId: String(item.id ?? ''),
+      imageUrl: prev.imageUrl || item.imageUrl || '',
+    }))
   }
 
   const card = {
@@ -429,6 +453,56 @@ export function AdminPage() {
     return (
       <div>
         <h2 style={{ fontSize: 18, color: T.txt, margin: '0 0 14px' }}>Controle do hero</h2>
+        <form onSubmit={handleHeroSearch} style={{
+          display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center',
+          marginBottom: 16, padding: 16, background: T.surf, border: `1px solid ${T.bord}`, borderRadius: 12,
+        }}>
+          <input
+            value={heroSearch}
+            onChange={e => setHeroSearch(e.target.value)}
+            placeholder="Buscar anime por nome"
+            style={{ ...input, flex: 1, minWidth: mobile ? '100%' : 260 }}
+          />
+          <button type="submit"
+            style={{ padding: '10px 18px', background: '#0A84FF', color: '#fff', border: 'none', borderRadius: 10, fontWeight: 700, cursor: heroSearchLoading ? 'default' : 'pointer', opacity: heroSearchLoading ? 0.6 : 1 }}>
+            {heroSearchLoading ? 'Buscando...' : 'Buscar anime'}
+          </button>
+        </form>
+
+        {heroSearchResults.length > 0 && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 20 }}>
+            {heroSearchResults.map(item => (
+              <div key={item.id} style={{ ...card, alignItems: mobile ? 'stretch' : 'center' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
+                  {item.imageUrl ? (
+                    <img src={item.imageUrl} alt="" style={{ width: 64, height: 90, objectFit: 'cover', borderRadius: 8, flexShrink: 0 }} />
+                  ) : (
+                    <div style={{ width: 64, height: 90, borderRadius: 8, background: T.bord, flexShrink: 0 }} />
+                  )}
+                  <div style={{ minWidth: 0 }}>
+                    <p style={{ color: T.txt, fontWeight: 700, margin: '0 0 4px' }}>{item.title}</p>
+                    <p style={{ color: T.sub, fontSize: 12, margin: '0 0 4px' }}>
+                      ID {item.id} · {item.type || 'Anime'} · {item.episodes ?? '?'} eps · {item.year ?? 'sem ano'} · {item.status || 'sem status'}
+                    </p>
+                    <p style={{ color: T.sub, fontSize: 12, margin: '0 0 4px' }}>
+                      {item.season || 'sem temporada'} · {item.rating || 'sem classificação'} · nota {item.score ?? '?'}
+                    </p>
+                    <p style={{ color: T.sub, fontSize: 12, margin: '0 0 4px' }}>
+                      {item.studios?.slice(0, 2).join(', ') || 'sem estúdio'} · {item.genres?.slice(0, 3).join(', ') || 'sem gênero'}
+                    </p>
+                    <p style={{ color: T.sub, fontSize: 12, margin: 0, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                      {item.synopsis || 'Sem sinopse'}
+                    </p>
+                  </div>
+                </div>
+                <button onClick={() => handleSelectHeroAnime(item)} style={chip('#0A84FF')}>
+                  Usar este anime
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+
         <form onSubmit={handleCreateHero} style={{
           display: 'grid', gridTemplateColumns: mobile ? '1fr' : '120px minmax(220px, 1fr) 90px auto',
           gap: 10, alignItems: 'center', marginBottom: 20,
