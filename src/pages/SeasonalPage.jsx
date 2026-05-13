@@ -7,9 +7,11 @@ import { MediaCard } from '../components/MediaCard'
 import { LoadingGrid } from '../components/LoadingGrid'
 import { ShelfRow } from '../components/ShelfRow'
 import { fetchPopular, fetchUpcoming, fetchByGenre, fetchSeasonArchive, fetchRecommendations } from '../services/jikan'
-import { fetchAnilistBannerOnly } from '../services/anilist'
+import { fetchAnilistHeroImages } from '../services/anilist'
+import { fetchKitsuCoverByMalId } from '../services/kitsu'
 import { useOnScreen } from '../hooks/useOnScreen'
 import { computeTasteProfile, matchScore, personalityText } from '../utils/tasteProfile'
+import { getHeroImage } from '../utils/heroCarousel'
 
 function LazyShelf({ children }) {
   const [ref, visible] = useOnScreen('300px')
@@ -107,11 +109,31 @@ export function SeasonalPage({
   const [archData, setArchData] = useState([])
   const [archLoading, setArchLoading] = useState(false)
   const [heroBanner, setHeroBanner] = useState(null)
+  const [heroKitsuCover, setHeroKitsuCover] = useState(null)
 
   useEffect(() => {
+    let cancelled = false
     if (!hero?.id) return
+
     setHeroBanner(null)
-    fetchAnilistBannerOnly(hero.id).then(url => setHeroBanner(url || null)).catch(() => { })
+    setHeroKitsuCover(null)
+
+    fetchAnilistHeroImages(hero.id)
+      .then(async images => {
+        if (cancelled) return
+        setHeroBanner(images.bannerImage || null)
+
+        if (images.bannerImage) return
+
+        const kitsuUrl = await fetchKitsuCoverByMalId(hero.id)
+        if (!cancelled) setHeroKitsuCover(kitsuUrl || null)
+      })
+      .catch(async () => {
+        const kitsuUrl = await fetchKitsuCoverByMalId(hero.id)
+        if (!cancelled) setHeroKitsuCover(kitsuUrl || null)
+      })
+
+    return () => { cancelled = true }
   }, [hero?.id])
 
   const enrich = useCallback(
@@ -151,7 +173,8 @@ export function SeasonalPage({
   const continueWatching = data.filter(i => i.type === 'anime' && i.userStatus === 'watching')
   const isArchive = archYear !== null && archSeason !== null
   const ytId = hero?.trailer?.match(/embed\/([^?]+)/)?.[1]
-  const ytThumb = heroBanner ?? (ytId ? `https://img.youtube.com/vi/${ytId}/maxresdefault.jpg` : null)
+  const ytThumb = ytId ? `https://img.youtube.com/vi/${ytId}/maxresdefault.jpg` : null
+  const heroBackground = getHeroImage(hero, heroBanner, heroKitsuCover, ytThumb)
   const gridItems = isArchive
     ? enrich(archData).filter(i => typeF === 'all' || i.type === typeF)
     : seasonal
@@ -214,25 +237,20 @@ export function SeasonalPage({
             boxShadow: `0 20px 60px ${hero.color}40`
           }}>
 
-          {/* High-res YouTube thumbnail as background when available */}
-          {ytThumb && (
-            <img src={ytThumb} alt="" style={{
+          {heroBackground && (
+            <img src={heroBackground} alt="" style={{
               position: 'absolute', inset: 0,
-              width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center top'
+              width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center'
             }} />
           )}
 
-          {/* Portrait cover on the right */}
-          <img src={hero.img} alt="" style={{
-            position: 'absolute', right: 0, top: 0,
-            height: '100%', width: ytThumb ? '45%' : '55%', objectFit: 'cover',
-            WebkitMaskImage: ytThumb
-              ? 'linear-gradient(90deg,transparent 0%,rgba(0,0,0,.45) 30%,#000 60%)'
-              : 'linear-gradient(90deg,transparent 0%,rgba(0,0,0,.6) 25%,#000 60%)'
+          <div style={{
+            position: 'absolute', inset: 0,
+            background: 'linear-gradient(90deg, rgba(0,0,0,.86) 0%, rgba(0,0,0,.58) 44%, rgba(0,0,0,.16) 100%)'
           }} />
           <div style={{
             position: 'absolute', inset: 0,
-            background: `linear-gradient(90deg,${hero.color} 30%,transparent 70%)`
+            background: 'linear-gradient(0deg, rgba(0,0,0,.58) 0%, transparent 46%)'
           }} />
 
           {hero.userStatus && (
@@ -257,8 +275,9 @@ export function SeasonalPage({
           )}
 
           <div className="hero-pad" style={{
-            position: 'relative', padding: '48px 52px',
-            height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end'
+            position: 'relative', zIndex: 2, padding: '48px 52px',
+            height: '100%', maxWidth: 620, display: 'flex', flexDirection: 'column',
+            justifyContent: 'flex-end', alignItems: 'flex-start'
           }}>
             {hero.airing && (
               <div style={{
