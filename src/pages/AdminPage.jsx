@@ -12,6 +12,7 @@ import { searchAnimeByName } from '../services/animeLookup'
 
 const DASHBOARD_TABS = ['dashboard', 'activeUsers', 'topContent', 'recentErrors']
 const USER_TABS = ['users', 'permissions', 'moderation', 'activity', 'activeUsers']
+const HERO_UPDATED_EVENT = 'watchout:hero-updated'
 
 const MENU_SECTIONS = [
   {
@@ -87,6 +88,10 @@ export function AdminPage() {
     active: true,
     hideTitle: true,
   })
+
+  function notifyHeroUpdated() {
+    window.dispatchEvent(new CustomEvent(HERO_UPDATED_EVENT))
+  }
 
   useEffect(() => {
     if (DASHBOARD_TABS.includes(tab)) {
@@ -201,6 +206,7 @@ export function AdminPage() {
       if (created) {
         setHeroEntries(prev => [...prev, created].sort((a, b) => a.sort_order - b.sort_order))
         setHeroFeedback(`Anime #${created.anime_id} adicionado ao hero.`)
+        notifyHeroUpdated()
       }
       setNewHero({ animeId: '', imageUrl: '', sortOrder: 0, active: true, hideTitle: true })
     } catch (error) {
@@ -214,12 +220,18 @@ export function AdminPage() {
     const updated = await updateHeroEntry(entry.id, {
       [field]: !entry[field === 'active' ? 'active' : 'hide_title'],
     })
-    if (updated) setHeroEntries(prev => prev.map(h => h.id === entry.id ? updated : h))
+    if (updated) {
+      setHeroEntries(prev => prev.map(h => h.id === entry.id ? updated : h))
+      notifyHeroUpdated()
+    }
   }
 
   async function handleHeroOrder(entry, sortOrder) {
     const updated = await updateHeroEntry(entry.id, { sortOrder })
-    if (updated) setHeroEntries(prev => prev.map(h => h.id === entry.id ? updated : h).sort((a, b) => a.sort_order - b.sort_order))
+    if (updated) {
+      setHeroEntries(prev => prev.map(h => h.id === entry.id ? updated : h).sort((a, b) => a.sort_order - b.sort_order))
+      notifyHeroUpdated()
+    }
   }
 
   async function handleEditHero(entry) {
@@ -228,13 +240,17 @@ export function AdminPage() {
     const imageUrl = prompt('URL da imagem customizada do hero', entry.image_url)
     if (!imageUrl?.trim()) return
     const updated = await updateHeroEntry(entry.id, { animeId, imageUrl: imageUrl.trim() })
-    if (updated) setHeroEntries(prev => prev.map(h => h.id === entry.id ? updated : h))
+    if (updated) {
+      setHeroEntries(prev => prev.map(h => h.id === entry.id ? updated : h))
+      notifyHeroUpdated()
+    }
   }
 
   async function handleDeleteHero(id) {
     if (!confirm('Remover este item do hero?')) return
     await deleteHeroEntry(id)
     setHeroEntries(prev => prev.filter(h => h.id !== id))
+    notifyHeroUpdated()
   }
 
   async function handleSaveHeroSettings() {
@@ -246,6 +262,7 @@ export function AdminPage() {
       const updated = await updateHeroSettings({ maxItems: next })
       setHeroMaxItems(updated.max_items)
       setHeroFeedback(`Limite do hero atualizado para ${updated.max_items}.`)
+      notifyHeroUpdated()
     } catch (error) {
       setHeroError(error?.message || 'Falha ao salvar o limite do hero.')
     } finally {

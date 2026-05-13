@@ -39,6 +39,8 @@ function buildHash(page, detailId) {
   return detailId !== null ? `#anime-${detailId}` : `#${page}`
 }
 
+const HERO_UPDATED_EVENT = 'watchout:hero-updated'
+
 function AppInner() {
   const { T } = useTheme()
   const { user } = useAuth()
@@ -160,28 +162,52 @@ function AppInner() {
     setHeroIdx(0)
   }, [heroItems.length])
 
-  useEffect(() => {
+  const loadHeroConfig = () => {
     let cancelled = false
     Promise.all([
       fetchHeroEntries({ activeOnly: true }),
       fetchHeroSettings(),
     ])
       .then(async ([entries, settings]) => {
-        const items = await Promise.all(entries.map(async entry => {
+        const results = await Promise.allSettled(entries.map(async entry => {
           const anime = await fetchAnimeById(entry.anime_id)
           return {
             ...anime,
             heroImageUrl: entry.image_url,
             heroHideTitle: entry.hide_title,
+            heroSortOrder: entry.sort_order,
           }
         }))
+
+        const items = results
+          .filter(result => result.status === 'fulfilled')
+          .map(result => result.value)
+          .sort((a, b) => (a.heroSortOrder ?? 0) - (b.heroSortOrder ?? 0))
+
         if (cancelled) return
         setHeroMaxItems(settings?.max_items ?? 5)
         setAdminHeroItems(items)
         items.forEach(addToData)
       })
-      .catch(() => setAdminHeroItems([]))
+      .catch(() => {
+        if (!cancelled) setAdminHeroItems([])
+      })
     return () => { cancelled = true }
+  }
+
+  useEffect(() => {
+    return loadHeroConfig()
+  }, [])
+
+  useEffect(() => {
+    if (page !== 'seasonal') return
+    return loadHeroConfig()
+  }, [page])
+
+  useEffect(() => {
+    const handleHeroUpdated = () => loadHeroConfig()
+    window.addEventListener(HERO_UPDATED_EVENT, handleHeroUpdated)
+    return () => window.removeEventListener(HERO_UPDATED_EVENT, handleHeroUpdated)
   }, [])
 
   const navigate = (p) => { setPage(p); setDetailId(null); setFriendId(null); setFriendshipId(null) }
