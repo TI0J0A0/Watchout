@@ -58,3 +58,25 @@ export async function deleteHeroEntry(id) {
   const { error } = await supabase.from('hero_entries').delete().eq('id', id)
   if (error) throw error
 }
+
+export async function fetchHeroSettings() {
+  if (!supabase) return { max_items: 5 }
+  const { data, error } = await supabase
+    .from('hero_settings')
+    .select('max_items')
+    .eq('id', 1)
+    .single()
+  if (error) throw error
+  return data ?? { max_items: 5 }
+}
+
+export async function updateHeroSettings({ maxItems }) {
+  if (!supabase) return { max_items: 5 }
+  const { data, error } = await supabase
+    .from('hero_settings')
+    .upsert({ id: 1, max_items: maxItems })
+    .select('max_items')
+    .single()
+  if (error) throw error
+  return data
+}

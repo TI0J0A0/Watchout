@@ -18,7 +18,7 @@ import { CommunityPage } from './pages/CommunityPage'
 import { loadPremiumStatus, isAdmin } from './services/premium'
 import { getProfile } from './services/friends'
 import { fetchAnimeById } from './services/jikan'
-import { fetchHeroEntries } from './services/heroAdmin'
+import { fetchHeroEntries, fetchHeroSettings } from './services/heroAdmin'
 import { AdminPage } from './pages/AdminPage'
 import { CategoriesPage } from './pages/CategoriesPage'
 import { AnnouncementBanner } from './components/AnnouncementBanner'
@@ -64,6 +64,7 @@ function AppInner() {
   const [selectedGenreId, setSelectedGenreId] = useState(null)
   const [selectedArchiveYear, setSelectedArchiveYear] = useState(null)
   const [adminHeroItems, setAdminHeroItems] = useState([])
+  const [heroMaxItems, setHeroMaxItems] = useState(5)
 
   const notify = msg => { setToast(msg); setTimeout(() => setToast(null), 2400) }
 
@@ -138,7 +139,7 @@ function AppInner() {
 
   const airingItems = useMemo(() => data.filter(i => i.airing), [data])
   const controlledHeroItems = useMemo(() => {
-    return adminHeroItems.map(item => {
+    return adminHeroItems.slice(0, heroMaxItems).map(item => {
       const local = data.find(d => d.id === item.id)
       return {
         ...(local ?? item),
@@ -146,7 +147,7 @@ function AppInner() {
         heroHideTitle: item.heroHideTitle,
       }
     })
-  }, [adminHeroItems, data])
+  }, [adminHeroItems, data, heroMaxItems])
   const heroItems = controlledHeroItems.length > 0 ? controlledHeroItems : airingItems
 
   useEffect(() => {
@@ -161,8 +162,11 @@ function AppInner() {
 
   useEffect(() => {
     let cancelled = false
-    fetchHeroEntries({ activeOnly: true })
-      .then(async entries => {
+    Promise.all([
+      fetchHeroEntries({ activeOnly: true }),
+      fetchHeroSettings(),
+    ])
+      .then(async ([entries, settings]) => {
         const items = await Promise.all(entries.map(async entry => {
           const anime = await fetchAnimeById(entry.anime_id)
           return {
@@ -172,6 +176,7 @@ function AppInner() {
           }
         }))
         if (cancelled) return
+        setHeroMaxItems(settings?.max_items ?? 5)
         setAdminHeroItems(items)
         items.forEach(addToData)
       })

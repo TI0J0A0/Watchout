@@ -7,7 +7,7 @@ import {
 import { useIsMobile } from '../hooks/useIsMobile'
 import { fetchAdminDashboard, fetchUsers, grantPremium, revokePremium, toggleBanUser } from '../services/premium'
 import { fetchAnnouncements, createAnnouncement, deleteAnnouncement } from '../services/announcements'
-import { createHeroEntry, deleteHeroEntry, fetchHeroEntries, updateHeroEntry } from '../services/heroAdmin'
+import { createHeroEntry, deleteHeroEntry, fetchHeroEntries, fetchHeroSettings, updateHeroEntry, updateHeroSettings } from '../services/heroAdmin'
 import { searchAnimeByName } from '../services/animeLookup'
 
 const DASHBOARD_TABS = ['dashboard', 'activeUsers', 'topContent', 'recentErrors']
@@ -72,9 +72,12 @@ export function AdminPage() {
   const [heroEntries, setHeroEntries] = useState([])
   const [heroLoading, setHeroLoading] = useState(false)
   const [heroSaving, setHeroSaving] = useState(false)
+  const [heroSettingsSaving, setHeroSettingsSaving] = useState(false)
+  const [heroMaxItems, setHeroMaxItems] = useState(5)
   const [heroSearch, setHeroSearch] = useState('')
   const [heroSearchResults, setHeroSearchResults] = useState([])
   const [heroSearchLoading, setHeroSearchLoading] = useState(false)
+  const [heroSearchError, setHeroSearchError] = useState('')
   const [newHero, setNewHero] = useState({
     animeId: '',
     imageUrl: '',
@@ -163,7 +166,12 @@ export function AdminPage() {
 
   async function loadHeroEntries() {
     setHeroLoading(true)
-    fetchHeroEntries().then(setHeroEntries).finally(() => setHeroLoading(false))
+    Promise.all([fetchHeroEntries(), fetchHeroSettings()])
+      .then(([entries, settings]) => {
+        setHeroEntries(entries)
+        setHeroMaxItems(settings?.max_items ?? 5)
+      })
+      .finally(() => setHeroLoading(false))
   }
 
   async function handleCreateHero(e) {
@@ -213,13 +221,29 @@ export function AdminPage() {
     setHeroEntries(prev => prev.filter(h => h.id !== id))
   }
 
+  async function handleSaveHeroSettings() {
+    setHeroSettingsSaving(true)
+    try {
+      const next = Math.min(20, Math.max(1, Number(heroMaxItems) || 1))
+      const updated = await updateHeroSettings({ maxItems: next })
+      setHeroMaxItems(updated.max_items)
+    } finally {
+      setHeroSettingsSaving(false)
+    }
+  }
+
   async function handleHeroSearch(e) {
     e.preventDefault()
     if (!heroSearch.trim()) return
     setHeroSearchLoading(true)
+    setHeroSearchError('')
     try {
       const items = await searchAnimeByName(heroSearch)
       setHeroSearchResults(items)
+      if (items.length === 0) setHeroSearchError('Nenhum anime encontrado para essa busca.')
+    } catch (error) {
+      setHeroSearchResults([])
+      setHeroSearchError(error?.message || 'Falha ao buscar anime.')
     } finally {
       setHeroSearchLoading(false)
     }
@@ -453,6 +477,28 @@ export function AdminPage() {
     return (
       <div>
         <h2 style={{ fontSize: 18, color: T.txt, margin: '0 0 14px' }}>Controle do hero</h2>
+        <div style={{
+          display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center',
+          marginBottom: 16, padding: 16, background: T.surf, border: `1px solid ${T.bord}`, borderRadius: 12,
+        }}>
+          <input
+            type="number"
+            min="1"
+            max="20"
+            value={heroMaxItems}
+            onChange={e => setHeroMaxItems(e.target.value)}
+            placeholder="Máximo no hero"
+            style={{ ...input, width: 150 }}
+          />
+          <button onClick={handleSaveHeroSettings}
+            style={{ padding: '10px 18px', background: '#0A84FF', color: '#fff', border: 'none', borderRadius: 10, fontWeight: 700, cursor: heroSettingsSaving ? 'default' : 'pointer', opacity: heroSettingsSaving ? 0.6 : 1 }}>
+            {heroSettingsSaving ? 'Salvando...' : 'Salvar limite'}
+          </button>
+          <p style={{ color: T.sub, fontSize: 12, margin: 0 }}>
+            A home mostra no máximo {Number(heroMaxItems) || 1} animes ativos do hero, respeitando a ordem.
+          </p>
+        </div>
+
         <form onSubmit={handleHeroSearch} style={{
           display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center',
           marginBottom: 16, padding: 16, background: T.surf, border: `1px solid ${T.bord}`, borderRadius: 12,
@@ -468,6 +514,10 @@ export function AdminPage() {
             {heroSearchLoading ? 'Buscando...' : 'Buscar anime'}
           </button>
         </form>
+
+        {heroSearchError && (
+          <p style={{ color: '#FF3B30', fontSize: 12, margin: '0 0 16px' }}>{heroSearchError}</p>
+        )}
 
         {heroSearchResults.length > 0 && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 20 }}>
