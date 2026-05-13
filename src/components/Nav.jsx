@@ -6,7 +6,7 @@ import { useClickOutside } from '../hooks/useClickOutside'
 import { AvatarPic } from './AvatarPic'
 import { NotificationBell } from './NotificationBell'
 import { isAdmin } from '../services/premium'
-import funnyrollBanner from '../../img/Funnyroll Banner.png'
+import funnyrollBanner from '../../img/logo sem fundo.png'
 import { ARCHIVE_YEARS, GENRES } from '../constants/browse'
 
 const PAGE_ICONS = {

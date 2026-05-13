@@ -182,6 +182,12 @@ export function SeasonalPage({
   const heroFocalPoint = getHeroFocalPoint(hero)
   const heroMeta = getHeroMeta(hero)
   const heroCta = getHeroCta(hero, status => t(`status.${status}`))
+  const firstShelfOverlapStyle = {
+    marginTop: -46,
+    position: 'relative',
+    zIndex: 5,
+    paddingTop: 18,
+  }
   const gridItems = isArchive
     ? enrich(archData).filter(i => typeF === 'all' || i.type === typeF)
     : seasonal
@@ -233,8 +239,8 @@ export function SeasonalPage({
       {!isArchive && (
         <section key={hero.id} className="card hf hero hero-h" onClick={() => onOpen(hero)}
           style={{
-            margin: '0 0 -34px calc(50% - 50vw)', width: '100vw',
-            borderRadius: 0, overflow: 'hidden', height: 'clamp(660px, 82vh, 860px)',
+            margin: '0 0 4px calc(50% - 50vw)', width: '100vw',
+            borderRadius: 0, overflow: 'visible', height: 'clamp(660px, 82vh, 860px)',
             position: 'relative',
             background: `linear-gradient(135deg,${hero.color},${hero.colorB})`,
             boxShadow: `0 24px 80px ${hero.color}30`
@@ -242,19 +248,19 @@ export function SeasonalPage({
 
           {heroBackground && (
             <img className="heroImage" src={heroBackground} alt={hero.title} style={{
-              position: 'absolute', inset: 0,
-              width: '100%', height: '100%', objectFit: 'cover', objectPosition: heroFocalPoint,
+              position: 'absolute', left: 0, right: 0, top: 0, bottom: -58,
+              width: '100%', height: 'calc(100% + 58px)', objectFit: 'cover', objectPosition: heroFocalPoint,
               filter: 'saturate(1.08) contrast(1.03)'
             }} />
           )}
 
           <div className="heroOverlay" style={{
-            position: 'absolute', inset: 0,
+            position: 'absolute', left: 0, right: 0, top: 0, bottom: -58,
             background: 'linear-gradient(90deg, rgba(0,0,0,.86) 0%, rgba(0,0,0,.45) 48%, rgba(0,0,0,.05) 100%)'
           }} />
           <div className="heroBottomFade" style={{
-            position: 'absolute', inset: 0,
-            background: 'linear-gradient(0deg, var(--bg-main) 0%, rgba(5,5,9,.82) 18%, rgba(5,5,9,.18) 48%, transparent 68%)'
+            position: 'absolute', left: 0, right: 0, top: 0, bottom: -58,
+            background: 'linear-gradient(0deg, var(--bg-main) 0%, rgba(5,5,9,.88) 16%, rgba(5,5,9,.36) 40%, transparent 68%)'
           }} />
 
           {hero.userStatus && (
@@ -396,7 +402,6 @@ export function SeasonalPage({
         </section>
       )}
 
-      {!isArchive && <div className="hero-section-bridge" aria-hidden="true" />}
 
       {/* ── Shelves (hidden in archive mode) ── */}
 
@@ -404,15 +409,18 @@ export function SeasonalPage({
         <>
 
           {continueWatching.length > 0 && (
+            <div style={firstShelfOverlapStyle}>
             <ShelfRow
               emoji="▶"
               title={t('seasonal.continueWatching')}
               subtitle={t('seasonal.continueWatchingSubtitle')}
               items={continueWatching} loading={false}
               onOpen={onOpen} onStatus={onStatus} />
+            </div>
           )}
 
 
+          <div style={continueWatching.length > 0 ? undefined : firstShelfOverlapStyle}>
           <ShelfRow
             title={t('seasonal.airing')}
             subtitle={t('seasonal.airingSubtitle')}
@@ -429,6 +437,7 @@ export function SeasonalPage({
               </div>
             }
           />
+          </div>
 
 
           {/* For You shelf */}
