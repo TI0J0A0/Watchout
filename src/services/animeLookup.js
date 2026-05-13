@@ -4,7 +4,7 @@ export async function searchAnimeByName(query) {
   if (!supabase || !query.trim()) return []
   const body = { route: 'animeSearch', query: query.trim() }
 
-  const attempts = ['anikoto', 'clever-handler']
+  const attempts = ['anikoto', 'Anikoto', 'clever-handler']
   let lastError = null
 
   for (const fnName of attempts) {
