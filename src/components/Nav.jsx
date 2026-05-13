@@ -119,7 +119,7 @@ export function Nav({ page, setPage, libraryCount, userProfile, onLogin, onShowM
         <div onClick={() => setPage("seasonal")}
           style={{display:"flex",alignItems:"center",gap:9,marginRight:26,flexShrink:0,cursor:"pointer"}}>
           <img
-            src={funnyrollBanner}
+            src={funnyrollLogo}
             alt="Funnyroll"
             style={{height:34,width:154,objectFit:"contain",objectPosition:"left center",display:"block"}}
           />
