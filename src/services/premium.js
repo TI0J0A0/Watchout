@@ -28,13 +28,63 @@ export async function toggleBanUser(userId, banned) {
   await supabase.from('profiles').update({ is_banned: banned }).eq('id', userId)
 }
 
+export async function fetchAdminDashboard() {
+  if (!supabase) {
+    return {
+      totalUsers: 0,
+      activeUsers: 0,
+      premiumUsers: 0,
+      bannedUsers: 0,
+      topContent: [],
+      recentErrors: [],
+    }
+  }
+
+  const [
+    totalUsers,
+    activeUsers,
+    premiumUsers,
+    bannedUsers,
+    topContent,
+    recentErrors,
+  ] = await Promise.all([
+    supabase.from('profiles').select('id', { count: 'exact', head: true }),
+    supabase.from('profiles').select('id', { count: 'exact', head: true }).eq('is_banned', false),
+    supabase.from('profiles').select('id', { count: 'exact', head: true }).eq('is_premium', true),
+    supabase.from('profiles').select('id', { count: 'exact', head: true }).eq('is_banned', true),
+    supabase
+      .from('forum_topics')
+      .select('id, title, views, reply_count')
+      .order('views', { ascending: false })
+      .limit(5),
+    supabase
+      .from('admin_error_logs')
+      .select('id, message, source, metadata, created_at')
+      .order('created_at', { ascending: false })
+      .limit(10),
+  ])
+
+  for (const result of [totalUsers, activeUsers, premiumUsers, bannedUsers, topContent]) {
+    if (result.error) throw result.error
+  }
+
+  return {
+    totalUsers: totalUsers.count ?? 0,
+    activeUsers: activeUsers.count ?? 0,
+    premiumUsers: premiumUsers.count ?? 0,
+    bannedUsers: bannedUsers.count ?? 0,
+    topContent: topContent.data ?? [],
+    recentErrors: recentErrors.error ? [] : recentErrors.data ?? [],
+  }
+}
+
 const PAGE_SIZE = 20
 
 export async function fetchUsers({ query = '', page = 0 } = {}) {
   if (!supabase) return { data: [], count: 0 }
   let q = supabase
     .from('profiles')
-    .select('id, username, display_name, avatar_url, avatar_grad, is_premium, is_banned', { count: 'exact' })
+    .select('id, username, display_name, avatar_url, avatar_grad, is_premium, is_banned, created_at', { count: 'exact' })
     .order('created_at', { ascending: false })
     .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1)
   if (query.trim())

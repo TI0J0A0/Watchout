@@ -38,7 +38,7 @@ const EMPTY_SECTIONS = Object.fromEntries(DISCOVER_KEYS.map(s => [s.key, []]))
 
 export function SeasonalPage({
   seasonal, data, hero, heroIdx, setHeroIdx, airingItems,
-  typeF, setTypeF, loading,
+  heroItems = airingItems, typeF, setTypeF, loading,
   onOpen, onStatus, initialArchiveYear,
 }) {
   const { T } = useTheme()
@@ -178,7 +178,7 @@ export function SeasonalPage({
   const isArchive = archYear !== null && archSeason !== null
   const ytId = hero?.trailer?.match(/embed\/([^?]+)/)?.[1]
   const ytThumb = ytId ? `https://img.youtube.com/vi/${ytId}/maxresdefault.jpg` : null
-  const heroBackground = getHeroImage(hero, heroBanner, heroKitsuCover, ytThumb)
+  const heroBackground = hero?.heroImageUrl || getHeroImage(hero, heroBanner, heroKitsuCover, ytThumb)
   const heroFocalPoint = getHeroFocalPoint(hero)
   const heroMeta = getHeroMeta(hero)
   const heroCta = getHeroCta(hero, status => t(`status.${status}`))
@@ -302,12 +302,14 @@ export function SeasonalPage({
                 </span>
               </div>
             )}
-            <h1 className="hero-title" style={{
-              fontSize: 58, fontWeight: 900, color: '#fff',
-              letterSpacing: 0, lineHeight: .98, marginBottom: 14,
-              textTransform: 'uppercase',
-              textShadow: '0 4px 28px rgba(0,0,0,.55)'
-            }}>{hero.title}</h1>
+            {!hero.heroHideTitle && (
+              <h1 className="hero-title" style={{
+                fontSize: 58, fontWeight: 900, color: '#fff',
+                letterSpacing: 0, lineHeight: .98, marginBottom: 14,
+                textTransform: 'uppercase',
+                textShadow: '0 4px 28px rgba(0,0,0,.55)'
+              }}>{hero.title}</h1>
+            )}
             <p style={{
               fontSize: 13, color: 'rgba(255,255,255,.86)', fontWeight: 750,
               lineHeight: 1.5, marginBottom: 14, textShadow: '0 2px 14px rgba(0,0,0,.5)'
@@ -357,9 +359,9 @@ export function SeasonalPage({
                   }}>{s}</span>
                 ))}
               </div>
-              {airingItems.length > 1 && (
+              {heroItems.length > 1 && (
                 <div style={{ display: 'flex', gap: 7 }} onClick={e => e.stopPropagation()}>
-                  {airingItems.map((_, i) => (
+                  {heroItems.map((_, i) => (
                     <button key={i} onClick={() => setHeroIdx(i)}
                       style={{
                         width: i === heroIdx ? 22 : 6, height: 6, borderRadius: 8,
@@ -373,9 +375,9 @@ export function SeasonalPage({
               )}
             </div>
           </div>
-          {airingItems.length > 1 && (
+          {heroItems.length > 1 && (
             <div className="hero-arrows" onClick={e => e.stopPropagation()}>
-              <button className="t" onClick={() => setHeroIdx((heroIdx - 1 + airingItems.length) % airingItems.length)}
+              <button className="t" onClick={() => setHeroIdx((heroIdx - 1 + heroItems.length) % heroItems.length)}
                 aria-label="Previous hero"
                 style={{
                   position: 'absolute', left: 22, top: '50%', transform: 'translateY(-50%)',
@@ -386,7 +388,7 @@ export function SeasonalPage({
                 }}>
                 {'<'}
               </button>
-              <button className="t" onClick={() => setHeroIdx((heroIdx + 1) % airingItems.length)}
+              <button className="t" onClick={() => setHeroIdx((heroIdx + 1) % heroItems.length)}
                 aria-label="Next hero"
                 style={{
                   position: 'absolute', right: 22, top: '50%', transform: 'translateY(-50%)',

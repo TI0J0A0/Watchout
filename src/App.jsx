@@ -18,6 +18,7 @@ import { CommunityPage } from './pages/CommunityPage'
 import { loadPremiumStatus, isAdmin } from './services/premium'
 import { getProfile } from './services/friends'
 import { fetchAnimeById } from './services/jikan'
+import { fetchHeroEntries } from './services/heroAdmin'
 import { AdminPage } from './pages/AdminPage'
 import { CategoriesPage } from './pages/CategoriesPage'
 import { AnnouncementBanner } from './components/AnnouncementBanner'
@@ -62,6 +63,7 @@ function AppInner() {
   const [userProfile, setUserProfile] = useState(null)
   const [selectedGenreId, setSelectedGenreId] = useState(null)
   const [selectedArchiveYear, setSelectedArchiveYear] = useState(null)
+  const [adminHeroItems, setAdminHeroItems] = useState([])
 
   const notify = msg => { setToast(msg); setTimeout(() => setToast(null), 2400) }
 
@@ -135,12 +137,47 @@ function AppInner() {
   }, [page])
 
   const airingItems = useMemo(() => data.filter(i => i.airing), [data])
+  const controlledHeroItems = useMemo(() => {
+    return adminHeroItems.map(item => {
+      const local = data.find(d => d.id === item.id)
+      return {
+        ...(local ?? item),
+        heroImageUrl: item.heroImageUrl,
+        heroHideTitle: item.heroHideTitle,
+      }
+    })
+  }, [adminHeroItems, data])
+  const heroItems = controlledHeroItems.length > 0 ? controlledHeroItems : airingItems
 
   useEffect(() => {
-    if (airingItems.length <= 1) return
-    const t = setInterval(() => setHeroIdx(h => (h + 1) % airingItems.length), 5000)
+    if (heroItems.length <= 1) return
+    const t = setInterval(() => setHeroIdx(h => (h + 1) % heroItems.length), 5000)
     return () => clearInterval(t)
-  }, [airingItems.length])
+  }, [heroItems.length])
+
+  useEffect(() => {
+    setHeroIdx(0)
+  }, [heroItems.length])
+
+  useEffect(() => {
+    let cancelled = false
+    fetchHeroEntries({ activeOnly: true })
+      .then(async entries => {
+        const items = await Promise.all(entries.map(async entry => {
+          const anime = await fetchAnimeById(entry.anime_id)
+          return {
+            ...anime,
+            heroImageUrl: entry.image_url,
+            heroHideTitle: entry.hide_title,
+          }
+        }))
+        if (cancelled) return
+        setAdminHeroItems(items)
+        items.forEach(addToData)
+      })
+      .catch(() => setAdminHeroItems([]))
+    return () => { cancelled = true }
+  }, [])
 
   const navigate = (p) => { setPage(p); setDetailId(null); setFriendId(null); setFriendshipId(null) }
 
@@ -168,7 +205,7 @@ function AppInner() {
   const library = useMemo(() => data.filter(i => i.userStatus), [data])
   const seasonal = useMemo(() => data.filter(i => typeF === 'all' || i.type === typeF), [data, typeF])
 
-  const hero = airingItems[heroIdx % Math.max(airingItems.length, 1)] || data[0]
+  const hero = heroItems[heroIdx % Math.max(heroItems.length, 1)] || data[0]
 
   return (
     <div style={{
@@ -211,7 +248,7 @@ function AppInner() {
           {page === 'seasonal' && (
             <SeasonalPage
               seasonal={seasonal} data={data} hero={hero} heroIdx={heroIdx} setHeroIdx={setHeroIdx}
-              airingItems={airingItems} typeF={typeF} setTypeF={setTypeF}
+              airingItems={airingItems} heroItems={heroItems} typeF={typeF} setTypeF={setTypeF}
               loading={loading} onOpen={openDetail} onStatus={handleStatus}
               initialArchiveYear={selectedArchiveYear} />
           )}
