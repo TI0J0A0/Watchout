@@ -16,8 +16,8 @@ export function getHeroCta(item, translateStatus = status => status) {
   return { label: 'Add to List', canAdd: true }
 }
 
-export function getHeroImage(item, bannerUrl, trailerThumbUrl) {
-  return bannerUrl || trailerThumbUrl || item?.img || null
+export function getHeroImage(item, bannerUrl, kitsuCoverUrl, trailerThumbUrl) {
+  return bannerUrl || kitsuCoverUrl || trailerThumbUrl || item?.img || null
 }
 
 export function getCarouselIndex(current, total, direction) {

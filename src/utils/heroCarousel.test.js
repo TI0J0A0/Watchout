@@ -39,10 +39,13 @@ test('getHeroCta prompts add only when the hero is not already in the list', () 
   })
 })
 
-test('getHeroImage prefers banner imagery and falls back to poster image', () => {
-  assert.equal(getHeroImage({ img: 'poster.jpg' }, 'banner.jpg', 'thumb.jpg'), 'banner.jpg')
-  assert.equal(getHeroImage({ img: 'poster.jpg' }, null, 'thumb.jpg'), 'thumb.jpg')
-  assert.equal(getHeroImage({ img: 'poster.jpg' }, null, null), 'poster.jpg')
+test('getHeroImage prefers AniList, then Kitsu, then trailer thumbnail, then poster', () => {
+  const item = { img: 'poster.jpg' }
+
+  assert.equal(getHeroImage(item, 'anilist-banner.jpg', 'kitsu-cover.jpg', 'thumb.jpg'), 'anilist-banner.jpg')
+  assert.equal(getHeroImage(item, null, 'kitsu-cover.jpg', 'thumb.jpg'), 'kitsu-cover.jpg')
+  assert.equal(getHeroImage(item, null, null, 'thumb.jpg'), 'thumb.jpg')
+  assert.equal(getHeroImage(item, null, null, null), 'poster.jpg')
 })
 
 test('getCarouselIndex wraps previous and next indexes', () => {
