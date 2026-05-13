@@ -416,6 +416,13 @@ export function SeasonalPage({
             subtitle={t('seasonal.airingSubtitle')}
             items={seasonal} loading={false}
             onOpen={onOpen} onStatus={onStatus}
+            className="hero-overlap-shelf"
+            style={{
+              marginTop: -58,
+              padding: '34px 0 10px',
+              position: 'relative',
+              zIndex: 5,
+            }}
             headerRight={
               <div style={{ display: 'flex', gap: 6 }}>
                 {typeFilters.map(([v, l]) => (

@@ -2,7 +2,7 @@ import { memo, useRef, useState, useEffect } from 'react'
 import { useTheme } from '../context/ThemeContext'
 import { MediaCard } from './MediaCard'
 
-export const ShelfRow = memo(function ShelfRow({ title, emoji, subtitle, items, loading, onOpen, onStatus, headerRight, matchScores = {} }) {
+export const ShelfRow = memo(function ShelfRow({ title, emoji, subtitle, items, loading, onOpen, onStatus, headerRight, matchScores = {}, className = '', style }) {
   const { T, dark } = useTheme()
   const scrollRef = useRef(null)
   const [canLeft,  setCanLeft]  = useState(false)
@@ -30,7 +30,7 @@ export const ShelfRow = memo(function ShelfRow({ title, emoji, subtitle, items, 
   if (!loading && items.length === 0) return null
 
   return (
-    <section style={{ marginBottom: 44 }}>
+    <section className={className} style={{ marginBottom: 44, ...style }}>
 
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'flex-end',

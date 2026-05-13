@@ -344,6 +344,19 @@ a:focus:not(:focus-visible) { outline: none; }
   outline-offset: 3px;
 }
 
+.hero-overlap-shelf {
+  border-radius: 18px 18px 0 0;
+  background: linear-gradient(180deg, rgba(5,5,9,.44), rgba(5,5,9,0));
+  backdrop-filter: blur(8px);
+  transition: transform .22s ease, background .22s ease, backdrop-filter .22s ease;
+}
+
+.hero-overlap-shelf:hover {
+  transform: translateY(-4px);
+  background: linear-gradient(180deg, rgba(5,5,9,.56), rgba(5,5,9,.04));
+  backdrop-filter: blur(12px);
+}
+
 /* ── Shimmer skeleton ── */
 @keyframes shimmer {
   from { transform: translateX(-100%); }
