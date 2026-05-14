@@ -115,7 +115,7 @@ export function AdminPage() {
   useEffect(() => {
     if (!USER_TABS.includes(tab)) return
     setUsersLoading(true)
-    fetchUsers({ query: userQuery, page: userPage })
+    fetchUsers({ query: userQuery, page: userPage, activeOnly: tab === 'activeUsers' })
       .then(({ data, count }) => { setUsers(data); setUserCount(count) })
       .finally(() => setUsersLoading(false))
   }, [tab, userQuery, userPage])
@@ -411,7 +411,6 @@ export function AdminPage() {
 
   function renderUsers() {
     const totalPages = Math.ceil(userCount / 20)
-    const visibleUsers = tab === 'activeUsers' ? users.filter(u => !u.is_banned) : users
     const title = {
       users: 'Listar usuários',
       permissions: 'Editar permissões',
@@ -443,14 +442,14 @@ export function AdminPage() {
         </form>
 
         <p style={{ fontSize: 12, color: T.sub, margin: '0 0 12px' }}>
-          {usersLoading ? 'Carregando...' : `${tab === 'activeUsers' ? visibleUsers.length : userCount} usuário${(tab === 'activeUsers' ? visibleUsers.length : userCount) !== 1 ? 's' : ''}${userQuery ? ` para "${userQuery}"` : ''}`}
+          {usersLoading ? 'Carregando...' : `${userCount} usuário${userCount !== 1 ? 's' : ''}${userQuery ? ` para "${userQuery}"` : ''}`}
         </p>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          {!usersLoading && visibleUsers.length === 0 && (
+          {!usersLoading && users.length === 0 && (
             <p style={{ color: T.sub }}>Nenhum usuário encontrado.</p>
           )}
-          {visibleUsers.map(u => (
+          {users.map(u => (
             <div key={u.id} style={card}>
               <div style={{ flex: 1, minWidth: 0, paddingRight: 12 }}>
                 <p style={{ fontWeight: 600, color: T.txt, margin: '0 0 3px', display: 'flex', flexWrap: 'wrap', gap: 5, alignItems: 'center' }}>
@@ -463,7 +462,7 @@ export function AdminPage() {
                   )}
                 </p>
                 <p style={{ fontSize: 12, color: T.sub, margin: 0 }}>
-                  @{u.username}{tab === 'activity' ? ` · criado em ${formatDate(u.created_at)}` : ''}
+                  @{u.username}{tab === 'activity' ? ` · atualizado em ${formatDate(u.created_at || u.updated_at)}` : ''}
                 </p>
               </div>
               {tab !== 'activity' && (
@@ -486,7 +485,7 @@ export function AdminPage() {
           ))}
         </div>
 
-        {totalPages > 1 && tab !== 'activeUsers' && (
+        {totalPages > 1 && (
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12, marginTop: 24 }}>
             <button
               disabled={userPage === 0}

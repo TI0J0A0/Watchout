@@ -80,13 +80,14 @@ export async function fetchAdminDashboard() {
 
 const PAGE_SIZE = 20
 
-export async function fetchUsers({ query = '', page = 0 } = {}) {
+export async function fetchUsers({ query = '', page = 0, activeOnly = false } = {}) {
   if (!supabase) return { data: [], count: 0 }
   let q = supabase
     .from('profiles')
-    .select('id, username, display_name, avatar_url, avatar_grad, is_premium, is_banned, created_at', { count: 'exact' })
-    .order('created_at', { ascending: false })
+    .select('id, username, display_name, avatar_url, avatar_grad, is_premium, is_banned, updated_at', { count: 'exact' })
+    .order('updated_at', { ascending: false, nullsFirst: false })
     .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1)
+  if (activeOnly) q = q.eq('is_banned', false)
   if (query.trim())
     q = q.or(`username.ilike.%${query}%,display_name.ilike.%${query}%`)
   const { data, count, error } = await q
