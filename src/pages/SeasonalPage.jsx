@@ -182,6 +182,7 @@ export function SeasonalPage({
   const heroFocalPoint = getHeroFocalPoint(hero)
   const heroMeta = getHeroMeta(hero)
   const heroCta = getHeroCta(hero, status => t(`status.${status}`))
+  const showHeroLogo = Boolean(hero?.heroLogoUrl)
   const firstShelfOverlapStyle = {
     marginTop: -46,
     position: 'relative',
@@ -301,6 +302,19 @@ export function SeasonalPage({
                   {t('seasonal.airingBadge')}
                 </span>
               </div>
+            )}
+            {showHeroLogo && (
+              <img
+                src={hero.heroLogoUrl}
+                alt={hero.title}
+                style={{
+                  maxWidth: 'min(440px, 82vw)',
+                  maxHeight: 130,
+                  objectFit: 'contain',
+                  marginBottom: hero.heroHideTitle ? 18 : 10,
+                  filter: 'drop-shadow(0 10px 28px rgba(0,0,0,.45))',
+                }}
+              />
             )}
             {!hero.heroHideTitle && (
               <h1 className="hero-title" style={{

@@ -146,6 +146,7 @@ function AppInner() {
       return {
         ...(local ?? item),
         heroImageUrl: item.heroImageUrl,
+        heroLogoUrl: item.heroLogoUrl,
         heroHideTitle: item.heroHideTitle,
       }
     })
@@ -174,6 +175,7 @@ function AppInner() {
           return {
             ...anime,
             heroImageUrl: entry.image_url,
+            heroLogoUrl: entry.logo_url,
             heroHideTitle: entry.hide_title,
             heroSortOrder: entry.sort_order,
           }

@@ -84,6 +84,7 @@ export function AdminPage() {
   const [newHero, setNewHero] = useState({
     animeId: '',
     imageUrl: '',
+    logoUrl: '',
     sortOrder: 0,
     active: true,
     hideTitle: true,
@@ -199,6 +200,7 @@ export function AdminPage() {
       const created = await createHeroEntry({
         animeId,
         imageUrl: newHero.imageUrl.trim(),
+        logoUrl: newHero.logoUrl.trim() || null,
         sortOrder: Number(newHero.sortOrder) || 0,
         active: newHero.active,
         hideTitle: newHero.hideTitle,
@@ -208,7 +210,7 @@ export function AdminPage() {
         setHeroFeedback(`Anime #${created.anime_id} adicionado ao hero.`)
         notifyHeroUpdated()
       }
-      setNewHero({ animeId: '', imageUrl: '', sortOrder: 0, active: true, hideTitle: true })
+      setNewHero({ animeId: '', imageUrl: '', logoUrl: '', sortOrder: 0, active: true, hideTitle: true })
     } catch (error) {
       setHeroError(error?.message || 'Falha ao adicionar anime ao hero.')
     } finally {
@@ -239,7 +241,8 @@ export function AdminPage() {
     if (!animeId) return
     const imageUrl = prompt('URL da imagem customizada do hero', entry.image_url)
     if (!imageUrl?.trim()) return
-    const updated = await updateHeroEntry(entry.id, { animeId, imageUrl: imageUrl.trim() })
+    const logoUrl = prompt('URL da logo do anime (opcional)', entry.logo_url || '') ?? ''
+    const updated = await updateHeroEntry(entry.id, { animeId, imageUrl: imageUrl.trim(), logoUrl: logoUrl.trim() || null })
     if (updated) {
       setHeroEntries(prev => prev.map(h => h.id === entry.id ? updated : h))
       notifyHeroUpdated()
@@ -292,6 +295,7 @@ export function AdminPage() {
       ...prev,
       animeId: String(item.id ?? ''),
       imageUrl: item.imageUrl || prev.imageUrl || '',
+      logoUrl: prev.logoUrl || '',
     }))
     setHeroError('')
     setHeroFeedback(`Anime selecionado: ${item.title} (#${item.id}).`)
@@ -600,7 +604,7 @@ export function AdminPage() {
         )}
 
         <form onSubmit={handleCreateHero} style={{
-          display: 'grid', gridTemplateColumns: mobile ? '1fr' : '120px minmax(220px, 1fr) 90px auto',
+          display: 'grid', gridTemplateColumns: mobile ? '1fr' : '120px minmax(180px, 1fr) minmax(180px, 1fr) 90px auto',
           gap: 10, alignItems: 'center', marginBottom: 20,
           padding: 16, background: T.surf, border: `1px solid ${T.bord}`, borderRadius: 12,
         }}>
@@ -616,6 +620,12 @@ export function AdminPage() {
             value={newHero.imageUrl}
             onChange={e => setNewHero(p => ({ ...p, imageUrl: e.target.value }))}
             placeholder="URL da imagem customizada do hero"
+            style={input}
+          />
+          <input
+            value={newHero.logoUrl}
+            onChange={e => setNewHero(p => ({ ...p, logoUrl: e.target.value }))}
+            placeholder="URL da logo do anime"
             style={input}
           />
           <input
@@ -659,6 +669,9 @@ export function AdminPage() {
                     <p style={{ color: T.txt, fontWeight: 700, margin: '0 0 3px' }}>Anime #{entry.anime_id}</p>
                     <p style={{ color: T.sub, fontSize: 12, margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {entry.image_url}
+                    </p>
+                    <p style={{ color: T.sub, fontSize: 12, margin: '4px 0 0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {entry.logo_url ? `Logo: ${entry.logo_url}` : 'Sem logo'}
                     </p>
                   </div>
                 </div>

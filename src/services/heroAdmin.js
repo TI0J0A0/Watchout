@@ -1,6 +1,6 @@
 import { supabase } from './supabase'
 
-const SELECT_FIELDS = 'id, anime_id, image_url, hide_title, active, sort_order, created_at'
+const SELECT_FIELDS = 'id, anime_id, image_url, logo_url, hide_title, active, sort_order, created_at'
 
 export async function fetchHeroEntries({ activeOnly = false } = {}) {
   if (!supabase) return []
@@ -24,6 +24,7 @@ export async function createHeroEntry(entry) {
     .insert({
       anime_id: entry.animeId,
       image_url: entry.imageUrl,
+      logo_url: entry.logoUrl,
       hide_title: entry.hideTitle,
       active: entry.active,
       sort_order: entry.sortOrder,
@@ -39,6 +40,7 @@ export async function updateHeroEntry(id, patch) {
   const payload = {}
   if ('animeId' in patch) payload.anime_id = patch.animeId
   if ('imageUrl' in patch) payload.image_url = patch.imageUrl
+  if ('logoUrl' in patch) payload.logo_url = patch.logoUrl
   if ('hideTitle' in patch) payload.hide_title = patch.hideTitle
   if ('active' in patch) payload.active = patch.active
   if ('sortOrder' in patch) payload.sort_order = patch.sortOrder
