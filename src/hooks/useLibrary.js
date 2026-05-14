@@ -5,6 +5,7 @@ import { fetchSeasonal, fetchTop, fetchAnimeById } from '../services/jikan'
 import { loadUserLibrary, upsertAnime, upsertAnimesBatch, removeAnime } from '../services/userAnime'
 import { useAuth } from '../context/AuthContext'
 import { createNotification, hasNotificationToday } from '../services/notifications'
+import { trackMetricEvent } from '../services/metrics'
 
 export function useLibrary() {
   const { user } = useAuth()
@@ -148,6 +149,13 @@ const setStatus = (id, s) => {
       upsertAnime(user.id, updated).catch(console.error)
     }
 
+    trackMetricEvent({
+      type: 'status_change',
+      userId: user.id,
+      animeId: id,
+      metadata: { status: removing ? null : s },
+    })
+
     return removing ? t('common.removedFromList') : `${it.title} → ${t(`status.${s}`)}`
   }
   
@@ -156,7 +164,15 @@ const setStatus = (id, s) => {
     if (!it) return
     const next = { ...it, userScore: v }
     setData(d => d.map(i => i.id === id ? next : i))
-    if (user) upsertAnime(user.id, next).catch(console.error)
+    if (user) {
+      upsertAnime(user.id, next).catch(console.error)
+      trackMetricEvent({
+        type: 'score_change',
+        userId: user.id,
+        animeId: id,
+        metadata: { score: v },
+      })
+    }
   }
 
   const setEp = (id, v) => {
@@ -164,7 +180,15 @@ const setStatus = (id, s) => {
     if (!it) return
     const next = { ...it, userEp: v }
     setData(d => d.map(i => i.id === id ? next : i))
-    if (user) upsertAnime(user.id, next).catch(console.error)
+    if (user) {
+      upsertAnime(user.id, next).catch(console.error)
+      trackMetricEvent({
+        type: 'episode_progress',
+        userId: user.id,
+        animeId: id,
+        metadata: { progress: v },
+      })
+    }
   }
 
   const setNotes = (id, text) => {
@@ -175,7 +199,15 @@ const setStatus = (id, s) => {
     if (user) {
       clearTimeout(noteTimer.current)
       noteTimer.current = setTimeout(
-        () => upsertAnime(user.id, updated).catch(console.error),
+        () => {
+          upsertAnime(user.id, updated).catch(console.error)
+          trackMetricEvent({
+            type: 'notes_change',
+            userId: user.id,
+            animeId: id,
+            metadata: { hasNotes: Boolean(text.trim()), length: text.length },
+          })
+        },
         800
       )
     }

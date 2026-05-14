@@ -9,9 +9,16 @@ import { fetchAdminDashboard, fetchUsers, grantPremium, revokePremium, toggleBan
 import { fetchAnnouncements, createAnnouncement, deleteAnnouncement } from '../services/announcements'
 import { createHeroEntry, deleteHeroEntry, fetchHeroEntries, fetchHeroSettings, updateHeroEntry, updateHeroSettings } from '../services/heroAdmin'
 import { searchAnimeByName } from '../services/animeLookup'
+import { fetchAdminMetrics } from '../services/metrics'
+import { AdminMenu } from '../components/admin/AdminMenu'
+import { AdminDashboardPanel } from '../components/admin/AdminDashboardPanel'
+import { AdminMetricsPanel } from '../components/admin/AdminMetricsPanel'
+import { AdminUsersPanel } from '../components/admin/AdminUsersPanel'
+import { AdminHeroPanel } from '../components/admin/AdminHeroPanel'
+import { createAdminStyles } from '../components/admin/shared'
 
 const DASHBOARD_TABS = ['dashboard', 'activeUsers', 'topContent', 'recentErrors']
-const USER_TABS = ['users', 'permissions', 'moderation', 'activity', 'activeUsers']
+const USER_TABS = ['users', 'permissions', 'activity', 'activeUsers']
 const HERO_UPDATED_EVENT = 'watchout:hero-updated'
 
 const MENU_SECTIONS = [
@@ -19,6 +26,7 @@ const MENU_SECTIONS = [
     title: 'Dashboard',
     items: [
       { id: 'dashboard', label: 'Resumo geral do site' },
+      { id: 'metrics', label: 'Metricas reais' },
       { id: 'activeUsers', label: 'Usuários ativos' },
       { id: 'topContent', label: 'Conteúdos mais vistos' },
       { id: 'recentErrors', label: 'Erros recentes' },
@@ -29,7 +37,6 @@ const MENU_SECTIONS = [
     items: [
       { id: 'users', label: 'Listar usuários' },
       { id: 'permissions', label: 'Editar permissões' },
-      { id: 'moderation', label: 'Banir/suspender usuário' },
       { id: 'activity', label: 'Ver atividade recente' },
     ],
   },
@@ -51,6 +58,8 @@ export function AdminPage() {
 
   const [dashboard, setDashboard] = useState(null)
   const [dashboardLoading, setDashboardLoading] = useState(false)
+  const [metrics, setMetrics] = useState(null)
+  const [metricsLoading, setMetricsLoading] = useState(false)
 
   const [topics, setTopics] = useState([])
   const [topicsLoading, setTopicsLoading] = useState(false)
@@ -98,6 +107,9 @@ export function AdminPage() {
     if (DASHBOARD_TABS.includes(tab)) {
       setDashboardLoading(true)
       fetchAdminDashboard().then(setDashboard).finally(() => setDashboardLoading(false))
+    } else if (tab === 'metrics') {
+      setMetricsLoading(true)
+      fetchAdminMetrics().then(setMetrics).finally(() => setMetricsLoading(false))
     } else if (tab === 'topics') {
       setTopicsLoading(true)
       fetchTopics().then(setTopics).finally(() => setTopicsLoading(false))
@@ -301,27 +313,7 @@ export function AdminPage() {
     setHeroFeedback(`Anime selecionado: ${item.title} (#${item.id}).`)
   }
 
-  const card = {
-    padding: 16, borderRadius: 12, background: T.surf,
-    border: `1px solid ${T.bord}`, display: 'flex',
-    flexDirection: mobile ? 'column' : 'row',
-    justifyContent: 'space-between', alignItems: mobile ? 'stretch' : 'center',
-    gap: mobile ? 12 : 0,
-  }
-
-  function chip(color) {
-    return {
-      padding: '6px 12px', background: `${color}22`, color,
-      border: 'none', borderRadius: 8, fontWeight: 600,
-      cursor: 'pointer', fontSize: 12, whiteSpace: 'nowrap',
-    }
-  }
-
-  const input = {
-    padding: '10px 14px', borderRadius: 10, fontSize: 14,
-    background: dark ? '#1c1c1e' : '#f5f5f7',
-    border: `1px solid ${T.bord}`, color: T.txt,
-  }
+  const { card, chip, input } = createAdminStyles(T, dark, mobile)
 
   const dashboardStats = dashboard ?? {
     totalUsers: 0,
@@ -331,378 +323,19 @@ export function AdminPage() {
     topContent: [],
     recentErrors: [],
   }
-
-  function formatDate(value) {
-    if (!value) return 'Sem data'
-    return new Date(value).toLocaleString('pt-BR')
-  }
-
-  function renderDashboard() {
-    return dashboardLoading
-      ? <p style={{ color: T.sub }}>Carregando...</p>
-      : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 12 }}>
-            {[
-              ['Usuários totais', dashboardStats.totalUsers],
-              ['Usuários ativos', dashboardStats.activeUsers],
-              ['Premium', dashboardStats.premiumUsers],
-              ['Banidos/suspensos', dashboardStats.bannedUsers],
-            ].map(([label, value]) => (
-              <div key={label} style={{ padding: 16, borderRadius: 12, background: T.surf, border: `1px solid ${T.bord}` }}>
-                <p style={{ fontSize: 12, color: T.sub, margin: '0 0 6px' }}>{label}</p>
-                <p style={{ fontSize: 26, color: T.txt, fontWeight: 800, margin: 0 }}>{value}</p>
-              </div>
-            ))}
-          </div>
-
-          {(tab === 'dashboard' || tab === 'topContent') && (
-            <section>
-              <h2 style={{ fontSize: 18, color: T.txt, margin: '6px 0 10px' }}>Conteúdos mais vistos</h2>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                {dashboardStats.topContent.length === 0 && <p style={{ color: T.sub }}>Nenhum conteúdo com visualizações encontrado.</p>}
-                {dashboardStats.topContent.map(item => (
-                  <div key={item.id} style={card}>
-                    <div style={{ minWidth: 0, paddingRight: 12 }}>
-                      <p style={{ fontWeight: 700, color: T.txt, margin: '0 0 3px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        {item.title}
-                      </p>
-                      <p style={{ fontSize: 12, color: T.sub, margin: 0 }}>{item.reply_count ?? 0} respostas</p>
-                    </div>
-                    <span style={{ fontSize: 13, color: T.sub, whiteSpace: 'nowrap' }}>{item.views ?? 0} views</span>
-                  </div>
-                ))}
-              </div>
-            </section>
-          )}
-
-          {(tab === 'dashboard' || tab === 'recentErrors') && (
-            <section>
-              <h2 style={{ fontSize: 18, color: T.txt, margin: '6px 0 10px' }}>Erros recentes</h2>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                {dashboardStats.recentErrors.length === 0 && (
-                  <div style={{ padding: 16, borderRadius: 12, background: T.surf, border: `1px solid ${T.bord}`, color: T.sub }}>
-                    Nenhum erro recente encontrado.
-                  </div>
-                )}
-                {dashboardStats.recentErrors.map(error => (
-                  <div key={error.id} style={{ ...card, alignItems: 'flex-start' }}>
-                    <div style={{ minWidth: 0, paddingRight: 12 }}>
-                      <p style={{ fontWeight: 700, color: T.txt, margin: '0 0 4px' }}>
-                        {error.message}
-                      </p>
-                      <p style={{ fontSize: 12, color: T.sub, margin: 0 }}>
-                        {error.source || 'Sem origem'} · {formatDate(error.created_at)}
-                      </p>
-                    </div>
-                    {error.metadata && (
-                      <span style={{ fontSize: 11, color: T.sub, whiteSpace: 'nowrap' }}>
-                        metadata
-                      </span>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </section>
-          )}
-        </div>
-      )
-  }
-
-  function renderUsers() {
-    const totalPages = Math.ceil(userCount / 20)
-    const title = {
-      users: 'Listar usuários',
-      permissions: 'Editar permissões',
-      moderation: 'Banir/suspender usuário',
-      activity: 'Ver atividade recente',
-      activeUsers: 'Usuários ativos',
-    }[tab]
-
-    return (
-      <div>
-        <h2 style={{ fontSize: 18, color: T.txt, margin: '0 0 14px' }}>{title}</h2>
-        <form onSubmit={handleUserSearch} style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
-          <input
-            value={userDraft}
-            onChange={e => setUserDraft(e.target.value)}
-            placeholder="Filtrar por username ou nome..."
-            style={{ ...input, flex: 1 }}
-          />
-          <button type="submit"
-            style={{ padding: '10px 20px', background: '#0A84FF', color: '#fff', border: 'none', borderRadius: 10, fontWeight: 600, cursor: 'pointer' }}>
-            Buscar
-          </button>
-          {userQuery && (
-            <button type="button" onClick={() => { setUserDraft(''); setUserQuery(''); setUserPage(0) }}
-              style={{ padding: '10px 14px', background: T.surf, color: T.sub, border: `1px solid ${T.bord}`, borderRadius: 10, fontWeight: 600, cursor: 'pointer' }}>
-              Limpar
-            </button>
-          )}
-        </form>
-
-        <p style={{ fontSize: 12, color: T.sub, margin: '0 0 12px' }}>
-          {usersLoading ? 'Carregando...' : `${userCount} usuário${userCount !== 1 ? 's' : ''}${userQuery ? ` para "${userQuery}"` : ''}`}
-        </p>
-
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          {!usersLoading && users.length === 0 && (
-            <p style={{ color: T.sub }}>Nenhum usuário encontrado.</p>
-          )}
-          {users.map(u => (
-            <div key={u.id} style={card}>
-              <div style={{ flex: 1, minWidth: 0, paddingRight: 12 }}>
-                <p style={{ fontWeight: 600, color: T.txt, margin: '0 0 3px', display: 'flex', flexWrap: 'wrap', gap: 5, alignItems: 'center' }}>
-                  {u.display_name || u.username}
-                  {u.is_premium && (
-                    <span style={{ fontSize: 10, background: '#FF9F0A22', color: '#FF9F0A', padding: '2px 6px', borderRadius: 4 }}>PREMIUM</span>
-                  )}
-                  {u.is_banned && (
-                    <span style={{ fontSize: 10, background: '#FF3B3022', color: '#FF3B30', padding: '2px 6px', borderRadius: 4 }}>BANIDO</span>
-                  )}
-                </p>
-                <p style={{ fontSize: 12, color: T.sub, margin: 0 }}>
-                  @{u.username}{tab === 'activity' ? ` · atualizado em ${formatDate(u.created_at || u.updated_at)}` : ''}
-                </p>
-              </div>
-              {tab !== 'activity' && (
-                <div style={{ display: 'flex', gap: 6, flexShrink: 0, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-                  {tab !== 'moderation' && (
-                    <button onClick={() => handlePremium(u.id, u.is_premium)}
-                      style={chip(u.is_premium ? '#FF9F0A' : '#30D158')}>
-                      {u.is_premium ? 'Revogar Premium' : 'Dar Premium'}
-                    </button>
-                  )}
-                  {tab !== 'permissions' && (
-                    <button onClick={() => handleBan(u.id, u.is_banned)}
-                      style={chip(u.is_banned ? '#30D158' : '#FF3B30')}>
-                      {u.is_banned ? 'Desbanir' : 'Banir'}
-                    </button>
-                  )}
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
-
-        {totalPages > 1 && (
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12, marginTop: 24 }}>
-            <button
-              disabled={userPage === 0}
-              onClick={() => setUserPage(p => p - 1)}
-              style={{
-                padding: '8px 18px', borderRadius: 9, border: `1px solid ${T.bord}`,
-                background: T.surf, color: userPage === 0 ? T.sub : T.txt,
-                fontWeight: 600, cursor: userPage === 0 ? 'default' : 'pointer', opacity: userPage === 0 ? 0.4 : 1,
-              }}>
-              Anterior
-            </button>
-            <span style={{ fontSize: 13, color: T.sub, minWidth: 80, textAlign: 'center' }}>
-              {userPage + 1} / {totalPages}
-            </span>
-            <button
-              disabled={userPage >= totalPages - 1}
-              onClick={() => setUserPage(p => p + 1)}
-              style={{
-                padding: '8px 18px', borderRadius: 9, border: `1px solid ${T.bord}`,
-                background: T.surf, color: userPage >= totalPages - 1 ? T.sub : T.txt,
-                fontWeight: 600, cursor: userPage >= totalPages - 1 ? 'default' : 'pointer', opacity: userPage >= totalPages - 1 ? 0.4 : 1,
-              }}>
-              Próximo
-            </button>
-          </div>
-        )}
-      </div>
-    )
-  }
-
-  function renderHeroControl() {
-    return (
-      <div>
-        <h2 style={{ fontSize: 18, color: T.txt, margin: '0 0 14px' }}>Controle do hero</h2>
-        <div style={{
-          display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center',
-          marginBottom: 16, padding: 16, background: T.surf, border: `1px solid ${T.bord}`, borderRadius: 12,
-        }}>
-          <input
-            type="number"
-            min="1"
-            max="20"
-            value={heroMaxItems}
-            onChange={e => setHeroMaxItems(e.target.value)}
-            placeholder="Máximo no hero"
-            style={{ ...input, width: 150 }}
-          />
-          <button type="button" onClick={handleSaveHeroSettings}
-            style={{ padding: '10px 18px', background: '#0A84FF', color: '#fff', border: 'none', borderRadius: 10, fontWeight: 700, cursor: heroSettingsSaving ? 'default' : 'pointer', opacity: heroSettingsSaving ? 0.6 : 1 }}>
-            {heroSettingsSaving ? 'Salvando...' : 'Salvar limite'}
-          </button>
-          <p style={{ color: T.sub, fontSize: 12, margin: 0 }}>
-            A home mostra no máximo {Number(heroMaxItems) || 1} animes ativos do hero, respeitando a ordem.
-          </p>
-        </div>
-
-        <form onSubmit={handleHeroSearch} style={{
-          display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center',
-          marginBottom: 16, padding: 16, background: T.surf, border: `1px solid ${T.bord}`, borderRadius: 12,
-        }}>
-          <input
-            value={heroSearch}
-            onChange={e => setHeroSearch(e.target.value)}
-            placeholder="Buscar anime por nome"
-            style={{ ...input, flex: 1, minWidth: mobile ? '100%' : 260 }}
-          />
-          <button type="submit"
-            style={{ padding: '10px 18px', background: '#0A84FF', color: '#fff', border: 'none', borderRadius: 10, fontWeight: 700, cursor: heroSearchLoading ? 'default' : 'pointer', opacity: heroSearchLoading ? 0.6 : 1 }}>
-            {heroSearchLoading ? 'Buscando...' : 'Buscar anime'}
-          </button>
-        </form>
-
-        {heroSearchError && (
-          <p style={{ color: '#FF3B30', fontSize: 12, margin: '0 0 16px' }}>{heroSearchError}</p>
-        )}
-        {heroError && (
-          <p style={{ color: '#FF3B30', fontSize: 12, margin: '0 0 16px' }}>{heroError}</p>
-        )}
-        {heroFeedback && (
-          <p style={{ color: '#30D158', fontSize: 12, margin: '0 0 16px' }}>{heroFeedback}</p>
-        )}
-
-        {heroSearchResults.length > 0 && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 20 }}>
-            {heroSearchResults.map(item => (
-              <div key={item.id} style={{ ...card, alignItems: mobile ? 'stretch' : 'center' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
-                  {item.imageUrl ? (
-                    <img src={item.imageUrl} alt="" style={{ width: 64, height: 90, objectFit: 'cover', borderRadius: 8, flexShrink: 0 }} />
-                  ) : (
-                    <div style={{ width: 64, height: 90, borderRadius: 8, background: T.bord, flexShrink: 0 }} />
-                  )}
-                  <div style={{ minWidth: 0 }}>
-                    <p style={{ color: T.txt, fontWeight: 700, margin: '0 0 4px' }}>{item.title}</p>
-                    <p style={{ color: T.sub, fontSize: 12, margin: '0 0 4px' }}>
-                      ID {item.id} · {item.type || 'Anime'} · {item.episodes ?? '?'} eps · {item.year ?? 'sem ano'} · {item.status || 'sem status'}
-                    </p>
-                    <p style={{ color: T.sub, fontSize: 12, margin: '0 0 4px' }}>
-                      {item.season || 'sem temporada'} · {item.rating || 'sem classificação'} · nota {item.score ?? '?'}
-                    </p>
-                    <p style={{ color: T.sub, fontSize: 12, margin: '0 0 4px' }}>
-                      {item.studios?.slice(0, 2).join(', ') || 'sem estúdio'} · {item.genres?.slice(0, 3).join(', ') || 'sem gênero'}
-                    </p>
-                    <p style={{ color: T.sub, fontSize: 12, margin: 0, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
-                      {item.synopsis || 'Sem sinopse'}
-                    </p>
-                  </div>
-                </div>
-                <button type="button" onClick={() => handleSelectHeroAnime(item)} style={chip('#0A84FF')}>
-                  Usar este anime
-                </button>
-              </div>
-            ))}
-          </div>
-        )}
-
-        <form onSubmit={handleCreateHero} style={{
-          display: 'grid', gridTemplateColumns: mobile ? '1fr' : '120px minmax(180px, 1fr) minmax(180px, 1fr) 90px auto',
-          gap: 10, alignItems: 'center', marginBottom: 20,
-          padding: 16, background: T.surf, border: `1px solid ${T.bord}`, borderRadius: 12,
-        }}>
-          <input
-            type="number"
-            min="1"
-            value={newHero.animeId}
-            onChange={e => setNewHero(p => ({ ...p, animeId: e.target.value }))}
-            placeholder="Anime ID"
-            style={input}
-          />
-          <input
-            value={newHero.imageUrl}
-            onChange={e => setNewHero(p => ({ ...p, imageUrl: e.target.value }))}
-            placeholder="URL da imagem customizada do hero"
-            style={input}
-          />
-          <input
-            value={newHero.logoUrl}
-            onChange={e => setNewHero(p => ({ ...p, logoUrl: e.target.value }))}
-            placeholder="URL da logo do anime"
-            style={input}
-          />
-          <input
-            type="number"
-            value={newHero.sortOrder}
-            onChange={e => setNewHero(p => ({ ...p, sortOrder: e.target.value }))}
-            placeholder="Ordem"
-            style={input}
-          />
-          <button type="submit" disabled={heroSaving}
-            style={{ padding: '10px 18px', background: '#0A84FF', color: '#fff', border: 'none', borderRadius: 10, fontWeight: 700, cursor: heroSaving ? 'default' : 'pointer', opacity: heroSaving ? 0.6 : 1 }}>
-            {heroSaving ? 'Salvando...' : 'Adicionar'}
-          </button>
-          <label style={{ display: 'flex', alignItems: 'center', gap: 8, color: T.sub, fontSize: 13 }}>
-            <input
-              type="checkbox"
-              checked={newHero.active}
-              onChange={e => setNewHero(p => ({ ...p, active: e.target.checked }))}
-            />
-            Ativo
-          </label>
-          <label style={{ display: 'flex', alignItems: 'center', gap: 8, color: T.sub, fontSize: 13 }}>
-            <input
-              type="checkbox"
-              checked={newHero.hideTitle}
-              onChange={e => setNewHero(p => ({ ...p, hideTitle: e.target.checked }))}
-            />
-            Esconder título textual
-          </label>
-        </form>
-
-        {heroLoading
-          ? <p style={{ color: T.sub }}>Carregando...</p>
-          : <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {heroEntries.length === 0 && <p style={{ color: T.sub }}>Nenhum hero configurado. O site usa o carrossel automático enquanto esta lista estiver vazia.</p>}
-            {heroEntries.map(entry => (
-              <div key={entry.id} style={{ ...card, alignItems: mobile ? 'stretch' : 'center' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
-                  <img src={entry.image_url} alt="" style={{ width: 86, height: 48, objectFit: 'cover', borderRadius: 8, flexShrink: 0 }} />
-                  <div style={{ minWidth: 0 }}>
-                    <p style={{ color: T.txt, fontWeight: 700, margin: '0 0 3px' }}>Anime #{entry.anime_id}</p>
-                    <p style={{ color: T.sub, fontSize: 12, margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {entry.image_url}
-                    </p>
-                    <p style={{ color: T.sub, fontSize: 12, margin: '4px 0 0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {entry.logo_url ? `Logo: ${entry.logo_url}` : 'Sem logo'}
-                    </p>
-                  </div>
-                </div>
-                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: mobile ? 'flex-start' : 'flex-end' }}>
-                  <input
-                    type="number"
-                    value={entry.sort_order}
-                    onChange={e => handleHeroOrder(entry, Number(e.target.value) || 0)}
-                    aria-label="Ordem do hero"
-                    style={{ ...input, width: 76, padding: '6px 8px' }}
-                  />
-                  <button type="button" onClick={() => handleToggleHero(entry, 'active')}
-                    style={chip(entry.active ? '#30D158' : '#8E8E93')}>
-                    {entry.active ? 'Ativo' : 'Inativo'}
-                  </button>
-                  <button type="button" onClick={() => handleToggleHero(entry, 'hideTitle')}
-                    style={chip(entry.hide_title ? '#FF9F0A' : '#0A84FF')}>
-                    {entry.hide_title ? 'Título oculto' : 'Título visível'}
-                  </button>
-                  <button type="button" onClick={() => handleEditHero(entry)} style={chip('#0A84FF')}>
-                    Editar
-                  </button>
-                  <button type="button" onClick={() => handleDeleteHero(entry.id)} style={chip('#FF3B30')}>
-                    Remover
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        }
-      </div>
-    )
+  const metricStats = metrics ?? {
+    trackedUsers: 0,
+    trackedItems: 0,
+    totalWatchedEpisodes: 0,
+    avgScore: 0,
+    totalClicks: 0,
+    totalLikes: 0,
+    notesCount: 0,
+    topClickedAnimes: [],
+    clickSources: [],
+    countryBreakdown: [],
+    topTrackedAnimes: [],
+    eventBreakdown: [],
   }
 
   return (
@@ -710,41 +343,19 @@ export function AdminPage() {
       padding: '32px 0 60px', maxWidth: 1120, margin: '0 auto',
       display: 'grid', gridTemplateColumns: mobile ? '1fr' : '240px minmax(0, 1fr)', gap: 24,
     }}>
-      <aside style={{
-        alignSelf: 'start', position: mobile ? 'static' : 'sticky', top: 82, padding: 16,
-        borderRadius: 14, background: T.surf, border: `1px solid ${T.bord}`,
-      }}>
-        <p style={{ fontSize: 18, fontWeight: 800, color: T.txt, margin: '0 0 18px' }}>
-          Menu Admin
-        </p>
-        {MENU_SECTIONS.map(section => (
-          <div key={section.title} style={{ marginBottom: 18 }}>
-            <p style={{ fontSize: 11, fontWeight: 800, color: T.sub, margin: '0 0 8px', textTransform: 'uppercase' }}>
-              {section.title}
-            </p>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-              {section.items.map(item => (
-                <button key={item.id} onClick={() => setTab(item.id)} style={{
-                  width: '100%', padding: '9px 10px', borderRadius: 8, border: 'none',
-                  background: tab === item.id ? '#0A84FF22' : 'transparent',
-                  color: tab === item.id ? '#0A84FF' : T.txt,
-                  fontWeight: tab === item.id ? 700 : 500, cursor: 'pointer',
-                  fontSize: 13, textAlign: 'left',
-                }}>
-                  {item.label}
-                </button>
-              ))}
-            </div>
-          </div>
-        ))}
-      </aside>
+      <AdminMenu T={T} mobile={mobile} tab={tab} setTab={setTab} sections={MENU_SECTIONS} />
 
       <main style={{ minWidth: 0 }}>
         <h1 style={{ fontSize: 28, fontWeight: 800, color: T.txt, marginBottom: 16 }}>
           Painel de Administração
         </h1>
 
-        {DASHBOARD_TABS.includes(tab) && renderDashboard()}
+        {DASHBOARD_TABS.includes(tab) && (
+          <AdminDashboardPanel T={T} loading={dashboardLoading} tab={tab} stats={dashboardStats} card={card} />
+        )}
+        {tab === 'metrics' && (
+          <AdminMetricsPanel T={T} loading={metricsLoading} stats={metricStats} card={card} />
+        )}
 
         {tab === 'topics' && (
           topicsLoading
@@ -803,9 +414,60 @@ export function AdminPage() {
             </div>
         )}
 
-        {USER_TABS.includes(tab) && renderUsers()}
+        {USER_TABS.includes(tab) && (
+          <AdminUsersPanel
+            T={T}
+            tab={tab}
+            users={users}
+            userCount={userCount}
+            userPage={userPage}
+            userDraft={userDraft}
+            usersLoading={usersLoading}
+            userQuery={userQuery}
+            input={input}
+            card={card}
+            chip={chip}
+            setUserDraft={setUserDraft}
+            setUserQuery={setUserQuery}
+            setUserPage={setUserPage}
+            onSearch={handleUserSearch}
+            onPremium={handlePremium}
+            onBan={handleBan}
+          />
+        )}
 
-        {tab === 'hero' && renderHeroControl()}
+        {tab === 'hero' && (
+          <AdminHeroPanel
+            T={T}
+            mobile={mobile}
+            input={input}
+            card={card}
+            chip={chip}
+            heroMaxItems={heroMaxItems}
+            heroSettingsSaving={heroSettingsSaving}
+            heroSearch={heroSearch}
+            heroSearchLoading={heroSearchLoading}
+            heroSearchResults={heroSearchResults}
+            heroSearchError={heroSearchError}
+            heroFeedback={heroFeedback}
+            heroError={heroError}
+            newHero={newHero}
+            heroSaving={heroSaving}
+            heroLoading={heroLoading}
+            heroEntries={heroEntries}
+            setHeroMaxItems={setHeroMaxItems}
+            setHeroSearch={setHeroSearch}
+            setNewHero={setNewHero}
+            onSaveHeroSettings={handleSaveHeroSettings}
+            onHeroSearch={handleHeroSearch}
+            onSelectHeroAnime={handleSelectHeroAnime}
+            onCreateHero={handleCreateHero}
+            onHeroOrder={handleHeroOrder}
+            onToggleHero={handleToggleHero}
+            onEditHero={handleEditHero}
+            onDeleteHero={handleDeleteHero}
+          />
+        )}
 
         {tab === 'announcements' && (
           <div>

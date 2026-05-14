@@ -45,15 +45,3 @@ export async function hasNotificationToday(userId, animeId) {
     .limit(1)
   return (data?.length ?? 0) > 0
 }
-
-export async function hasRecentNotification(userId, type, animeId, epCount) {
-  if (!supabase) return false
-  const { data } = await supabase
-    .from('notifications')
-    .select('id')
-    .eq('user_id', userId)
-    .eq('type', type)
-    .contains('data', { anime_id: animeId, ep_count: epCount })
-    .limit(1)
-  return (data?.length ?? 0) > 0
-}

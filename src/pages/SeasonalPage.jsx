@@ -39,7 +39,7 @@ const EMPTY_SECTIONS = Object.fromEntries(DISCOVER_KEYS.map(s => [s.key, []]))
 export function SeasonalPage({
   seasonal, data, hero, heroIdx, setHeroIdx, airingItems,
   heroItems = airingItems, typeF, setTypeF, loading,
-  onOpen, onStatus, initialArchiveYear,
+  onOpen, onHeroOpen = onOpen, onStatus, initialArchiveYear,
 }) {
   const { T } = useTheme()
   const { t } = useTranslation()
@@ -238,7 +238,7 @@ export function SeasonalPage({
 
       {/* ── Hero (hidden in archive mode) ── */}
       {!isArchive && (
-        <section key={hero.id} className="card hf hero hero-h" onClick={() => onOpen(hero)}
+        <section key={hero.id} className="card hf hero hero-h" onClick={() => onHeroOpen(hero)}
           style={{
             margin: '0 0 4px calc(50% - 50vw)', width: '100vw',
             borderRadius: 0, overflow: 'visible', height: 'clamp(660px, 82vh, 860px)',
@@ -335,7 +335,7 @@ export function SeasonalPage({
               overflow: 'hidden'
             }}>{hero.synopsis}</p>
             <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 22 }} onClick={e => e.stopPropagation()}>
-              <button className="t" onClick={() => onOpen(hero)}
+              <button className="t" onClick={() => onHeroOpen(hero)}
                 style={{
                   padding: '14px 24px', borderRadius: 4, border: 'none',
                   background: '#FF7A00', color: '#111', fontWeight: 900,

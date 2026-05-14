@@ -115,7 +115,6 @@ src/
 │   ├── SeasonalPage.jsx     # Currently airing anime + hero banner
 │   ├── TopPage.jsx          # Top-ranked anime list
 │   ├── CalendarPage.jsx     # Weekly airing schedule
-│   ├── LibraryPage.jsx      # Personal watchlist
 │   ├── SearchPage.jsx       # Global search
 │   ├── ProfilePage.jsx      # User stats and profile
 │   └── AuthPage.jsx         # Sign up / log in modal

@@ -8,6 +8,7 @@ import {
   fetchFeedback, createFeedback, toggleVote, fetchMyVotes, updateFeedbackStatus,
 } from '../services/community'
 import { isAdmin } from '../services/premium'
+import { trackMetricEvent } from '../services/metrics'
 
 const TYPE_LABEL = { idea: 'Idea', bug: 'Bug', other: 'Other' }
 const TYPE_COLOR = { idea: '#34C759', bug: '#FF3B30', other: '#0A84FF' }
@@ -373,6 +374,11 @@ function FeedbackSection({ user, onLogin, T, dark }) {
     if (!user) { onLogin?.(); return }
     const hasVoted = myVotes.has(item.id)
     const newVotes = await toggleVote(item.id, user.id, item.votes, hasVoted)
+    trackMetricEvent({
+      type: 'feedback_vote',
+      userId: user.id,
+      metadata: { feedbackId: item.id, action: hasVoted ? 'remove' : 'add' },
+    })
     setItems(prev => prev.map(i => i.id === item.id ? { ...i, votes: newVotes } : i))
     setMyVotes(prev => {
       const next = new Set(prev)

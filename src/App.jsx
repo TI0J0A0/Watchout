@@ -19,6 +19,7 @@ import { loadPremiumStatus, isAdmin } from './services/premium'
 import { getProfile } from './services/friends'
 import { fetchAnimeById } from './services/jikan'
 import { fetchHeroEntries, fetchHeroSettings } from './services/heroAdmin'
+import { trackMetricEvent } from './services/metrics'
 import { AdminPage } from './pages/AdminPage'
 import { CategoriesPage } from './pages/CategoriesPage'
 import { AnnouncementBanner } from './components/AnnouncementBanner'
@@ -225,8 +226,19 @@ function AppInner() {
   }
 
   const openDetail = (item) => {
+    openDetailFromSource(item, page)
+  }
+
+  const openDetailFromSource = (item, source = page) => {
     addToData(item)
     setDetailId(item.id)
+    trackMetricEvent({
+      type: 'anime_open',
+      userId: user?.id ?? null,
+      animeId: item.id,
+      page,
+      metadata: { title: item.title, source },
+    })
     window.scrollTo({ top: 0, behavior: 'instant' })
   }
 
@@ -247,7 +259,6 @@ function AppInner() {
       transition: 'background .3s,color .3s',
     }}>
       <Nav page={page} setPage={navigate}
-        libraryCount={library.length}
         userProfile={userProfile}
         onSelectCategory={openCategory}
         onSelectArchiveYear={openArchiveYear}
@@ -260,7 +271,7 @@ function AppInner() {
           userId={friendId}
           friendshipId={friendshipId}
           onClose={() => { setFriendId(null); setFriendshipId(null) }}
-          onOpen={(item) => { setFriendId(null); setFriendshipId(null); openDetail(item) }}
+          onOpen={(item) => { setFriendId(null); setFriendshipId(null); openDetailFromSource(item, 'friend_profile') }}
           onNavigate={navigate} />
       ) : detailId !== null ? (
         (() => {
@@ -270,7 +281,7 @@ function AppInner() {
               item={detailItem}
               onClose={() => setDetailId(null)}
               onStatus={handleStatus} onScore={setScore} onEp={setEp} onNotes={setNotes}
-              onOpen={openDetail} isPremium={isPremium}
+              onOpen={(item) => openDetailFromSource(item, 'anime_detail_related')} isPremium={isPremium}
               onLogin={() => setShowAuth(true)} />
             : <div style={{ padding: '120px 28px', textAlign: 'center', color: T.sub, fontSize: 14 }}>
               Loading…
@@ -282,12 +293,12 @@ function AppInner() {
             <SeasonalPage
               seasonal={seasonal} data={data} hero={hero} heroIdx={heroIdx} setHeroIdx={setHeroIdx}
               airingItems={airingItems} heroItems={heroItems} typeF={typeF} setTypeF={setTypeF}
-              loading={loading} onOpen={openDetail} onStatus={handleStatus}
+              loading={loading} onOpen={(item) => openDetailFromSource(item, 'seasonal')} onHeroOpen={(item) => openDetailFromSource(item, 'hero')} onStatus={handleStatus}
               initialArchiveYear={selectedArchiveYear} />
           )}
 
           {page === 'categories' && (
-            <CategoriesPage library={library} onOpen={openDetail} onStatus={handleStatus}
+            <CategoriesPage library={library} onOpen={(item) => openDetailFromSource(item, 'categories')} onStatus={handleStatus}
               initialGenreId={selectedGenreId} />
           )}
 
@@ -295,25 +306,25 @@ function AppInner() {
             <AdminPage />
           )}
           {page === 'top' && (
-            <TopPage topData={topData} loading={!topLoaded} onOpen={openDetail} />
+            <TopPage topData={topData} loading={!topLoaded} onOpen={(item) => openDetailFromSource(item, 'top')} />
           )}
           {page === 'calendar' && (
-            <CalendarPage data={data} onOpen={openDetail} />
+            <CalendarPage data={data} onOpen={(item) => openDetailFromSource(item, 'calendar')} />
           )}
           {page === 'search' && (
             <SearchPage
-              onOpen={openDetail} onStatus={handleStatus}
+              onOpen={(item) => openDetailFromSource(item, 'search')} onStatus={handleStatus}
               onAddToData={addToData} />
           )}
           {page === 'profile' && (
             <ProfilePage
               library={library}
-              onOpen={openDetail} onStatus={handleStatus} onLogin={() => setShowAuth(true)}
+              onOpen={(item) => openDetailFromSource(item, 'profile')} onStatus={handleStatus} onLogin={() => setShowAuth(true)}
               onViewFriend={(id, fid) => { setFriendId(id); setFriendshipId(fid) }}
               onProfileSaved={refreshProfile} />
           )}
           {page === 'news' && (
-            <NewsPage data={data} loading={loading} onOpen={openDetail} />
+            <NewsPage data={data} loading={loading} onOpen={(item) => openDetailFromSource(item, 'news')} />
           )}
           {page === 'community' && (
             <CommunityPage onLogin={() => setShowAuth(true)} />

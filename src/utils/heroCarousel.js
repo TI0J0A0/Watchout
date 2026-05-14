@@ -1,7 +1,3 @@
-export function getHeroBadge(item) {
-  return item?.airing ? 'ON AIR' : 'TRENDING'
-}
-
 export function getHeroMeta(item) {
   const rating = item?.rating?.match(/(\d+\+)/)?.[1] ?? '16+'
   const streaming = item?.streaming?.length ? item.streaming.slice(0, 2).join(' | ') : 'Sub | Dub'
@@ -23,9 +19,4 @@ export function getHeroImage(item, bannerUrl, kitsuCoverUrl, trailerThumbUrl) {
 
 export function getHeroFocalPoint(item) {
   return item?.focalPoint || '72% center'
-}
-
-export function getCarouselIndex(current, total, direction) {
-  if (!total) return 0
-  return (current + direction + total) % total
 }

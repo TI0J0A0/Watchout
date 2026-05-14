@@ -1,4 +1,5 @@
 import { supabase } from './supabase'
+import { fetchExactCount, mapById, sortByNumericFieldsDesc } from './adminShared'
 
 export const ADMIN_EMAIL = 'joaoguiar99@gmail.com'
 export const isAdmin = (user) => user?.email === ADMIN_EMAIL
@@ -45,18 +46,20 @@ export async function fetchAdminDashboard() {
     activeUsers,
     premiumUsers,
     bannedUsers,
-    topContent,
+    trackedAnime,
+    animeCatalog,
     recentErrors,
   ] = await Promise.all([
-    supabase.from('profiles').select('id', { count: 'exact', head: true }),
-    supabase.from('profiles').select('id', { count: 'exact', head: true }).eq('is_banned', false),
-    supabase.from('profiles').select('id', { count: 'exact', head: true }).eq('is_premium', true),
-    supabase.from('profiles').select('id', { count: 'exact', head: true }).eq('is_banned', true),
+    fetchExactCount('profiles'),
+    fetchExactCount('profiles', query => query.eq('is_banned', false)),
+    fetchExactCount('profiles', query => query.eq('is_premium', true)),
+    fetchExactCount('profiles', query => query.eq('is_banned', true)),
     supabase
-      .from('forum_topics')
-      .select('id, title, views, reply_count')
-      .order('views', { ascending: false })
-      .limit(5),
+      .from('user_anime')
+      .select('anime_id, status, ep_progress'),
+    supabase
+      .from('animes')
+      .select('id, title, eps'),
     supabase
       .from('admin_error_logs')
       .select('id, message, source, metadata, created_at')
@@ -64,16 +67,54 @@ export async function fetchAdminDashboard() {
       .limit(10),
   ])
 
-  for (const result of [totalUsers, activeUsers, premiumUsers, bannedUsers, topContent]) {
+  for (const result of [trackedAnime, animeCatalog]) {
     if (result.error) throw result.error
   }
 
+  const animeById = mapById(animeCatalog.data)
+  const trackedByAnime = new Map()
+
+  for (const item of (trackedAnime.data ?? [])) {
+    if (!trackedByAnime.has(item.anime_id)) {
+      trackedByAnime.set(item.anime_id, {
+        animeId: item.anime_id,
+        engagedUsers: 0,
+        completedUsers: 0,
+        watchingUsers: 0,
+        totalProgress: 0,
+      })
+    }
+
+    const entry = trackedByAnime.get(item.anime_id)
+    entry.engagedUsers += 1
+    entry.totalProgress += item.ep_progress ?? 0
+    if (item.status === 'completed') entry.completedUsers += 1
+    if (item.status === 'watching') entry.watchingUsers += 1
+  }
+
+  const topContent = [...trackedByAnime.values()]
+    .map(entry => {
+      const anime = animeById.get(entry.animeId)
+      return {
+        id: entry.animeId,
+        title: anime?.title ?? `Anime #${entry.animeId}`,
+        views: entry.engagedUsers,
+        reply_count: entry.totalProgress,
+        completedUsers: entry.completedUsers,
+        watchingUsers: entry.watchingUsers,
+        totalEpisodes: anime?.eps ?? null,
+        source: 'tracking',
+      }
+    })
+    .sort((a, b) => sortByNumericFieldsDesc(a, b, ['views', 'reply_count', 'completedUsers']))
+    .slice(0, 5)
+
   return {
-    totalUsers: totalUsers.count ?? 0,
-    activeUsers: activeUsers.count ?? 0,
-    premiumUsers: premiumUsers.count ?? 0,
-    bannedUsers: bannedUsers.count ?? 0,
-    topContent: topContent.data ?? [],
+    totalUsers,
+    activeUsers,
+    premiumUsers,
+    bannedUsers,
+    topContent,
     recentErrors: recentErrors.error ? [] : recentErrors.data ?? [],
   }
 }
@@ -93,13 +134,4 @@ export async function fetchUsers({ query = '', page = 0, activeOnly = false } = 
   const { data, count, error } = await q
   if (error) throw error
   return { data: data ?? [], count: count ?? 0 }
-}
-
-export async function getAnilistData(malId) {
-  if (!supabase || !malId) return null
-  const { data, error } = await supabase.functions.invoke('clever-handler', {
-    body: { route: 'anilist', malId },
-  })
-  if (error || !data?.anilistId) return null
-  return { anilistId: data.anilistId, episodes: data.episodes ?? null }
 }

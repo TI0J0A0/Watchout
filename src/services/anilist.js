@@ -7,10 +7,6 @@ export function getAnilistHeroImages(media) {
   }
 }
 
-export function getAnilistHeroImage(media) {
-  return media?.bannerImage ?? media?.coverImage?.extraLarge ?? null
-}
-
 async function gql(query, variables = {}) {
   try {
     const res = await fetch(GQL, {

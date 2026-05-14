@@ -54,7 +54,7 @@ const PAGE_ICONS = {
   ),
 }
 
-export function Nav({ page, setPage, libraryCount, userProfile, onLogin, onShowMAL, onSelectCategory, onSelectArchiveYear }) {
+export function Nav({ page, setPage, userProfile, onLogin, onShowMAL, onSelectCategory, onSelectArchiveYear }) {
   const { T, dark, setDark } = useTheme()
   const { user, signOut }    = useAuth()
   const { t }                = useTranslation()
@@ -85,7 +85,6 @@ export function Nav({ page, setPage, libraryCount, userProfile, onLogin, onShowM
     community:  'Comm.',
   }
 
-  const initials = user?.email?.slice(0, 2).toUpperCase() ?? ''
   const navButtonStyle = (active) => ({
     padding:"6px 14px", borderRadius:20, border:"none", fontSize:13,
     whiteSpace:"nowrap", flexShrink:0,
