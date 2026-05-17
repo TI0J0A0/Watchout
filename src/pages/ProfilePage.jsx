@@ -6,9 +6,8 @@ import { useAuth } from '../context/AuthContext'
 import { SM, AVATAR_GRADS, BANNER_THEMES } from '../constants'
 import { fetchAnilistBannerOnly, searchAnilistCharacters } from '../services/anilist'
 import { AvatarPic } from '../components/AvatarPic'
-import { StatBox } from '../components/StatBox'
 import { MediaCard } from '../components/MediaCard'
-import { fmtTime } from '../utils'
+import { ProfileStatsGrid } from '../components/profile/ProfileStatsGrid'
 import {
   EmptyLibraryState,
   FavoriteGenresSection,
@@ -578,13 +577,13 @@ export function ProfilePage({ library, onOpen, onStatus, onLogin, onViewFriend =
       )}
 
       {/* ── Stats ── */}
-      <div style={{ display:'grid',
-        gridTemplateColumns:'repeat(auto-fit,minmax(130px,1fr))', gap:10, marginBottom:36 }}>
-        <StatBox fill label={t('profile.animes')}   val={animeLib.length      || '—'} color="#0A84FF" icon="📺"/>
-        <StatBox fill label={t('profile.episodes')} val={animeWatchedEps      || '—'} color="#34C759" icon="▶"/>
-        <StatBox fill label={t('profile.time')}     val={fmtTime(animeWatchTimeMin)}   color="#BF5AF2" icon="⏱"/>
-        <StatBox fill label={t('profile.avgScore')} val={animeAvgScore}                color="#FF9F0A" icon="★"/>
-      </div>
+      <ProfileStatsGrid
+        t={t}
+        animeCount={animeLib.length}
+        watchedEpisodes={animeWatchedEps}
+        watchTimeMinutes={animeWatchTimeMin}
+        averageScore={animeAvgScore}
+      />
 
       {/* ── Personality card ── */}
       <ProfileTasteCard T={T} bannerColor={bannerColor} personality={personality} tasteProfile={tasteProfile} />
