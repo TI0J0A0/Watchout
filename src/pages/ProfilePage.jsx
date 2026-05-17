@@ -11,12 +11,11 @@ import { MediaCard } from '../components/MediaCard'
 import { fmtTime } from '../utils'
 import { supabase } from '../services/supabase'
 import {
-  upsertProfile, getFriendsWithProfiles, getPendingRequests,
-  searchProfiles, sendFriendRequest, acceptFriendRequest, deleteFriendship,
+  upsertProfile,
   checkDisplayNameAvailable,
 } from '../services/friends'
-import { ADMIN_EMAIL, isAdmin, grantPremium, revokePremium } from '../services/premium'
 import { useProfileStats } from '../hooks/profile/useProfileStats'
+import { useProfileFriends } from '../hooks/profile/useProfileFriends'
 
 
 function initMeta(user) {
@@ -33,7 +32,7 @@ function initMeta(user) {
 }
 
 export function ProfilePage({ library, onOpen, onStatus, onLogin, onViewFriend = () => {}, onProfileSaved = () => {} }) {
-  const { T, dark, setDark } = useTheme()
+  const { T, dark } = useTheme()
   const { user } = useAuth()
   const { t, i18n } = useTranslation()
   const isMobile = useIsMobile()
@@ -54,28 +53,27 @@ export function ProfilePage({ library, onOpen, onStatus, onLogin, onViewFriend =
   const [nameChecking,  setNameChecking]  = useState(false)
   const nameCheckTimer = useRef(null)
 
-  const [friends,            setFriends]            = useState([])
-  const [friendsLoading,     setFriendsLoading]     = useState(true)
-  const [pendingRequests,    setPendingRequests]     = useState([])
-  const [showFriendModal,    setShowFriendModal]    = useState(false)
-  const [friendSearch,       setFriendSearch]       = useState('')
-  const [friendResults,      setFriendResults]      = useState([])
-  const [friendSearchLoading,setFriendSearchLoading]= useState(false)
-  const [sentRequests,       setSentRequests]       = useState(new Set())
-
   const [libF,      setLibF]      = useState('all')
   const [libSort,   setLibSort]   = useState('title')
   const [libSearch, setLibSearch] = useState('')
   const libSectionRef = useRef(null)
 
-  useEffect(() => {
-    if (!user) return
-    setFriendsLoading(true)
-    Promise.all([getFriendsWithProfiles(user.id), getPendingRequests(user.id)])
-      .then(([f, p]) => { setFriends(f); setPendingRequests(p) })
-      .catch(() => {})
-      .finally(() => setFriendsLoading(false))
-  }, [user?.id])
+  const {
+    friends,
+    friendsLoading,
+    pendingRequests,
+    showFriendModal,
+    friendSearch,
+    friendResults,
+    friendSearchLoading,
+    sentRequests,
+    setShowFriendModal,
+    handleFriendSearch,
+    handleSendRequest,
+    handleAccept,
+    handleDecline,
+    closeFriendModal,
+  } = useProfileFriends(user)
 
   useEffect(() => {
     if (!user?.id) return
@@ -190,56 +188,6 @@ export function ProfilePage({ library, onOpen, onStatus, onLogin, onViewFriend =
   const bannerColor     = hasCustomBanner ? BANNER_THEMES[active.bannerTheme] : autoBannerColor
 
   const bannerBlurImg = pinnedBanner ? null : (pinnedAnime?.img ?? (hasCustomBanner ? null : autoBannerAnime?.img))
-
-  // Friends handlers
-  const handleFriendSearch = async (q) => {
-    setFriendSearch(q)
-    if (q.length < 2) { setFriendResults([]); return }
-    setFriendSearchLoading(true)
-    try {
-      const results = await searchProfiles(q)
-      setFriendResults(results.filter(p => p.id !== user?.id))
-    } catch {}
-    setFriendSearchLoading(false)
-  }
-
-  const handleSendRequest = async (addresseeId) => {
-    try {
-      await sendFriendRequest(user.id, addresseeId)
-      setSentRequests(prev => new Set([...prev, addresseeId]))
-    } catch {}
-  }
-
-  const handleAccept = async (friendshipId) => {
-    try {
-      await acceptFriendRequest(friendshipId)
-      setPendingRequests(prev => prev.filter(r => r.id !== friendshipId))
-      getFriendsWithProfiles(user.id).then(setFriends).catch(() => {})
-    } catch {}
-  }
-
-  const handleDecline = async (friendshipId) => {
-    try {
-      await deleteFriendship(friendshipId)
-      setPendingRequests(prev => prev.filter(r => r.id !== friendshipId))
-    } catch {}
-  }
-
-  const closeFriendModal = () => {
-    setShowFriendModal(false)
-    setFriendSearch('')
-    setFriendResults([])
-  }
-
-  const handleTogglePremium = async (profile) => {
-    try {
-      if (profile.is_premium) {
-        await revokePremium(profile.id)
-      } else {
-        await grantPremium(profile.id)
-      }
-    } catch {}
-  }
 
   if (!user) {
     return (
