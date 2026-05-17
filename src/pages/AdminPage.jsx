@@ -16,8 +16,10 @@ import { AdminMetricsPanel } from '../components/admin/AdminMetricsPanel'
 import { AdminUsersPanel } from '../components/admin/AdminUsersPanel'
 import { AdminHeroPanel } from '../components/admin/AdminHeroPanel'
 import { AdminSupportPanel } from '../components/admin/AdminSupportPanel'
+import { AdminAttentionPanel } from '../components/admin/AdminAttentionPanel'
 import { createAdminStyles } from '../components/admin/shared'
 import { fetchSupportUser, searchSupportUsers } from '../services/adminSupport'
+import { fetchAdminAttentionQueue } from '../services/adminAttention'
 
 const DASHBOARD_TABS = ['dashboard', 'activeUsers', 'topContent', 'recentErrors']
 const USER_TABS = ['users', 'permissions', 'activity', 'activeUsers']
@@ -28,6 +30,7 @@ const MENU_SECTIONS = [
     title: 'Dashboard',
     items: [
       { id: 'dashboard', label: 'Resumo geral do site' },
+      { id: 'attention', label: 'Precisa de atenção' },
       { id: 'metrics', label: 'Metricas reais' },
       { id: 'activeUsers', label: 'Usuários ativos' },
       { id: 'topContent', label: 'Conteúdos mais vistos' },
@@ -63,6 +66,8 @@ export function AdminPage() {
   const [dashboardLoading, setDashboardLoading] = useState(false)
   const [metrics, setMetrics] = useState(null)
   const [metricsLoading, setMetricsLoading] = useState(false)
+  const [attentionQueue, setAttentionQueue] = useState(null)
+  const [attentionLoading, setAttentionLoading] = useState(false)
 
   const [topics, setTopics] = useState([])
   const [topicsLoading, setTopicsLoading] = useState(false)
@@ -113,10 +118,19 @@ export function AdminPage() {
     window.dispatchEvent(new CustomEvent(HERO_UPDATED_EVENT))
   }
 
+  async function loadAttentionQueue() {
+    setAttentionLoading(true)
+    fetchAdminAttentionQueue()
+      .then(setAttentionQueue)
+      .finally(() => setAttentionLoading(false))
+  }
+
   useEffect(() => {
     if (DASHBOARD_TABS.includes(tab)) {
       setDashboardLoading(true)
       fetchAdminDashboard().then(setDashboard).finally(() => setDashboardLoading(false))
+    } else if (tab === 'attention') {
+      loadAttentionQueue()
     } else if (tab === 'metrics') {
       setMetricsLoading(true)
       fetchAdminMetrics().then(setMetrics).finally(() => setMetricsLoading(false))
@@ -210,6 +224,12 @@ export function AdminPage() {
     } finally {
       setSupportLoading(false)
     }
+  }
+
+  async function handleOpenSupportUser(userId) {
+    setTab('support')
+    setSupportResults([])
+    await handleSelectSupportUser(userId)
   }
 
   async function handleSupportPremium(userId, current) {
@@ -406,6 +426,17 @@ export function AdminPage() {
 
         {DASHBOARD_TABS.includes(tab) && (
           <AdminDashboardPanel T={T} loading={dashboardLoading} tab={tab} stats={dashboardStats} card={card} />
+        )}
+        {tab === 'attention' && (
+          <AdminAttentionPanel
+            T={T}
+            loading={attentionLoading}
+            queue={attentionQueue}
+            card={card}
+            chip={chip}
+            onRefresh={loadAttentionQueue}
+            onOpenSupportUser={handleOpenSupportUser}
+          />
         )}
         {tab === 'metrics' && (
           <AdminMetricsPanel T={T} loading={metricsLoading} stats={metricStats} card={card} />
