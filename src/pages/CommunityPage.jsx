@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useTheme } from '../context/ThemeContext'
 import { useAuth } from '../context/AuthContext'
-import { AVATAR_GRADS } from '../constants'
 import {
   fetchTopics, fetchTopic, fetchPosts,
   createTopic, createPost, deleteTopic, deletePost,
@@ -9,36 +8,13 @@ import {
 } from '../services/community'
 import { isAdmin } from '../services/premium'
 import { trackMetricEvent } from '../services/metrics'
+import { CommunityAvatar } from '../components/community/CommunityAvatar'
+import { timeAgo } from '../utils/timeAgo'
 
 const TYPE_LABEL = { idea: 'Idea', bug: 'Bug', other: 'Other' }
 const TYPE_COLOR = { idea: '#34C759', bug: '#FF3B30', other: '#0A84FF' }
 const STATUS_LABEL = { open: 'Open', reviewing: 'Under review', done: 'Resolved' }
 const STATUS_COLOR = { open: '#FF9F0A', reviewing: '#0A84FF', done: '#34C759' }
-
-function timeAgo(dateStr) {
-  const diff = Date.now() - new Date(dateStr).getTime()
-  const m = Math.floor(diff / 60000)
-  if (m < 1)  return 'just now'
-  if (m < 60) return `${m}m`
-  const h = Math.floor(m / 60)
-  if (h < 24) return `${h}h`
-  const d = Math.floor(h / 24)
-  if (d < 30) return `${d}d`
-  return `${Math.floor(d / 30)}mo`
-}
-
-function Avatar({ profile, size = 32 }) {
-  const grad = AVATAR_GRADS[profile?.avatar_grad ?? 0] ?? AVATAR_GRADS[0]
-  const label = (profile?.display_name || profile?.username || '?').slice(0, 2).toUpperCase()
-  return (
-    <div style={{
-      width: size, height: size, borderRadius: '50%', flexShrink: 0,
-      background: `linear-gradient(135deg,${grad[0]},${grad[1]})`,
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
-      fontSize: size * 0.35, fontWeight: 700, color: '#fff',
-    }}>{label}</div>
-  )
-}
 
 // ── Forum ─────────────────────────────────────────────────────────────────────
 
@@ -83,7 +59,7 @@ function TopicsList({ onOpen, onNew, T, dark }) {
             onMouseLeave={e => e.currentTarget.style.borderColor = T.bord}
           >
             <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
-              <Avatar profile={topic.profiles} size={38} />
+              <CommunityAvatar profile={topic.profiles} size={38} />
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 4, flexWrap: 'wrap' }}>
                   {topic.anime_title && (
@@ -172,7 +148,7 @@ function TopicDetail({ topicId, user, onLogin, onBack, T, dark }) {
         )}
         <h2 style={{ fontSize: 20, fontWeight: 700, color: T.txt, marginBottom: 14 }}>{topic.title}</h2>
         <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
-          <Avatar profile={topic.profiles} size={36} />
+          <CommunityAvatar profile={topic.profiles} size={36} />
           <div style={{ flex: 1 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
               <span style={{ fontSize: 13, fontWeight: 600, color: T.txt }}>
@@ -203,7 +179,7 @@ function TopicDetail({ topicId, user, onLogin, onBack, T, dark }) {
               border: `1px solid ${T.bord}`,
             }}>
               <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
-                <Avatar profile={post.profiles} size={30} />
+                <CommunityAvatar profile={post.profiles} size={30} />
                 <div style={{ flex: 1 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
                     <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
@@ -236,7 +212,7 @@ function TopicDetail({ topicId, user, onLogin, onBack, T, dark }) {
       {user ? (
         <div style={{ padding: '16px', borderRadius: 16, background: T.surf, border: `1px solid ${T.bord}` }}>
           <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
-            <Avatar profile={null} size={32} />
+            <CommunityAvatar profile={null} size={32} />
             <div style={{ flex: 1 }}>
               <textarea
                 value={reply}
