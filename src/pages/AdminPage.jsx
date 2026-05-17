@@ -15,7 +15,9 @@ import { AdminDashboardPanel } from '../components/admin/AdminDashboardPanel'
 import { AdminMetricsPanel } from '../components/admin/AdminMetricsPanel'
 import { AdminUsersPanel } from '../components/admin/AdminUsersPanel'
 import { AdminHeroPanel } from '../components/admin/AdminHeroPanel'
+import { AdminSupportPanel } from '../components/admin/AdminSupportPanel'
 import { createAdminStyles } from '../components/admin/shared'
+import { fetchSupportUser, searchSupportUsers } from '../services/adminSupport'
 
 const DASHBOARD_TABS = ['dashboard', 'activeUsers', 'topContent', 'recentErrors']
 const USER_TABS = ['users', 'permissions', 'activity', 'activeUsers']
@@ -38,6 +40,7 @@ const MENU_SECTIONS = [
       { id: 'users', label: 'Listar usuários' },
       { id: 'permissions', label: 'Editar permissões' },
       { id: 'activity', label: 'Ver atividade recente' },
+      { id: 'support', label: 'Suporte ao usuário' },
     ],
   },
   {
@@ -73,6 +76,13 @@ export function AdminPage() {
   const [userCount, setUserCount] = useState(0)
   const [userPage, setUserPage] = useState(0)
   const [usersLoading, setUsersLoading] = useState(false)
+
+  const [supportQuery, setSupportQuery] = useState('')
+  const [supportResults, setSupportResults] = useState([])
+  const [supportDetail, setSupportDetail] = useState(null)
+  const [supportSearching, setSupportSearching] = useState(false)
+  const [supportLoading, setSupportLoading] = useState(false)
+  const [supportError, setSupportError] = useState('')
 
   const [announcements, setAnnouncements] = useState([])
   const [annLoading, setAnnLoading] = useState(false)
@@ -163,6 +173,50 @@ export function AdminPage() {
   async function handleBan(userId, current) {
     await toggleBanUser(userId, !current)
     setUsers(prev => prev.map(u => u.id === userId ? { ...u, is_banned: !current } : u))
+    setSupportDetail(prev => prev?.profile?.id === userId
+      ? { ...prev, profile: { ...prev.profile, is_banned: !current, isBanned: !current } }
+      : prev)
+  }
+
+  async function handleSupportSearch(e) {
+    e.preventDefault()
+    if (supportQuery.trim().length < 2) {
+      setSupportError('Digite pelo menos 2 caracteres para buscar.')
+      return
+    }
+    setSupportSearching(true)
+    setSupportError('')
+    try {
+      const results = await searchSupportUsers(supportQuery)
+      setSupportResults(results)
+      if (results.length === 0) setSupportError('Nenhum usuário encontrado para essa busca.')
+    } catch (error) {
+      setSupportResults([])
+      setSupportError(error?.message || 'Falha ao buscar usuário.')
+    } finally {
+      setSupportSearching(false)
+    }
+  }
+
+  async function handleSelectSupportUser(userId) {
+    setSupportLoading(true)
+    setSupportError('')
+    try {
+      const detail = await fetchSupportUser(userId)
+      setSupportDetail(detail)
+    } catch (error) {
+      setSupportDetail(null)
+      setSupportError(error?.message || 'Falha ao carregar ficha de suporte.')
+    } finally {
+      setSupportLoading(false)
+    }
+  }
+
+  async function handleSupportPremium(userId, current) {
+    await handlePremium(userId, current)
+    setSupportDetail(prev => prev?.profile?.id === userId
+      ? { ...prev, profile: { ...prev.profile, is_premium: !current, isPremium: !current } }
+      : prev)
   }
 
   async function handleCreateAnn(e) {
@@ -432,6 +486,27 @@ export function AdminPage() {
             setUserPage={setUserPage}
             onSearch={handleUserSearch}
             onPremium={handlePremium}
+            onBan={handleBan}
+          />
+        )}
+
+        {tab === 'support' && (
+          <AdminSupportPanel
+            T={T}
+            mobile={mobile}
+            input={input}
+            card={card}
+            chip={chip}
+            query={supportQuery}
+            results={supportResults}
+            selected={supportDetail}
+            loading={supportLoading}
+            searching={supportSearching}
+            error={supportError}
+            setQuery={setSupportQuery}
+            onSearch={handleSupportSearch}
+            onSelectUser={handleSelectSupportUser}
+            onPremium={handleSupportPremium}
             onBan={handleBan}
           />
         )}

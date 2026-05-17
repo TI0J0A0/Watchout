@@ -1,7 +1,8 @@
 import { createClient } from '@supabase/supabase-js'
 
-const rawUrl = import.meta.env.VITE_SUPABASE_URL ?? ''
-const key    = import.meta.env.VITE_SUPABASE_ANON_KEY ?? ''
+const env = import.meta.env ?? {}
+const rawUrl = env.VITE_SUPABASE_URL ?? ''
+const key    = env.VITE_SUPABASE_ANON_KEY ?? ''
 
 // Strip any accidental path suffix from the URL
 const url = rawUrl
@@ -10,7 +11,7 @@ const url = rawUrl
 
 const configured = url.startsWith('https://') && key.startsWith('eyJ')
 
-if (!configured && import.meta.env.DEV) {
+if (!configured && env.DEV) {
   console.warn('[Supabase] VITE_SUPABASE_URL or VITE_SUPABASE_ANON_KEY not set — auth and database disabled')
 }
 
