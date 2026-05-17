@@ -4,6 +4,7 @@ import { useTheme } from '../context/ThemeContext'
 import { useIsMobile } from '../hooks/useIsMobile'
 import { fetchAnilistData } from '../services/anilist'
 import { fetchSkipTimes } from '../services/aniskip'
+import { getNextAiredEpisode, shouldShowNextEpisodeButton } from '../utils/playerNavigation'
 
 function parseEpNum(title) {
   const m = title?.match(/Episode\s+(\d+)/i)
@@ -29,6 +30,28 @@ function IconWatchAgain() {
   )
 }
 
+const floatingButtonBase = {
+  position: 'absolute',
+  padding: '8px 18px',
+  borderRadius: 8,
+  border: '1.5px solid rgba(255,255,255,.55)',
+  background: 'rgba(20,20,20,.75)',
+  backdropFilter: 'blur(8px)',
+  color: '#fff',
+  fontSize: 13,
+  fontWeight: 600,
+  letterSpacing: '.02em',
+  cursor: 'pointer',
+  zIndex: 10,
+  transition: 'background .15s, border-color .15s, transform .15s',
+}
+
+function setFloatingHover(target, active) {
+  target.style.background = active ? 'rgba(255,255,255,.18)' : 'rgba(20,20,20,.75)'
+  target.style.borderColor = active ? 'rgba(255,255,255,.9)' : 'rgba(255,255,255,.55)'
+  target.style.transform = active ? 'translateY(-1px)' : ''
+}
+
 export function WatchPanel({ item, onEp, onStatus }) {
   const { T, dark } = useTheme()
   const { t } = useTranslation()
@@ -43,6 +66,7 @@ export function WatchPanel({ item, onEp, onStatus }) {
   const [quality,   setQuality]   = useState('auto')
   const [hoveredEp, setHoveredEp] = useState(null)
   const [currentTime,   setCurrentTime]   = useState(0)
+  const [progressRatio, setProgressRatio] = useState(0)
   const [skipTimes,     setSkipTimes]     = useState({ op: null, ed: null })
   const [skipDismissed, setSkipDismissed] = useState(false)
 
@@ -55,6 +79,7 @@ export function WatchPanel({ item, onEp, onStatus }) {
   useEffect(() => {
     markedRef.current = false
     setCurrentTime(0)
+    setProgressRatio(0)
     setSkipDismissed(false)
     setSkipTimes({ op: null, ed: null })
     durationRef.current = 0
@@ -126,6 +151,7 @@ export function WatchPanel({ item, onEp, onStatus }) {
         setCurrentTime(data.currentTime)
 
         const pct = data.currentTime / data.duration
+        setProgressRatio(pct)
         if (data.currentTime > 60 && pct < 0.9) {
           clearTimeout(saveTimer.current)
           saveTimer.current = setTimeout(() => {
@@ -138,12 +164,16 @@ export function WatchPanel({ item, onEp, onStatus }) {
       }
       if (data.event === 'time' && typeof data.percent === 'number' && durationRef.current > 0) {
         setCurrentTime(data.percent * durationRef.current)
+        setProgressRatio(data.percent)
       }
 
       let reached85 = false
       if (data.type === 'watching-log' && data.duration > 0) reached85 = data.currentTime / data.duration >= 0.85
       if (data.event === 'time' && typeof data.percent === 'number')  reached85 = data.percent >= 0.85
-      if (data.event === 'complete') reached85 = true
+      if (data.event === 'complete') {
+        reached85 = true
+        setProgressRatio(1)
+      }
       if (!reached85 || markedRef.current) return
       if (activeEp <= (item.userEp ?? 0)) return
       markedRef.current = true
@@ -169,12 +199,19 @@ export function WatchPanel({ item, onEp, onStatus }) {
     return airdate <= today     // has date = show only if already aired
   })
   const pendingCount = Math.max(0, (epCount ?? 0) - airedEps.length)
+  const nextEpisode = getNextAiredEpisode(activeEp, airedEps)
+  const showNextEpisode = shouldShowNextEpisodeButton({ progressRatio, nextEpisode })
 
   function seek(time) {
     const win = iframeRef.current?.contentWindow
     if (!win) return
     win.postMessage({ event: 'seek', time }, 'https://megaplay.buzz')
     win.postMessage({ type: 'seek', time }, 'https://megaplay.buzz')
+  }
+
+  function goToNextEpisode() {
+    if (!nextEpisode) return
+    setActiveEp(nextEpisode)
   }
 
   const showSkipIntro = !skipDismissed && activeEp !== null && skipTimes.op !== null &&
@@ -269,32 +306,42 @@ export function WatchPanel({ item, onEp, onStatus }) {
                     setSkipDismissed(true)
                   }}
                   style={{
-                    position: 'absolute',
+                    ...floatingButtonBase,
                     bottom: 56,
                     right: 16,
-                    padding: '8px 18px',
-                    borderRadius: 8,
-                    border: '1.5px solid rgba(255,255,255,.55)',
-                    background: 'rgba(20,20,20,.75)',
-                    backdropFilter: 'blur(8px)',
-                    color: '#fff',
-                    fontSize: 13,
-                    fontWeight: 600,
-                    letterSpacing: '.02em',
-                    cursor: 'pointer',
-                    zIndex: 10,
-                    transition: 'background .15s, border-color .15s',
                   }}
-                  onMouseEnter={e => {
-                    e.currentTarget.style.background = 'rgba(255,255,255,.18)'
-                    e.currentTarget.style.borderColor = 'rgba(255,255,255,.9)'
-                  }}
-                  onMouseLeave={e => {
-                    e.currentTarget.style.background = 'rgba(20,20,20,.75)'
-                    e.currentTarget.style.borderColor = 'rgba(255,255,255,.55)'
-                  }}
+                  onMouseEnter={e => setFloatingHover(e.currentTarget, true)}
+                  onMouseLeave={e => setFloatingHover(e.currentTarget, false)}
                 >
                   {showSkipIntro ? 'Skip Intro ›' : 'Skip Outro ›'}
+                </button>
+              )}
+              {showNextEpisode && (
+                <button
+                  onClick={goToNextEpisode}
+                  style={{
+                    ...floatingButtonBase,
+                    top: 14,
+                    right: 14,
+                    background: 'rgba(10,132,255,.82)',
+                    borderColor: 'rgba(255,255,255,.62)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 7,
+                  }}
+                  onMouseEnter={e => {
+                    e.currentTarget.style.background = 'rgba(10,132,255,.96)'
+                    e.currentTarget.style.borderColor = 'rgba(255,255,255,.9)'
+                    e.currentTarget.style.transform = 'translateY(-1px)'
+                  }}
+                  onMouseLeave={e => {
+                    e.currentTarget.style.background = 'rgba(10,132,255,.82)'
+                    e.currentTarget.style.borderColor = 'rgba(255,255,255,.62)'
+                    e.currentTarget.style.transform = ''
+                  }}
+                >
+                  <span>{t('premium.nextEp')}</span>
+                  <span style={{ opacity: .78, fontWeight: 700 }}>EP {nextEpisode}</span>
                 </button>
               )}
             </div>

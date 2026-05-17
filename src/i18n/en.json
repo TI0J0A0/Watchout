@@ -241,7 +241,8 @@
     "selectEp": "Select an episode to start watching",
     "notAvailable": "Not available for streaming",
     "loading": "Loading episodes...",
-    "ep": "EP"
+    "ep": "EP",
+    "nextEp": "Next episode"
   },
   "admin": {
     "title": "Admin Panel",
