@@ -9,6 +9,12 @@ import { AvatarPic } from '../components/AvatarPic'
 import { StatBox } from '../components/StatBox'
 import { MediaCard } from '../components/MediaCard'
 import { fmtTime } from '../utils'
+import {
+  EmptyLibraryState,
+  FavoriteGenresSection,
+  FavoriteStudiosSection,
+  ProfileTasteCard,
+} from '../components/profile/ProfileTasteSections'
 import { supabase } from '../services/supabase'
 import {
   upsertProfile,
@@ -581,19 +587,7 @@ export function ProfilePage({ library, onOpen, onStatus, onLogin, onViewFriend =
       </div>
 
       {/* ── Personality card ── */}
-      {personality && (
-        <div style={{
-          padding: '16px 20px', borderRadius: 16, marginBottom: 24,
-          background: `linear-gradient(135deg, ${bannerColor.a}18, ${bannerColor.b}10)`,
-          border: `1px solid ${bannerColor.a}25`,
-        }}>
-          <p style={{ fontSize: 12, color: T.sub, fontWeight: 500, marginBottom: 4 }}>Your taste</p>
-          <p style={{ fontSize: 15, fontWeight: 700, color: T.txt }}>{personality.text}</p>
-          <p style={{ fontSize: 12, color: T.sub, marginTop: 4 }}>
-            Top genres: {tasteProfile.topGenres.slice(0, 3).join(' · ')}
-          </p>
-        </div>
-      )}
+      <ProfileTasteCard T={T} bannerColor={bannerColor} personality={personality} tasteProfile={tasteProfile} />
 
       {/* ── Friends ── */}
       <section style={{ marginBottom:36 }}>
@@ -919,67 +913,13 @@ export function ProfilePage({ library, onOpen, onStatus, onLogin, onViewFriend =
       )}
 
       {/* ── Favorite Genres ── */}
-      {tasteProfile && tasteProfile.topGenres.length > 0 && (
-        <section style={{ marginBottom:36 }}>
-          <h2 style={{ fontSize:18, fontWeight:700, color:T.txt,
-            letterSpacing:'-.02em', marginBottom:14 }}>{t('profile.favoriteGenres')}</h2>
-          <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
-            {tasteProfile.topGenres.slice(0, 6).map(g => {
-              const pct  = Math.round(tasteProfile.weights[g] * 100)
-              const mins = tasteProfile.genreMinutes[g] || 0
-              const avg  = tasteProfile.avgScoreByGenre[g]
-              return (
-                <div key={g}>
-                  <div style={{ display:'flex', justifyContent:'space-between', marginBottom:5 }}>
-                    <span style={{ fontSize:13, fontWeight:600, color:T.txt }}>{g}</span>
-                    <div style={{ display:'flex', gap:10, fontSize:11, color:T.sub }}>
-                      {avg && <span>★ {avg}</span>}
-                      <span>{fmtTime(mins)}</span>
-                      <span>{pct}%</span>
-                    </div>
-                  </div>
-                  <div style={{ height:6, borderRadius:3, background:T.surf2 }}>
-                    <div style={{ height:'100%', borderRadius:3, width:`${pct}%`,
-                      background:`linear-gradient(90deg, ${bannerColor.a}, ${bannerColor.b})`,
-                      transition:'width .4s ease' }}/>
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-        </section>
-      )}
+      <FavoriteGenresSection T={T} t={t} bannerColor={bannerColor} tasteProfile={tasteProfile} />
 
       {/* ── Favorite Studios ── */}
-      {tasteProfile && tasteProfile.topStudios.length > 0 && (
-        <section style={{ marginBottom:36 }}>
-          <h2 style={{ fontSize:18, fontWeight:700, color:T.txt,
-            letterSpacing:'-.02em', marginBottom:14 }}>{t('profile.favoriteStudios')}</h2>
-          <div style={{ display:'flex', flexWrap:'wrap', gap:8 }}>
-            {tasteProfile.topStudios.map((s, i) => (
-              <span key={s} style={{
-                padding:'5px 14px', borderRadius:20, fontSize:12, fontWeight:600,
-                background: i === 0 ? `${bannerColor.a}20` : T.surf2,
-                color: i === 0 ? bannerColor.a : T.sub,
-                border: `1px solid ${i === 0 ? bannerColor.a + '30' : T.bord}`,
-              }}>{s}</span>
-            ))}
-          </div>
-        </section>
-      )}
+      <FavoriteStudiosSection T={T} t={t} bannerColor={bannerColor} tasteProfile={tasteProfile} />
 
       {/* ── Empty state ── */}
-      {animeLib.length === 0 && (
-        <div style={{ textAlign:'center', padding:'60px 20px' }}>
-          <p style={{ fontSize:38, marginBottom:12 }}>📺</p>
-          <p style={{ fontSize:15, fontWeight:600, color:T.txt, marginBottom:6 }}>
-            {t('profile.noAnime')}
-          </p>
-          <p style={{ fontSize:13, color:T.sub, lineHeight:1.55 }}>
-            {t('profile.explorePrompt')}
-          </p>
-        </div>
-      )}
+      <EmptyLibraryState T={T} t={t} animeCount={animeLib.length} />
 
       {/* ── Add Friend Modal ── */}
       {showFriendModal && (
