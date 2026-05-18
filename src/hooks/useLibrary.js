@@ -118,7 +118,11 @@ export function useLibrary() {
   }
 
   const addToData = (item) => {
-    setData(d => d.find(i => i.id === item.id) ? d : [...d, item])
+    setData(d => {
+      const existing = d.find(i => i.id === item.id)
+      if (!existing) return [...d, item]
+      return d.map(i => i.id === item.id ? { ...i, ...item } : i)
+    })
   }
 
 const setStatus = (id, s) => {

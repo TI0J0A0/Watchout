@@ -13,6 +13,7 @@ import { useOnScreen } from '../hooks/useOnScreen'
 import { useIsMobile } from '../hooks/useIsMobile'
 import { computeTasteProfile, matchScore, personalityText } from '../utils/tasteProfile'
 import { getHeroCta, getHeroFocalPoint, getHeroImage, getHeroMeta } from '../utils/heroCarousel'
+import { getStreamingProviderName } from '../utils/streaming'
 
 function LazyShelf({ children }) {
   const [ref, visible] = useOnScreen('300px')
@@ -367,13 +368,17 @@ export function SeasonalPage({
                   <span style={{ fontSize: 14, color: '#FFD60A' }}>★</span>
                   <span style={{ fontSize: 15, fontWeight: 700, color: '#fff' }}>{hero.score}</span>
                 </div>
-                {hero.streaming.slice(0, 2).map(s => (
+                {hero.streaming.slice(0, 2).map(provider => {
+                  const s = getStreamingProviderName(provider)
+                  if (!s) return null
+                  return (
                   <span key={s} style={{
                     padding: '7px 14px', borderRadius: 22, fontSize: 13,
                     fontWeight: 600, background: 'rgba(255,255,255,.22)',
                     color: '#fff', backdropFilter: 'blur(10px)'
                   }}>{s}</span>
-                ))}
+                  )
+                })}
               </div>
               {heroItems.length > 1 && (
                 <div style={{ display: 'flex', gap: 7 }} onClick={e => e.stopPropagation()}>

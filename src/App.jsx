@@ -20,6 +20,7 @@ import { getProfile } from './services/friends'
 import { fetchAnimeById } from './services/jikan'
 import { fetchHeroEntries, fetchHeroSettings } from './services/heroAdmin'
 import { trackMetricEvent } from './services/metrics'
+import { hasStreamingProviderLinks } from './utils/streaming'
 import { AdminPage } from './pages/AdminPage'
 import { CategoriesPage } from './pages/CategoriesPage'
 import { AnnouncementBanner } from './components/AnnouncementBanner'
@@ -276,6 +277,17 @@ function AppInner() {
   const openDetailFromSource = (item, source = page) => {
     addToData(item)
     setDetailId(item.id)
+    if (!hasStreamingProviderLinks(item.streaming)) {
+      fetchAnimeById(item.id)
+        .then(full => addToData({
+          ...full,
+          userStatus: item.userStatus,
+          userScore: item.userScore,
+          userEp: item.userEp,
+          userNotes: item.userNotes,
+        }))
+        .catch(() => {})
+    }
     trackMetricEvent({
       type: 'anime_open',
       userId: user?.id ?? null,

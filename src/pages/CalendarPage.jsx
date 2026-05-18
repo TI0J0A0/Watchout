@@ -4,6 +4,7 @@ import { DAYS, SC, SM } from '../constants'
 import { useTheme } from '../context/ThemeContext'
 import { useIsMobile } from '../hooks/useIsMobile'
 import { Chip, ClickableCard } from '../components/ui'
+import { getStreamingProviderName } from '../utils/streaming'
 
 const FULL_DAY_KEY = {
   Sun:"Sun", Mon:"Mon", Tue:"Tue", Wed:"Wed", Thu:"Thu", Fri:"Fri", Sat:"Sat",
@@ -132,13 +133,17 @@ export function CalendarPage({ data, onOpen }) {
                         </div>
                         <p style={{fontSize:12,color:T.sub,marginBottom:7}}>{item.studio}</p>
                         <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
-                          {item.streaming.slice(0,3).map(s=>(
+                          {item.streaming.slice(0,3).map(provider=>{
+                            const s = getStreamingProviderName(provider)
+                            if (!s) return null
+                            return (
                             <span key={s} style={{fontSize:11,fontWeight:600,padding:"2px 8px",
                               borderRadius:6,color:SC[s]||T.sub,
                               background:`${SC[s]||'#888'}14`}}>
                               {s}
                             </span>
-                          ))}
+                            )
+                          })}
                         </div>
                       </div>
 

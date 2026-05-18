@@ -22,15 +22,20 @@ const GENRE_PT = {
   "School":"Escola", Military:"Militar",
 };
 
-const KNOWN_STREAMING = new Set([
-  "Crunchyroll","Netflix","Max","Disney+","Prime Video","Funimation","HIDIVE",
-]);
-
 function parseDuration(str) {
   if (!str) return 24;
   const hr  = str.match(/(\d+)\s*hr/);
   const min = str.match(/(\d+)\s*min/);
   return (hr ? parseInt(hr[1]) * 60 : 0) + (min ? parseInt(min[1]) : 0) || 24;
+}
+
+function mapStreaming(streaming = []) {
+  return streaming
+    .filter(s => s && typeof s.name === 'string' && s.name.trim())
+    .map(s => ({
+      name: s.name.trim(),
+      url: typeof s.url === 'string' ? s.url : '',
+    }))
 }
 
 export function mapAnime(a) {
@@ -51,7 +56,7 @@ export function mapAnime(a) {
     color, colorB,
     img:      a.images?.jpg?.large_image_url || a.images?.jpg?.image_url || "",
     synopsis: a.synopsis || "",
-    streaming: (a.streaming || []).map(s => s.name).filter(n => KNOWN_STREAMING.has(n)),
+    streaming: mapStreaming(a.streaming),
     members:  a.members || 0,
     trailer:  a.trailer?.embed_url ?? null,
     userStatus: null, userScore: null, userEp: 0, userNotes: "",
@@ -114,7 +119,7 @@ export async function fetchCharacters(id) {
 }
 
 export async function fetchAnimeById(id) {
-  const { data } = await get(`/anime/${id}`)
+  const { data } = await get(`/anime/${id}/full`)
   return mapAnime(data)
 }
 

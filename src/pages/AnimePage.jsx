@@ -9,6 +9,7 @@ import { ShelfRow } from '../components/ShelfRow'
 import { WatchPanel } from '../components/WatchPanel'
 import { StatBox } from '../components/StatBox'
 import { fmt, fmtTime } from '../utils'
+import { getStreamingProviderName, getStreamingProviderUrl } from '../utils/streaming'
 import { fetchRecommendations, fetchRelations, fetchAnimeById } from '../services/jikan'
 import { fetchAnilistBanner } from '../services/anilist'
 import { fetchAnimeComments, createAnimeComment, deleteAnimeComment } from '../services/community'
@@ -570,9 +571,13 @@ export function AnimePage({ item, onClose, onStatus, onScore, onEp, onNotes, onO
             <div style={{ marginBottom: 28 }}>
               <p style={{ fontSize: 13, fontWeight: 600, color: T.txt, marginBottom: 12 }}>{t('anime.whereToWatch')}</p>
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                {(item.streaming || []).map(s => (
-                  <a key={s}
-                    href={STREAMING_URLS[s]?.(item.title) ?? `https://www.google.com/search?q=${encodeURIComponent(item.title + ' ' + s)}`}
+                {(item.streaming || []).map(provider => {
+                  const s = getStreamingProviderName(provider)
+                  const url = getStreamingProviderUrl(provider)
+                  if (!s) return null
+                  return (
+                  <a key={`${s}-${url ?? 'search'}`}
+                    href={url ?? STREAMING_URLS[s]?.(item.title) ?? `https://www.google.com/search?q=${encodeURIComponent(item.title + ' ' + s)}`}
                     target="_blank" rel="noopener noreferrer"
                     className="t hbtn"
                     style={{
@@ -583,7 +588,8 @@ export function AnimePage({ item, onClose, onStatus, onScore, onEp, onNotes, onO
                     }}>
                     ▶ {s}
                   </a>
-                ))}
+                  )
+                })}
                 <a href={STREAMING_URLS.Stremio(item.title)} target="_blank" rel="noopener noreferrer"
                   className="t hbtn"
                   style={{
