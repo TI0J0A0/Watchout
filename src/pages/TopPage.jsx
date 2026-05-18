@@ -1,6 +1,7 @@
 import { useTranslation } from 'react-i18next'
 import { useTheme } from '../context/ThemeContext'
 import { LoadingGrid } from '../components/LoadingGrid'
+import { ClickableCard, EmptyState } from '../components/ui'
 
 const HERO_COLORS = [
   ["#FF9F0A","#FFD60A"],
@@ -30,11 +31,11 @@ export function TopPage({ topData, loading, onOpen }) {
 
       <div className="top3-grid" style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:14,marginBottom:28}}>
         {top3.map((it,i)=>(
-          <div key={it.id} className="sc t" onClick={()=>onOpen(it)} style={{borderRadius:20,overflow:"hidden",
+          <ClickableCard key={it.id} className="sc" onClick={()=>onOpen(it)} ariaLabel={`Open ${it.title}`} style={{borderRadius:20,overflow:"hidden",
             position:"relative",height:260,cursor:"pointer",animationDelay:`${i*70}ms`,
             background:`linear-gradient(135deg,${HERO_COLORS[i][0]},${HERO_COLORS[i][1]})`}}>
-            <img src={it.img} alt="" style={{position:"absolute",inset:0,width:"100%",height:"100%",
-              objectFit:"cover",opacity:.45}}/>
+            {it.img && <img src={it.img} alt="" style={{position:"absolute",inset:0,width:"100%",height:"100%",
+              objectFit:"cover",opacity:.45}}/>}
             <div style={{position:"absolute",inset:0,
               background:"linear-gradient(to top,rgba(0,0,0,.7) 0%,transparent 55%)"}}/>
             <div style={{position:"absolute",top:16,left:16,width:36,height:36,borderRadius:"50%",
@@ -51,18 +52,25 @@ export function TopPage({ topData, loading, onOpen }) {
                 {it.eps&&<span style={{fontSize:11,color:"rgba(255,255,255,.6)"}}>· {it.eps} {t('anime.eps')}</span>}
               </div>
             </div>
-          </div>
+          </ClickableCard>
         ))}
       </div>
 
+      {topData.length === 0 ? (
+        <EmptyState icon="★" title="No ranking yet" description="Top anime will appear here when the catalog is ready." />
+      ) : (
       <div style={{borderRadius:16,overflow:"hidden",border:`1px solid ${T.bord}`}}>
         {rest.map((it,i)=>(
-          <div key={it.id} className="rbtn t fu" onClick={()=>onOpen(it)} style={{display:"flex",alignItems:"center",
+          <ClickableCard key={it.id} className="rbtn fu" onClick={()=>onOpen(it)} ariaLabel={`Open ${it.title}`} style={{display:"flex",alignItems:"center",width:"100%",
             gap:16,padding:"14px 20px",background:T.surf,cursor:"pointer",
             animationDelay:`${(i+3)*60}ms`,
             borderBottom:i<rest.length-1?`1px solid ${T.bord}`:"none"}}>
             <span style={{width:28,textAlign:"center",fontSize:14,fontWeight:700,color:T.sub,flexShrink:0}}>{it.rank}</span>
-            <img src={it.img} alt="" style={{width:40,height:56,objectFit:"cover",borderRadius:7,flexShrink:0}}/>
+            {it.img ? (
+              <img src={it.img} alt="" style={{width:40,height:56,objectFit:"cover",borderRadius:7,flexShrink:0}}/>
+            ) : (
+              <div style={{width:40,height:56,borderRadius:7,flexShrink:0,background:`linear-gradient(135deg,${it.color},${it.colorB})`}}/>
+            )}
             <div style={{flex:1,minWidth:0}}>
               <p style={{fontSize:15,fontWeight:600,color:T.txt,whiteSpace:"nowrap",
                 overflow:"hidden",textOverflow:"ellipsis"}}>{it.title}</p>
@@ -72,9 +80,10 @@ export function TopPage({ topData, loading, onOpen }) {
               <span style={{color:"#FF9F0A",fontSize:13}}>★</span>
               <span style={{fontSize:16,fontWeight:700,color:T.txt}}>{it.score}</span>
             </div>
-          </div>
+          </ClickableCard>
         ))}
       </div>
+      )}
     </div>
   );
 }

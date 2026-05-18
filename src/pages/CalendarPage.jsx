@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { DAYS, SC, SM } from '../constants'
 import { useTheme } from '../context/ThemeContext'
 import { useIsMobile } from '../hooks/useIsMobile'
+import { Chip, ClickableCard } from '../components/ui'
 
 const FULL_DAY_KEY = {
   Sun:"Sun", Mon:"Mon", Tue:"Tue", Wed:"Wed", Thu:"Thu", Fri:"Fri", Sat:"Sat",
@@ -39,14 +40,14 @@ export function CalendarPage({ data, onOpen }) {
           const isToday = day === today;
           const count   = byDay[day].length;
           return (
-            <button key={day} className="t"
+            <Chip key={day}
+              active={isToday}
+              tone="#0A84FF"
               onClick={() => scrollTo(day)}
-              style={{flexShrink:0,padding:"8px 16px",borderRadius:22,border:"none",
+              style={{flexShrink:0,
                 background: isToday ? "#0A84FF" : T.surf2,
                 color: isToday ? "#fff" : count > 0 ? T.txt : T.sub,
-                fontSize:13,fontWeight: isToday ? 700 : 500,
-                opacity: count === 0 ? .45 : 1,
-                display:"flex",alignItems:"center",gap:6,cursor:"pointer"}}>
+                opacity: count === 0 ? .45 : 1}}>
               {t(`days.abbr.${day}`)}
               {count > 0 && (
                 <span style={{width:18,height:18,borderRadius:"50%",fontSize:10,fontWeight:700,
@@ -56,7 +57,7 @@ export function CalendarPage({ data, onOpen }) {
                   {count}
                 </span>
               )}
-            </button>
+            </Chip>
           );
         })}
       </div>
@@ -99,8 +100,9 @@ export function CalendarPage({ data, onOpen }) {
                 {byDay[day].map((item,i) => {
                   const sm = SM[item.userStatus];
                   return (
-                    <div key={item.id} className="t rbtn" onClick={()=>onOpen(item)}
+                    <ClickableCard key={item.id} className="rbtn" onClick={()=>onOpen(item)} ariaLabel={`Open ${item.title}`}
                       style={{position:"relative",display:"flex",alignItems:"center",
+                        width:"100%",
                         gap: isMobile ? 12 : 14,
                         padding: isMobile ? "14px 16px 14px 20px" : "12px 16px 12px 20px",
                         background:T.surf,cursor:"pointer",
@@ -109,8 +111,13 @@ export function CalendarPage({ data, onOpen }) {
                       <div style={{position:"absolute",left:0,top:0,bottom:0,width:3,borderRadius:"0 2px 2px 0",
                         background:`linear-gradient(to bottom,${item.color},${item.colorB})`}}/>
 
-                      <img src={item.img} alt="" style={{width: isMobile ? 52 : 48,height: isMobile ? 74 : 68,objectFit:"cover",
-                        borderRadius:10,flexShrink:0}}/>
+                      {item.img ? (
+                        <img src={item.img} alt="" style={{width: isMobile ? 52 : 48,height: isMobile ? 74 : 68,objectFit:"cover",
+                          borderRadius:10,flexShrink:0}}/>
+                      ) : (
+                        <div style={{width: isMobile ? 52 : 48,height: isMobile ? 74 : 68,borderRadius:10,flexShrink:0,
+                          background:`linear-gradient(135deg,${item.color},${item.colorB})`}}/>
+                      )}
 
                       <div style={{flex:1,minWidth:0}}>
                         <div style={{display:"flex",alignItems:"center",gap:7,marginBottom:3}}>
@@ -147,7 +154,7 @@ export function CalendarPage({ data, onOpen }) {
                           <p style={{fontSize:11,color:T.sub}}>{item.eps} {t('anime.eps')}</p>
                         )}
                       </div>
-                    </div>
+                    </ClickableCard>
                   );
                 })}
               </div>

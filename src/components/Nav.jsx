@@ -65,6 +65,12 @@ export function Nav({ page, setPage, userProfile, onLogin, onShowMAL, onSelectCa
   useClickOutside(menuRef, () => setMenu(false))
   useClickOutside(browseRef, () => setBrowseMenu(null))
 
+  const navigate = (nextPage) => {
+    setPage(nextPage)
+    setMenu(false)
+    setBrowseMenu(null)
+  }
+
   const PAGES = [
     ["seasonal",   t('nav.discover')],
     ["top",        t('nav.top')],
@@ -86,11 +92,12 @@ export function Nav({ page, setPage, userProfile, onLogin, onShowMAL, onSelectCa
   }
 
   const navButtonStyle = (active) => ({
-    padding:"6px 14px", borderRadius:20, border:"none", fontSize:13,
+    padding:"7px 14px", borderRadius:999, border:`1px solid ${active ? 'rgba(167,139,250,.36)' : 'transparent'}`, fontSize:13,
     whiteSpace:"nowrap", flexShrink:0,
-    fontWeight: active ? 600 : 500,
-    background: active ? "rgba(139,92,246,.16)" : "transparent",
+    fontWeight: active ? 800 : 600,
+    background: active ? "rgba(139,92,246,.18)" : "transparent",
     color: active ? "#A78BFA" : T.sub,
+    cursor: "pointer",
   })
   const dropdownPanelStyle = {
     position:"absolute", top:"calc(100% + 8px)", left:0,
@@ -115,19 +122,20 @@ export function Nav({ page, setPage, userProfile, onLogin, onShowMAL, onSelectCa
         padding:"0 28px",height:56}}>
 
         {/* Logo */}
-        <div onClick={() => setPage("seasonal")}
-          style={{display:"flex",alignItems:"center",gap:9,marginRight:26,flexShrink:0,cursor:"pointer"}}>
+        <button type="button" aria-label="Go to Discover" onClick={() => navigate("seasonal")}
+          style={{display:"flex",alignItems:"center",gap:9,marginRight:26,flexShrink:0,cursor:"pointer",
+            border:"none",background:"transparent",padding:0}}>
           <img
             src={funnyrollLogo}
             alt="Funnyroll"
             style={{height:34,width:154,objectFit:"contain",objectPosition:"left center",display:"block"}}
           />
-        </div>
+        </button>
 
         {/* Links */}
         <div ref={browseRef} className="hide-sm" style={{display:"flex",gap:2,flex:1,overflowX:"visible",scrollbarWidth:"none"}}>
           {PAGES.filter(([id])=>id!=="search" && id!=="categories").map(([id,l])=>(
-            <button key={id} className="navbtn t" onClick={()=>{setPage(id);setBrowseMenu(null)}}
+            <button key={id} className="navbtn t" onClick={()=>navigate(id)}
               style={navButtonStyle(page===id)}>
               {l}
             </button>
@@ -175,7 +183,7 @@ export function Nav({ page, setPage, userProfile, onLogin, onShowMAL, onSelectCa
         {/* Right */}
         <div style={{display:"flex",gap:8,alignItems:"center",marginLeft:8}}>
           {/* Search icon — desktop only */}
-          <button className="t hbtn hide-sm" onClick={()=>setPage("search")}
+          <button className="t hbtn hide-sm" onClick={()=>navigate("search")}
             style={{width:34,height:34,borderRadius:"50%",border:`1px solid ${page==="search"?"#8B5CF6":T.bord}`,
               background:page==="search"?"rgba(139,92,246,.16)":T.surf,
               display:"flex",alignItems:"center",justifyContent:"center",
@@ -206,7 +214,7 @@ export function Nav({ page, setPage, userProfile, onLogin, onShowMAL, onSelectCa
                       {user.email}
                     </p>
                   </div>
-                  <button className="t rbtn" onClick={()=>{setPage("profile");setMenu(false)}}
+                  <button className="t rbtn" onClick={()=>navigate("profile")}
                     style={{display:"flex",width:"100%",padding:"9px 12px",borderRadius:9,
                       border:"none",cursor:"pointer",background:"transparent",
                       color:T.txt,fontSize:13.5,fontWeight:500,alignItems:"center",gap:8}}>
@@ -219,7 +227,7 @@ export function Nav({ page, setPage, userProfile, onLogin, onShowMAL, onSelectCa
                     <span style={{fontSize:15}}>⇪</span> {t('nav.importMAL')}
                   </button>
                   {isAdmin(user) && (
-                    <button className="t rbtn" onClick={() => { setPage("admin"); setMenu(false) }}
+                    <button className="t rbtn" onClick={() => navigate("admin")}
                       style={{ display:"flex", width:"100%", padding:"9px 12px", borderRadius:9,
                         border:"none", cursor:"pointer", background:"transparent",
                         color:"#FF9F0A", fontSize:13.5, fontWeight:600, alignItems:"center", gap:8 }}>
@@ -265,12 +273,13 @@ export function Nav({ page, setPage, userProfile, onLogin, onShowMAL, onSelectCa
       {PAGES.map(([id, label]) => {
         const active = page === id
         return (
-          <button key={id} className="t nav-tab" onClick={() => setPage(id)}
+          <button key={id} className="t nav-tab" aria-current={active ? 'page' : undefined} onClick={() => navigate(id)}
             style={{
               flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center',
               justifyContent: 'center', gap: 4, padding: '8px 4px 6px',
               border: 'none', background: 'transparent', cursor: 'pointer',
               color: active ? '#A78BFA' : T.sub, position: 'relative',
+              minHeight: 60,
             }}>
             {active && (
               <div style={{

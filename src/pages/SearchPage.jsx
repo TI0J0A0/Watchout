@@ -3,6 +3,7 @@ import { useTheme } from '../context/ThemeContext'
 import { searchAnime } from '../services/jikan'
 import { trackMetricEvent } from '../services/metrics'
 import { MediaCard } from '../components/MediaCard'
+import { Button, EmptyState, IconButton, LoadingState } from '../components/ui'
 import { useIsMobile } from '../hooks/useIsMobile'
 import { addRecentSearchResult, normalizeRecentSearchResults } from './searchState'
 
@@ -184,9 +185,9 @@ export function SearchPage({ onOpen, onStatus, onAddToData, userId = null }) {
               </svg>
             </span>
             {query && (
-              <button
+              <IconButton
                 onClick={() => setQuery('')}
-                aria-label="Clear search"
+                label="Clear search"
                 style={{
                   position: 'absolute',
                   right: isMobile ? 18 : 22,
@@ -194,19 +195,12 @@ export function SearchPage({ onOpen, onStatus, onAddToData, userId = null }) {
                   transform: 'translateY(-50%)',
                   width: 28,
                   height: 28,
-                  borderRadius: '50%',
-                  border: `1px solid ${T.bord}`,
                   background: T.surf2,
-                  color: T.sub,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  cursor: 'pointer',
                   fontWeight: 800,
                 }}
               >
                 x
-              </button>
+              </IconButton>
             )}
           </div>
 
@@ -217,21 +211,11 @@ export function SearchPage({ onOpen, onStatus, onAddToData, userId = null }) {
       </section>
 
       {loading && (
-        <div style={{ display: 'flex', justifyContent: 'center', padding: '42px 0' }}>
-          <div style={{
-            width: 28,
-            height: 28,
-            borderRadius: '50%',
-            border: `3px solid ${T.bord}`,
-            borderTopColor: '#0A84FF',
-            animation: 'spin .7s linear infinite',
-          }} />
-          <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
-        </div>
+        <LoadingState label="Searching..." />
       )}
 
       {error && !loading && (
-        <p style={{ textAlign: 'center', color: '#FF3B30', fontSize: 14, padding: '30px 0' }}>{error}</p>
+        <EmptyState icon="!" title="Search unavailable" description={error} style={{ paddingTop: 30 }} />
       )}
 
       {showRecent && (
@@ -241,22 +225,9 @@ export function SearchPage({ onOpen, onStatus, onAddToData, userId = null }) {
               <h3 style={{ color: T.txt, fontSize: 18, fontWeight: 850, margin: '0 0 3px' }}>Recent Search Results</h3>
               <p style={{ color: T.sub, fontSize: 12.5, margin: 0 }}>Jump back into titles you opened from search.</p>
             </div>
-            <button
-              onClick={clearRecentResults}
-              style={{
-                padding: '8px 12px',
-                borderRadius: 10,
-                border: `1px solid ${T.bord}`,
-                background: T.surf,
-                color: T.sub,
-                fontSize: 12,
-                fontWeight: 700,
-                cursor: 'pointer',
-                whiteSpace: 'nowrap',
-              }}
-            >
+            <Button variant="secondary" size="sm" onClick={clearRecentResults} style={{ color: T.sub }}>
               Clear
-            </button>
+            </Button>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: `repeat(auto-fill,minmax(${isMobile ? 126 : 150}px,1fr))`, gap: 14 }}>
             {recentResults.map(item => (
@@ -300,9 +271,12 @@ export function SearchPage({ onOpen, onStatus, onAddToData, userId = null }) {
       )}
 
       {!loading && !error && query.trim().length >= MIN_QUERY_LENGTH && results.length === 0 && (
-        <div style={{ textAlign: 'center', padding: '42px 20px' }}>
-          <p style={{ fontSize: 16, color: T.sub, margin: 0 }}>No results for "{query.trim()}".</p>
-        </div>
+        <EmptyState
+          icon="⌕"
+          title="No results"
+          description={`No results for "${query.trim()}".`}
+          style={{ paddingTop: 42 }}
+        />
       )}
 
       {!loading && results.length > 0 && (

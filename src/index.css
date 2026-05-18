@@ -91,6 +91,24 @@ a:focus:not(:focus-visible) { outline: none; }
 .card { cursor: pointer; }
 .card:hover { transform: translateY(-3px); }
 .card:hover .cimg { transform: scale(1.05); }
+.clickable-card:focus-visible,
+button:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline: 2px solid var(--primary-soft);
+  outline-offset: 2px;
+}
+.clickable-card:active,
+.nav-tab:active,
+.navbtn:active,
+.hbtn:active,
+.pill:active {
+  transform: translateY(1px);
+}
+.ui-spinner {
+  animation: spin .7s linear infinite;
+}
 .pill:hover { opacity: .78; }
 .hbtn:hover { opacity: .72; }
 .rbtn:hover { background: rgba(120,120,128,.1) !important; }
