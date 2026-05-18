@@ -1,8 +1,9 @@
-import { memo } from 'react'
+import { memo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { SM } from '../constants'
 import { useTheme } from '../context/ThemeContext'
 import { useIsMobile } from '../hooks/useIsMobile'
+import { shouldTreatPointerAsTap } from '../utils/mobileInteraction'
 import { StatusBtn } from './StatusBtn'
 
 export const MediaCard = memo(function MediaCard({ item, delay, onOpen, onStatus, variant = 'grid', matchPct }) {
@@ -10,11 +11,27 @@ export const MediaCard = memo(function MediaCard({ item, delay, onOpen, onStatus
   const { t } = useTranslation();
   const isShelf = variant === 'shelf';
   const isMobile = useIsMobile()
+  const pointerStartRef = useRef(null)
   const sm = SM[item.userStatus];
 
   const typeLabel = item.type === 'anime' ? t('anime.typeAnime')
                   : item.type === 'series' ? t('anime.typeSeries')
                   : t('anime.typeFilm')
+
+  const handlePointerDown = e => {
+    pointerStartRef.current = { x: e.clientX, y: e.clientY }
+  }
+
+  const handleOpen = e => {
+    const pointerStart = pointerStartRef.current
+    pointerStartRef.current = null
+
+    if (pointerStart && !shouldTreatPointerAsTap(pointerStart, { x: e.clientX, y: e.clientY })) {
+      return
+    }
+
+    onOpen(item)
+  }
 
   return (
     <div className="fu" style={{
@@ -23,7 +40,8 @@ export const MediaCard = memo(function MediaCard({ item, delay, onOpen, onStatus
       width: isShelf ? (isMobile ? 130 : 178) : undefined,
     }}>
       <div className="card media-card t" role="button" tabIndex={0}
-        onClick={()=>onOpen(item)}
+        onPointerDown={handlePointerDown}
+        onClick={handleOpen}
         onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onOpen(item) } }}
         style={{
         borderRadius: isShelf ? 18 : 22,
@@ -31,6 +49,8 @@ export const MediaCard = memo(function MediaCard({ item, delay, onOpen, onStatus
         border:`1px solid ${T.bord}`,
         boxShadow:`0 ${isShelf?4:2}px ${isShelf?20:16}px rgba(0,0,0,${T.dark?(isShelf?.18:.16):(isShelf?.08:.07)})`,
         marginBottom:10,
+        touchAction: isShelf ? 'pan-x' : 'manipulation',
+        WebkitTapHighlightColor: 'transparent',
       }}>
         <div style={{position:"relative",paddingTop:"142%",overflow:"hidden"}}>
           {item.img ? (

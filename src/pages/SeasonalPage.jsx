@@ -10,6 +10,7 @@ import { fetchPopular, fetchUpcoming, fetchByGenre, fetchSeasonArchive, fetchRec
 import { fetchAnilistHeroImages } from '../services/anilist'
 import { fetchKitsuCoverByMalId } from '../services/kitsu'
 import { useOnScreen } from '../hooks/useOnScreen'
+import { useIsMobile } from '../hooks/useIsMobile'
 import { computeTasteProfile, matchScore, personalityText } from '../utils/tasteProfile'
 import { getHeroCta, getHeroFocalPoint, getHeroImage, getHeroMeta } from '../utils/heroCarousel'
 
@@ -44,6 +45,7 @@ export function SeasonalPage({
   const { T } = useTheme()
   const { t } = useTranslation()
   const { user } = useAuth()
+  const isMobile = useIsMobile()
 
   const tasteProfile = useMemo(() => computeTasteProfile(data), [data])
   const personality = useMemo(() => personalityText(tasteProfile), [tasteProfile])
@@ -556,7 +558,8 @@ export function SeasonalPage({
         {archLoading ? <LoadingGrid count={8} /> : (
           <div style={{
             display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fill,minmax(190px,1fr))', gap: 18
+            gridTemplateColumns: `repeat(auto-fill,minmax(${isMobile ? 140 : 190}px,1fr))`,
+            gap: isMobile ? 14 : 18
           }}>
             {gridItems.map((it, i) => (
               <MediaCard key={it.id} item={it} delay={i * 35}

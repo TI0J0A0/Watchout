@@ -1,9 +1,11 @@
 import { memo, useRef, useState, useEffect } from 'react'
 import { useTheme } from '../context/ThemeContext'
+import { useIsMobile } from '../hooks/useIsMobile'
 import { MediaCard } from './MediaCard'
 
 export const ShelfRow = memo(function ShelfRow({ title, emoji, subtitle, items, loading, onOpen, onStatus, headerRight, matchScores = {} }) {
   const { T, dark } = useTheme()
+  const isMobile = useIsMobile()
   const scrollRef = useRef(null)
   const [canLeft,  setCanLeft]  = useState(false)
   const [canRight, setCanRight] = useState(true)
@@ -55,7 +57,7 @@ export const ShelfRow = memo(function ShelfRow({ title, emoji, subtitle, items, 
       <div style={{ position: 'relative' }}>
 
         {/* Left fade + arrow */}
-        {canLeft && !loading && (
+        {!isMobile && canLeft && !loading && (
           <>
             <div style={{ position: 'absolute', left: 0, top: 0, bottom: 8, width: 80,
               background: `linear-gradient(to right,${T.bg} 20%,transparent)`,
@@ -74,7 +76,7 @@ export const ShelfRow = memo(function ShelfRow({ title, emoji, subtitle, items, 
         )}
 
         {/* Right fade + arrow */}
-        {canRight && !loading && (
+        {!isMobile && canRight && !loading && (
           <>
             <div style={{ position: 'absolute', right: 0, top: 0, bottom: 8, width: 80,
               background: `linear-gradient(to left,${T.bg} 20%,transparent)`,
@@ -93,7 +95,9 @@ export const ShelfRow = memo(function ShelfRow({ title, emoji, subtitle, items, 
         )}
 
         <div ref={scrollRef} style={{ display: 'flex', gap: 14, overflowX: 'auto',
-          paddingBottom: 8, scrollbarWidth: 'none' }}>
+          paddingBottom: 8, scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch',
+          touchAction: 'pan-x', overscrollBehaviorX: 'contain',
+          scrollSnapType: isMobile ? 'x proximity' : undefined }}>
           {loading
             ? Array.from({ length: 7 }).map((_, i) => (
                 <div key={i} className="shimmer" style={{ flexShrink: 0, width: 178,

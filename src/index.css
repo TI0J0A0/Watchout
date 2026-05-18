@@ -76,7 +76,15 @@ a:focus:not(:focus-visible) { outline: none; }
 .fu  { animation: fadeUp  .34s ease both; }
 .sc  { animation: scaleIn .2s  ease both; }
 .hf  { animation: heroFade .5s ease both; }
-.t   { transition: all .18s ease; }
+.t   {
+  transition:
+    transform .18s ease,
+    opacity .18s ease,
+    background .18s ease,
+    color .18s ease,
+    border-color .18s ease,
+    box-shadow .18s ease;
+}
 
 .nav-spacer { height: 56px; }
 .navbtn:hover { opacity: 1 !important; color: var(--primary-soft) !important; }
@@ -93,6 +101,7 @@ a:focus:not(:focus-visible) { outline: none; }
   inset: 0;
   background: rgba(0,0,0,.44);
   backdrop-filter: blur(6px);
+  pointer-events: none;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -384,6 +393,7 @@ a:focus:not(:focus-visible) { outline: none; }
   bottom: 0; left: 0; right: 0;
   z-index: 200;
   padding-bottom: env(safe-area-inset-bottom, 0px);
+  transform: translateZ(0);
 }
 
 /* Disable hover lift + overlay on touch */
@@ -405,6 +415,12 @@ a:focus:not(:focus-visible) { outline: none; }
 
 /* ── Standard phones (≤640px) ── */
 @media (max-width: 640px) {
+  .fu { animation: none !important; }
+  .media-card {
+    touch-action: manipulation;
+    will-change: auto;
+  }
+  .media-card .cimg { transition: none !important; }
   .hide-sm    { display: none !important; }
   .show-sm    { display: flex !important; }
   .nav-spacer { height: 56px; }

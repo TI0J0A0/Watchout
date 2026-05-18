@@ -215,11 +215,8 @@
     "saveError": "Error saving to database: {{error}}"
   },
   "news": {
-    "title": "Anime News",
-    "subtitle": "Latest from the anime world",
-    "articlesTitle": "Latest News",
-    "articlesSubtitle": "Anime News Network",
-    "articlesError": "Could not load news. Try again later.",
+    "title": "Trailers & Releases",
+    "subtitle": "Trailers, on air titles, and upcoming anime",
     "trailersTitle": "Latest Trailers",
     "trailersSubtitle": "Click to play",
     "releasesTitle": "New This Season",
@@ -228,7 +225,6 @@
     "upcomingSubtitle": "Next season releases",
     "noTrailers": "No trailers available right now.",
     "noOnAir": "No anime currently airing.",
-    "tabNews": "News",
     "tabTrailers": "Trailers",
     "tabOnAir": "On Air",
     "tabUpcoming": "Coming Soon"

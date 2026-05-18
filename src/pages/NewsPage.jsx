@@ -2,16 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useTheme } from '../context/ThemeContext'
 import { fetchUpcoming } from '../services/jikan'
-import { fetchAnnNews } from '../services/ann'
-
-function timeAgo(date) {
-  if (!date) return ''
-  const s = (Date.now() - date.getTime()) / 1000
-  if (s < 60)    return 'agora'
-  if (s < 3600)  return `${Math.floor(s / 60)}m`
-  if (s < 86400) return `${Math.floor(s / 3600)}h`
-  return `${Math.floor(s / 86400)}d`
-}
+import { NEWS_PAGE_DEFAULT_TAB, NEWS_PAGE_TABS } from './newsPageState'
 
 function toAutoplayUrl(url) {
   try {
@@ -45,60 +36,6 @@ function useTilt(maxDeg = 10) {
   }
 
   return { ref, tiltStyle, gx: t.gx, gy: t.gy, on: t.on, move, leave }
-}
-
-function ArticleCard({ item, T }) {
-  const { ref, tiltStyle, gx, gy, on, move, leave } = useTilt(6)
-
-  return (
-    <div ref={ref} className="t"
-      onClick={() => window.open(item.link, '_blank', 'noopener,noreferrer')}
-      onMouseMove={move} onMouseLeave={leave}
-      style={{ ...tiltStyle, position: 'relative', borderRadius: 14, overflow: 'hidden',
-        cursor: 'pointer', background: T.surf, border: `1px solid ${T.bord}`,
-        display: 'flex', minHeight: 120 }}>
-
-      {/* Glare */}
-      {on && (
-        <div style={{ position: 'absolute', inset: 0, zIndex: 1, pointerEvents: 'none',
-          borderRadius: 14,
-          background: `radial-gradient(circle at ${gx}% ${gy}%, rgba(255,255,255,0.09) 0%, transparent 65%)` }}/>
-      )}
-
-      <div style={{ width: 4, flexShrink: 0, background: item.color }} />
-
-      <div style={{ padding: '14px 16px', flex: 1, display: 'flex', flexDirection: 'column', gap: 6 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.05em',
-            padding: '2px 7px', borderRadius: 5, color: '#fff',
-            background: item.color, flexShrink: 0 }}>
-            {item.category.toUpperCase()}
-          </span>
-          {item.date && (
-            <span style={{ fontSize: 11, color: T.sub }}>{timeAgo(item.date)}</span>
-          )}
-        </div>
-
-        <p style={{ fontSize: 14, fontWeight: 600, color: T.txt, lineHeight: 1.4,
-          display: '-webkit-box', WebkitLineClamp: 2,
-          WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
-          {item.title}
-        </p>
-
-        {item.preview && (
-          <p style={{ fontSize: 12, color: T.sub, lineHeight: 1.5, marginTop: 'auto',
-            display: '-webkit-box', WebkitLineClamp: 2,
-            WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
-            {item.preview}
-          </p>
-        )}
-      </div>
-
-      <div style={{ display: 'flex', alignItems: 'flex-start', padding: '14px 12px 0 0', flexShrink: 0 }}>
-        <span style={{ fontSize: 13, color: T.sub, opacity: .5 }}>↗</span>
-      </div>
-    </div>
-  )
 }
 
 function TrailerCard({ item, isPlaying, onToggle, T }) {
@@ -205,20 +142,12 @@ export function NewsPage({ data, loading, onOpen }) {
   const { T, dark } = useTheme()
   const { t }       = useTranslation()
 
-  const [tab, setTab]                         = useState('news')
-  const [articles, setArticles]               = useState([])
-  const [articlesLoading, setArticlesLoading] = useState(true)
-  const [articlesError, setArticlesError]     = useState(false)
+  const [tab, setTab]                         = useState(NEWS_PAGE_DEFAULT_TAB)
   const [upcoming, setUpcoming]               = useState([])
   const [upcomingLoading, setUpcomingLoading] = useState(true)
   const [playing, setPlaying]                 = useState(null)
 
   useEffect(() => {
-    fetchAnnNews()
-      .then(setArticles)
-      .catch(() => setArticlesError(true))
-      .finally(() => setArticlesLoading(false))
-
     fetchUpcoming()
       .then(setUpcoming)
       .catch(() => {})
@@ -228,12 +157,8 @@ export function NewsPage({ data, loading, onOpen }) {
   const trailers = data.filter(item => item.trailer)
   const releases = data.filter(item => item.airing)
 
-  const TABS = [
-    { id: 'news',     label: t('news.tabNews'),    count: articles.length },
-    { id: 'trailers', label: t('news.tabTrailers'), count: trailers.length },
-    { id: 'onair',    label: t('news.tabOnAir'),    count: releases.length },
-    { id: 'upcoming', label: t('news.tabUpcoming'), count: upcoming.length },
-  ]
+  const tabCounts = { trailers: trailers.length, onair: releases.length, upcoming: upcoming.length }
+  const tabs = NEWS_PAGE_TABS.map(item => ({ ...item, label: t(item.labelKey), count: tabCounts[item.id] ?? 0 }))
 
   return (
     <div className="fu" style={{ paddingTop: 32, paddingBottom: 48 }}>
@@ -245,7 +170,7 @@ export function NewsPage({ data, loading, onOpen }) {
       {/* Tab bar */}
       <div style={{ display: 'flex', gap: 6, marginBottom: 28,
         overflowX: 'auto', scrollbarWidth: 'none', paddingBottom: 2 }}>
-        {TABS.map(({ id, label, count }) => {
+        {tabs.map(({ id, label, count }) => {
           const active = tab === id
           return (
             <button key={id} className="t" onClick={() => setTab(id)}
@@ -267,23 +192,6 @@ export function NewsPage({ data, loading, onOpen }) {
           )
         })}
       </div>
-
-      {/* News */}
-      {tab === 'news' && (
-        <>
-          {articlesLoading && <Spinner T={T} />}
-          {articlesError && !articlesLoading && (
-            <p style={{ fontSize: 14, color: '#FF3B30', textAlign: 'center', padding: '40px 0' }}>
-              {t('news.articlesError')}
-            </p>
-          )}
-          {!articlesLoading && !articlesError && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              {articles.map(item => <ArticleCard key={item.id} item={item} T={T} />)}
-            </div>
-          )}
-        </>
-      )}
 
       {/* Trailers */}
       {tab === 'trailers' && (
