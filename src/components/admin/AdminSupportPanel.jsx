@@ -150,7 +150,7 @@ export function AdminSupportPanel({
                 <p style={{ color: T.sub, fontSize: 13, margin: '0 0 4px' }}>{profile.handle}</p>
                 <p style={{ color: T.sub, fontSize: 12, margin: 0, overflowWrap: 'anywhere' }}>ID: {profile.id}</p>
                 <p style={{ color: T.sub, fontSize: 12, margin: '6px 0 0' }}>
-                  Criado: {formatAdminDate(profile.created_at)} · Atualizado: {formatAdminDate(profile.updated_at)}
+                  Updated: {formatAdminDate(profile.updated_at)}
                 </p>
               </div>
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignContent: 'flex-start', justifyContent: mobile ? 'flex-start' : 'flex-end' }}>

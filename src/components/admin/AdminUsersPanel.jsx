@@ -69,7 +69,7 @@ export function AdminUsersPanel({
                 )}
               </p>
               <p style={{ fontSize: 12, color: T.sub, margin: 0 }}>
-                @{u.username}{tab === 'activity' ? ` · atualizado em ${formatAdminDate(u.created_at || u.updated_at)}` : ''}
+                @{u.username}{tab === 'activity' ? ` · updated ${formatAdminDate(u.updated_at)}` : ''}
               </p>
             </div>
             {tab !== 'activity' && (

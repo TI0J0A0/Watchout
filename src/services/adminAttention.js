@@ -186,7 +186,7 @@ export async function fetchAdminAttentionQueue() {
     safeQuery(
       supabase
         .from('profiles')
-        .select('id, username, display_name, is_banned, updated_at, created_at')
+        .select('id, username, display_name, is_banned, updated_at')
         .eq('is_banned', true)
         .order('updated_at', { ascending: false, nullsFirst: false })
         .limit(12)

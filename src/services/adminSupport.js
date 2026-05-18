@@ -142,7 +142,7 @@ export async function searchSupportUsers(query = '') {
 
   let request = supabase
     .from('profiles')
-    .select('id, username, display_name, avatar_url, avatar_grad, is_premium, is_banned, updated_at, created_at')
+    .select('id, username, display_name, avatar_url, avatar_grad, is_premium, is_banned, updated_at')
     .order('updated_at', { ascending: false, nullsFirst: false })
     .limit(12)
 
@@ -159,7 +159,7 @@ export async function fetchSupportUser(profileId) {
 
   const profileRes = await supabase
     .from('profiles')
-    .select('id, username, display_name, avatar_url, avatar_grad, is_premium, is_banned, updated_at, created_at')
+    .select('id, username, display_name, avatar_url, avatar_grad, is_premium, is_banned, updated_at')
     .eq('id', profileId)
     .single()
   if (profileRes.error) throw profileRes.error
