@@ -4,6 +4,8 @@ import { useTheme } from '../context/ThemeContext'
 import { useIsMobile } from '../hooks/useIsMobile'
 import { fetchAnilistData } from '../services/anilist'
 import { fetchSkipTimes } from '../services/aniskip'
+import { trackMetricEvent } from '../services/metrics'
+import { useAuth } from '../context/AuthContext'
 import { getNextAiredEpisode, shouldShowNextEpisodeButton } from '../utils/playerNavigation'
 
 function parseEpNum(title) {
@@ -54,6 +56,7 @@ function setFloatingHover(target, active) {
 
 export function WatchPanel({ item, onEp, onStatus }) {
   const { T, dark } = useTheme()
+  const { user } = useAuth()
   const { t } = useTranslation()
   const isMobile = useIsMobile()
 
@@ -75,6 +78,7 @@ export function WatchPanel({ item, onEp, onStatus }) {
   const iframeRef    = useRef(null)
   const pendingSeek  = useRef(0)
   const saveTimer    = useRef(null)
+  const playerLoadStarted = useRef(0)
 
   useEffect(() => {
     markedRef.current = false
@@ -83,6 +87,16 @@ export function WatchPanel({ item, onEp, onStatus }) {
     setSkipDismissed(false)
     setSkipTimes({ op: null, ed: null })
     durationRef.current = 0
+    playerLoadStarted.current = Date.now()
+    if (activeEp !== null) {
+      trackMetricEvent({
+        type: 'episode_play',
+        userId: user?.id ?? null,
+        animeId: item.id,
+        page: 'player',
+        metadata: { title: item.title, episode: activeEp, quality, language: lang },
+      })
+    }
   }, [activeEp])
 
   // Auto-resume from saved progress when player becomes ready
@@ -166,6 +180,15 @@ export function WatchPanel({ item, onEp, onStatus }) {
         setCurrentTime(data.percent * durationRef.current)
         setProgressRatio(data.percent)
       }
+      if (data.event === 'buffering' || data.type === 'buffering') {
+        trackMetricEvent({
+          type: 'player_buffering',
+          userId: user?.id ?? null,
+          animeId: item.id,
+          page: 'player',
+          metadata: { title: item.title, episode: activeEp, quality, language: lang },
+        })
+      }
 
       let reached85 = false
       if (data.type === 'watching-log' && data.duration > 0) reached85 = data.currentTime / data.duration >= 0.85
@@ -177,6 +200,28 @@ export function WatchPanel({ item, onEp, onStatus }) {
       if (!reached85 || markedRef.current) return
       if (activeEp <= (item.userEp ?? 0)) return
       markedRef.current = true
+      const completionRate = data.type === 'watching-log' && data.duration > 0
+        ? data.currentTime / data.duration
+        : data.event === 'time' && typeof data.percent === 'number'
+          ? data.percent
+          : 1
+      const watchTimeSeconds = data.type === 'watching-log' && data.currentTime
+        ? data.currentTime
+        : durationRef.current * completionRate
+      trackMetricEvent({
+        type: 'episode_complete',
+        userId: user?.id ?? null,
+        animeId: item.id,
+        page: 'player',
+        metadata: {
+          title: item.title,
+          episode: activeEp,
+          watchTimeSeconds: Math.round(watchTimeSeconds || 0),
+          completionRate,
+          quality,
+          language: lang,
+        },
+      })
       onEp?.(item.id, activeEp)
       if (item.userStatus === 'plan_to_watch') onStatus?.(item.id, 'watching')
     }
@@ -290,11 +335,28 @@ export function WatchPanel({ item, onEp, onStatus }) {
                 sandbox="allow-scripts allow-same-origin allow-presentation allow-forms"
                 allowFullScreen
                 onLoad={() => {
+                  const startTimeMs = playerLoadStarted.current ? Date.now() - playerLoadStarted.current : 0
+                  trackMetricEvent({
+                    type: 'video_start_time',
+                    userId: user?.id ?? null,
+                    animeId: item.id,
+                    page: 'player',
+                    metadata: { title: item.title, episode: activeEp, startTimeMs, quality, language: lang },
+                  })
                   if (pendingSeek.current > 0) {
                     const t = pendingSeek.current
                     pendingSeek.current = 0
                     setTimeout(() => seek(t), 2000)
                   }
+                }}
+                onError={() => {
+                  trackMetricEvent({
+                    type: 'player_error',
+                    userId: user?.id ?? null,
+                    animeId: item.id,
+                    page: 'player',
+                    metadata: { title: item.title, episode: activeEp, quality, language: lang, message: 'Player iframe failed to load' },
+                  })
                 }}
               />
 

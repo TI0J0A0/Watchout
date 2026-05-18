@@ -3,6 +3,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useTheme } from '../context/ThemeContext'
 import { useClickOutside } from '../hooks/useClickOutside'
 import { fetchNotifications, markRead, markAllRead } from '../services/notifications'
+import { getNotificationAnimeId } from '../services/notificationRules'
 import { supabase } from '../services/supabase'
 
 const TYPE_ICONS = {
@@ -21,7 +22,7 @@ function timeAgo(iso) {
   return `${Math.floor(h / 24)}d`
 }
 
-export function NotificationBell({ userId }) {
+export function NotificationBell({ userId, onOpenAnime }) {
   const { T, dark } = useTheme()
   const [open, setOpen]     = useState(false)
   const [notifs, setNotifs] = useState([])
@@ -56,6 +57,8 @@ export function NotificationBell({ userId }) {
       setNotifs(prev => prev.map(x => x.id === n.id ? { ...x, read: true } : x))
     }
     setOpen(false)
+    const animeId = getNotificationAnimeId(n)
+    if (animeId) onOpenAnime?.(animeId)
   }
 
   const handleMarkAll = async () => {

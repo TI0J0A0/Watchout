@@ -1,5 +1,6 @@
 // src/services/notifications.js
 import { supabase } from './supabase'
+import { getRecentNotificationCutoff } from './notificationRules'
 
 export async function fetchNotifications(userId) {
   if (!supabase) return []
@@ -32,16 +33,18 @@ export async function createNotification(userId, type, title, body = null, data 
 }
 
 export async function hasNotificationToday(userId, animeId) {
+  return hasRecentEpisodeNotification(userId, animeId, 24)
+}
+
+export async function hasRecentEpisodeNotification(userId, animeId, hours = 5) {
   if (!supabase) return false
-  const todayMidnight = new Date()
-  todayMidnight.setHours(0, 0, 0, 0)
   const { data } = await supabase
     .from('notifications')
     .select('id')
     .eq('user_id', userId)
     .eq('type', 'new_episode')
     .contains('data', { anime_id: animeId })
-    .gte('created_at', todayMidnight.toISOString())
+    .gte('created_at', getRecentNotificationCutoff(new Date(), hours))
     .limit(1)
   return (data?.length ?? 0) > 0
 }

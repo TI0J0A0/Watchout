@@ -1,97 +1,322 @@
-import { useState, useEffect } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useState, useEffect, useRef } from 'react'
 import { useTheme } from '../context/ThemeContext'
 import { searchAnime } from '../services/jikan'
+import { trackMetricEvent } from '../services/metrics'
 import { MediaCard } from '../components/MediaCard'
 import { useIsMobile } from '../hooks/useIsMobile'
+import { addRecentSearchResult, normalizeRecentSearchResults } from './searchState'
 
-export function SearchPage({ onOpen, onStatus, onAddToData }) {
-  const { T } = useTheme();
-  const { t } = useTranslation();
+const MIN_QUERY_LENGTH = 2
+const RECENT_KEY = 'watchout_recent_search_results'
+
+export function SearchPage({ onOpen, onStatus, onAddToData, userId = null }) {
+  const { T, dark } = useTheme()
   const isMobile = useIsMobile()
-  const [query, setQuery]     = useState("");
-  const [results, setResults] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError]     = useState(null);
+  const [query, setQuery] = useState('')
+  const [results, setResults] = useState([])
+  const [recentResults, setRecentResults] = useState([])
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState(null)
+  const cacheRef = useRef(new Map())
+  const requestRef = useRef(0)
 
   useEffect(() => {
-    if (!query.trim()) { setResults([]); return; }
+    try {
+      const stored = JSON.parse(localStorage.getItem(RECENT_KEY) || '[]')
+      setRecentResults(normalizeRecentSearchResults(stored))
+    } catch {
+      setRecentResults([])
+    }
+  }, [])
+
+  useEffect(() => {
+    const normalized = query.trim().toLowerCase()
+    if (!normalized) {
+      setResults([])
+      setError(null)
+      setLoading(false)
+      return
+    }
+    if (normalized.length < MIN_QUERY_LENGTH) {
+      setResults([])
+      setError(null)
+      setLoading(false)
+      return
+    }
+
     const timer = setTimeout(() => {
-      setLoading(true);
-      setError(null);
-      searchAnime(query)
+      const requestId = requestRef.current + 1
+      requestRef.current = requestId
+      setLoading(true)
+      setError(null)
+
+      const cached = cacheRef.current.get(normalized)
+      const load = cached ? Promise.resolve(cached) : searchAnime(normalized)
+
+      load
         .then(items => {
-          setResults(items);
-          items.forEach(onAddToData);
+          if (requestRef.current !== requestId) return
+          cacheRef.current.set(normalized, items)
+          setResults(items)
+          items.forEach(onAddToData)
+          trackMetricEvent({
+            type: 'search',
+            userId,
+            page: 'search',
+            metadata: {
+              query: normalized,
+              resultCount: items.length,
+              topResultTitle: items[0]?.title ?? null,
+              cached: Boolean(cached),
+            },
+          })
         })
-        .catch(() => setError(t('search.error')))
-        .finally(() => setLoading(false));
-    }, 500);
-    return () => clearTimeout(timer);
-  }, [query]);
+        .catch(() => {
+          if (requestRef.current !== requestId) return
+          setError('Search failed. Try again in a moment.')
+          trackMetricEvent({
+            type: 'search_error',
+            userId,
+            page: 'search',
+            metadata: { query: normalized },
+          })
+        })
+        .finally(() => {
+          if (requestRef.current === requestId) setLoading(false)
+        })
+    }, 420)
+
+    return () => clearTimeout(timer)
+  }, [query, userId])
+
+  const saveRecentResult = (item) => {
+    const next = addRecentSearchResult(recentResults, item)
+    setRecentResults(next)
+    localStorage.setItem(RECENT_KEY, JSON.stringify(next))
+  }
+
+  const clearRecentResults = () => {
+    setRecentResults([])
+    localStorage.removeItem(RECENT_KEY)
+  }
+
+  const openResult = (item) => {
+    saveRecentResult(item)
+    trackMetricEvent({
+      type: 'search_result_click',
+      userId,
+      animeId: item.id,
+      page: 'search',
+      metadata: { query: query.trim().toLowerCase(), title: item.title },
+    })
+    onOpen(item)
+  }
+
+  const openRecent = (item) => {
+    trackMetricEvent({
+      type: 'search_recent_click',
+      userId,
+      animeId: item.id,
+      page: 'search',
+      metadata: { title: item.title },
+    })
+    onOpen(item)
+  }
+
+  const hasQuery = Boolean(query.trim())
+  const shortQuery = query.trim().length > 0 && query.trim().length < MIN_QUERY_LENGTH
+  const showRecent = !hasQuery && recentResults.length > 0
 
   return (
-    <div className="fu" style={{paddingTop:32,paddingBottom:48}}>
-      <h2 style={{fontSize:26,fontWeight:700,color:T.txt,letterSpacing:"-.02em",marginBottom:22}}>
-        {t('search.title')}
-      </h2>
+    <div className="fu" style={{ paddingTop: isMobile ? 28 : 54, paddingBottom: 56 }}>
+      <section style={{
+        minHeight: isMobile ? 220 : 300,
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        textAlign: 'center',
+      }}>
+        <div style={{
+          width: '100%',
+          maxWidth: 760,
+          padding: isMobile ? '0' : '0 18px',
+        }}>
+          <h2 style={{ fontSize: isMobile ? 30 : 42, fontWeight: 900, color: T.txt, letterSpacing: 0, margin: '0 0 10px' }}>
+            Search Anime
+          </h2>
+          <p style={{ fontSize: 15, color: T.sub, margin: '0 auto 24px', maxWidth: 480, lineHeight: 1.5 }}>
+            Find your next watch by title, season, or the anime everyone is talking about.
+          </p>
 
-      <div style={{position:"relative",maxWidth:isMobile?"100%":560,marginBottom:28}}>
-        <input value={query} onChange={e=>setQuery(e.target.value)}
-          placeholder={t('search.placeholder')}
-          style={{width:"100%",padding:"14px 20px 14px 46px",borderRadius:14,
-            background:T.surf,border:`1px solid ${T.bord}`,color:T.txt,fontSize:16,outline:"none",
-            boxShadow:`0 2px 12px rgba(0,0,0,${T.dark?.12:.06})`}}
-          onFocus={e=>e.target.style.boxShadow="0 0 0 3px rgba(10,132,255,.25)"}
-          onBlur={e=>e.target.style.boxShadow=`0 2px 12px rgba(0,0,0,${T.dark?.12:.06})`}/>
-        <span style={{position:"absolute",left:15,top:"50%",transform:"translateY(-50%)",
-          fontSize:18,color:T.sub,lineHeight:1}}>⌕</span>
-        {query&&(
-          <button onClick={()=>setQuery("")}
-            style={{position:"absolute",right:14,top:"50%",transform:"translateY(-50%)",
-              width:20,height:20,borderRadius:"50%",border:"none",background:T.surf2,
-              color:T.sub,fontSize:11,display:"flex",alignItems:"center",justifyContent:"center"}}>✕</button>
-        )}
-      </div>
+          <div style={{
+            position: 'relative',
+            maxWidth: 680,
+            margin: '0 auto',
+            padding: 3,
+            borderRadius: 19,
+            background: dark
+              ? 'linear-gradient(135deg, rgba(10,132,255,.65), rgba(255,159,10,.45))'
+              : 'linear-gradient(135deg, rgba(10,132,255,.5), rgba(52,199,89,.38))',
+            boxShadow: dark ? '0 18px 60px rgba(0,0,0,.34)' : '0 18px 48px rgba(10,132,255,.12)',
+          }}>
+            <input
+              value={query}
+              onChange={e => setQuery(e.target.value)}
+              placeholder="Search by anime title..."
+              autoComplete="off"
+              style={{
+                width: '100%',
+                padding: isMobile ? '15px 48px' : '18px 54px',
+                borderRadius: 16,
+                background: T.surf,
+                border: `1px solid ${dark ? 'rgba(255,255,255,.12)' : 'rgba(255,255,255,.7)'}`,
+                color: T.txt,
+                fontSize: isMobile ? 16 : 18,
+                outline: 'none',
+                textAlign: 'left',
+              }}
+            />
+            <span style={{ position: 'absolute', left: isMobile ? 20 : 24, top: '50%', transform: 'translateY(-50%)', color: T.sub, lineHeight: 1 }}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="11" cy="11" r="8" />
+                <line x1="21" y1="21" x2="16.65" y2="16.65" />
+              </svg>
+            </span>
+            {query && (
+              <button
+                onClick={() => setQuery('')}
+                aria-label="Clear search"
+                style={{
+                  position: 'absolute',
+                  right: isMobile ? 18 : 22,
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  width: 28,
+                  height: 28,
+                  borderRadius: '50%',
+                  border: `1px solid ${T.bord}`,
+                  background: T.surf2,
+                  color: T.sub,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: 'pointer',
+                  fontWeight: 800,
+                }}
+              >
+                x
+              </button>
+            )}
+          </div>
 
-      {loading&&(
-        <div style={{display:"flex",justifyContent:"center",padding:"60px 0"}}>
-          <div style={{width:28,height:28,borderRadius:"50%",border:`3px solid ${T.bord}`,
-            borderTopColor:"#0A84FF",animation:"spin .7s linear infinite"}}/>
+          {shortQuery && (
+            <p style={{ fontSize: 13, color: T.sub, margin: '14px 0 0' }}>Type at least 2 characters to search.</p>
+          )}
+        </div>
+      </section>
+
+      {loading && (
+        <div style={{ display: 'flex', justifyContent: 'center', padding: '42px 0' }}>
+          <div style={{
+            width: 28,
+            height: 28,
+            borderRadius: '50%',
+            border: `3px solid ${T.bord}`,
+            borderTopColor: '#0A84FF',
+            animation: 'spin .7s linear infinite',
+          }} />
           <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
         </div>
       )}
 
-      {error&&!loading&&(
-        <p style={{textAlign:"center",color:"#FF3B30",fontSize:14,padding:"40px 0"}}>{error}</p>
+      {error && !loading && (
+        <p style={{ textAlign: 'center', color: '#FF3B30', fontSize: 14, padding: '30px 0' }}>{error}</p>
       )}
 
-      {!loading&&!error&&query&&results.length===0&&(
-        <div style={{textAlign:"center",padding:"60px 20px"}}>
-          <p style={{fontSize:44,marginBottom:14,opacity:.18}}>⊘</p>
-          <p style={{fontSize:16,color:T.sub}}>{t('search.noResults', { query })}</p>
-        </div>
-      )}
-
-      {!loading&&!query&&(
-        <div style={{textAlign:"center",padding:"60px 20px"}}>
-          <p style={{fontSize:44,marginBottom:14,opacity:.12}}>⌕</p>
-          <p style={{fontSize:16,color:T.sub}}>{t('search.hint')}</p>
-        </div>
-      )}
-
-      {!loading&&results.length>0&&(
-        <>
-          <p style={{fontSize:13,color:T.sub,marginBottom:18}}>
-            {t('search.results', { count: results.length, query })}
-          </p>
-          <div style={{display:"grid",gridTemplateColumns:`repeat(auto-fill,minmax(${isMobile?140:190}px,1fr))`,gap:18}}>
-            {results.map((it,i)=>(
-              <MediaCard key={it.id} item={it} delay={i*30} onOpen={onOpen} onStatus={onStatus}/>
+      {showRecent && (
+        <section style={{ maxWidth: 980, margin: '0 auto 38px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 14, marginBottom: 14 }}>
+            <div>
+              <h3 style={{ color: T.txt, fontSize: 18, fontWeight: 850, margin: '0 0 3px' }}>Recent Search Results</h3>
+              <p style={{ color: T.sub, fontSize: 12.5, margin: 0 }}>Jump back into titles you opened from search.</p>
+            </div>
+            <button
+              onClick={clearRecentResults}
+              style={{
+                padding: '8px 12px',
+                borderRadius: 10,
+                border: `1px solid ${T.bord}`,
+                background: T.surf,
+                color: T.sub,
+                fontSize: 12,
+                fontWeight: 700,
+                cursor: 'pointer',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              Clear
+            </button>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: `repeat(auto-fill,minmax(${isMobile ? 126 : 150}px,1fr))`, gap: 14 }}>
+            {recentResults.map(item => (
+              <button
+                key={item.id}
+                onClick={() => openRecent(item)}
+                style={{
+                  padding: 0,
+                  border: `1px solid ${T.bord}`,
+                  borderRadius: 14,
+                  overflow: 'hidden',
+                  background: T.surf,
+                  cursor: 'pointer',
+                  textAlign: 'left',
+                  boxShadow: dark ? '0 10px 28px rgba(0,0,0,.18)' : '0 10px 24px rgba(0,0,0,.06)',
+                }}
+              >
+                <div style={{ position: 'relative', aspectRatio: '16/10', background: `linear-gradient(135deg,${item.color},${item.colorB})` }}>
+                  {item.img && <img src={item.img} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />}
+                  <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(0,0,0,.65), transparent 58%)' }} />
+                  <span style={{ position: 'absolute', bottom: 8, left: 9, color: '#fff', fontSize: 11, fontWeight: 800 }}>
+                    {item.year || item.type}
+                  </span>
+                </div>
+                <p style={{
+                  color: T.txt,
+                  fontSize: 13,
+                  fontWeight: 750,
+                  margin: 0,
+                  padding: '10px 11px 12px',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                }}>
+                  {item.title}
+                </p>
+              </button>
             ))}
           </div>
-        </>
+        </section>
+      )}
+
+      {!loading && !error && query.trim().length >= MIN_QUERY_LENGTH && results.length === 0 && (
+        <div style={{ textAlign: 'center', padding: '42px 20px' }}>
+          <p style={{ fontSize: 16, color: T.sub, margin: 0 }}>No results for "{query.trim()}".</p>
+        </div>
+      )}
+
+      {!loading && results.length > 0 && (
+        <section style={{ maxWidth: 1180, margin: '0 auto' }}>
+          <p style={{ fontSize: 13, color: T.sub, marginBottom: 18 }}>
+            {results.length} results for "{query.trim()}"
+          </p>
+          <div style={{ display: 'grid', gridTemplateColumns: `repeat(auto-fill,minmax(${isMobile ? 140 : 190}px,1fr))`, gap: 18 }}>
+            {results.map((it, i) => (
+              <MediaCard key={it.id} item={it} delay={i * 30} onOpen={openResult} onStatus={onStatus} />
+            ))}
+          </div>
+        </section>
       )}
     </div>
-  );
+  )
 }

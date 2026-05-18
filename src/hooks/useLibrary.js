@@ -4,7 +4,7 @@ import { mergeWithUserData, saveUserData } from '../utils'
 import { fetchSeasonal, fetchTop, fetchAnimeById } from '../services/jikan'
 import { loadUserLibrary, upsertAnime, upsertAnimesBatch, removeAnime } from '../services/userAnime'
 import { useAuth } from '../context/AuthContext'
-import { createNotification, hasNotificationToday } from '../services/notifications'
+import { createNotification, hasRecentEpisodeNotification } from '../services/notifications'
 import { trackMetricEvent } from '../services/metrics'
 
 export function useLibrary() {
@@ -67,7 +67,7 @@ export function useLibrary() {
         )
         ;(async () => {
           for (const item of airingToday) {
-            const already = await hasNotificationToday(user.id, item.id)
+            const already = await hasRecentEpisodeNotification(user.id, item.id, 5)
             if (!already) {
               await createNotification(
                 user.id,
@@ -155,6 +155,14 @@ const setStatus = (id, s) => {
       animeId: id,
       metadata: { status: removing ? null : s },
     })
+    if (!removing && s === 'plan_to_watch') {
+      trackMetricEvent({
+        type: 'watchlist_add',
+        userId: user.id,
+        animeId: id,
+        metadata: { title: it.title },
+      })
+    }
 
     return removing ? t('common.removedFromList') : `${it.title} → ${t(`status.${s}`)}`
   }

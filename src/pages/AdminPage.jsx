@@ -53,6 +53,42 @@ const MENU_SECTIONS = [
   },
 ]
 
+const ADMIN_MENU_SECTIONS = [
+  {
+    title: 'Overview',
+    items: [
+      { id: 'dashboard', label: 'Site summary' },
+      { id: 'attention', label: 'Needs attention' },
+      { id: 'metrics', label: 'Real metrics' },
+    ],
+  },
+  {
+    title: 'Users',
+    items: [
+      { id: 'users', label: 'User directory' },
+      { id: 'permissions', label: 'Permissions' },
+      { id: 'activity', label: 'Recent activity' },
+      { id: 'support', label: 'User support' },
+    ],
+  },
+  {
+    title: 'Content',
+    items: [
+      { id: 'hero', label: 'Hero' },
+      { id: 'topContent', label: 'Top content' },
+      { id: 'announcements', label: 'Announcements' },
+    ],
+  },
+  {
+    title: 'Moderation',
+    items: [
+      { id: 'topics', label: 'Forum topics' },
+      { id: 'feedbacks', label: 'Feedbacks' },
+      { id: 'recentErrors', label: 'Recent errors' },
+    ],
+  },
+]
+
 export function AdminPage() {
   const { T, dark } = useTheme()
   const mobile = useIsMobile()
@@ -60,8 +96,10 @@ export function AdminPage() {
 
   const [dashboard, setDashboard] = useState(null)
   const [dashboardLoading, setDashboardLoading] = useState(false)
+  const [dashboardError, setDashboardError] = useState(null)
   const [metrics, setMetrics] = useState(null)
   const [metricsLoading, setMetricsLoading] = useState(false)
+  const [metricsError, setMetricsError] = useState(null)
   const { attentionQueue, attentionLoading, loadAttentionQueue } = useAdminAttention()
 
   const moderation = useAdminModeration()
@@ -77,12 +115,26 @@ export function AdminPage() {
   useEffect(() => {
     if (DASHBOARD_TABS.includes(tab)) {
       setDashboardLoading(true)
-      fetchAdminDashboard().then(setDashboard).finally(() => setDashboardLoading(false))
+      setDashboardError(null)
+      fetchAdminDashboard()
+        .then(setDashboard)
+        .catch(error => {
+          setDashboardError(error?.message || 'Failed to load admin dashboard.')
+          setDashboard(null)
+        })
+        .finally(() => setDashboardLoading(false))
     } else if (tab === 'attention') {
       loadAttentionQueue()
     } else if (tab === 'metrics') {
       setMetricsLoading(true)
-      fetchAdminMetrics().then(setMetrics).finally(() => setMetricsLoading(false))
+      setMetricsError(null)
+      fetchAdminMetrics()
+        .then(setMetrics)
+        .catch(error => {
+          setMetricsError(error?.message || 'Failed to load metrics.')
+          setMetrics(null)
+        })
+        .finally(() => setMetricsLoading(false))
     } else if (tab === 'topics') {
       moderation.loadTopics()
     } else if (tab === 'feedbacks') {
@@ -117,11 +169,31 @@ export function AdminPage() {
     totalClicks: 0,
     totalLikes: 0,
     notesCount: 0,
+    totalViews: 0,
+    totalPlays: 0,
+    avgWatchTimeSeconds: 0,
+    avgCompletionRate: 0,
+    avgVideoStartMs: 0,
+    pageLoadAvgMs: 0,
+    playerErrors: 0,
+    bufferingEvents: 0,
+    sessionDrops: 0,
+    bannerCtr: 0,
     topClickedAnimes: [],
     clickSources: [],
     countryBreakdown: [],
     topTrackedAnimes: [],
     eventBreakdown: [],
+    topAnimeViews: [],
+    topEpisodeViews: [],
+    topEpisodePlays: [],
+    topSearchedAnime: [],
+    topWatchlistAdds: [],
+    bannerPerformance: [],
+    deviceBreakdown: {},
+    qualityBreakdown: [],
+    viewsSeries: [],
+    trendingAnime: [],
   }
 
   return (
@@ -129,15 +201,24 @@ export function AdminPage() {
       padding: '32px 0 60px', maxWidth: 1120, margin: '0 auto',
       display: 'grid', gridTemplateColumns: mobile ? '1fr' : '240px minmax(0, 1fr)', gap: 24,
     }}>
-      <AdminMenu T={T} mobile={mobile} tab={tab} setTab={setTab} sections={MENU_SECTIONS} />
+      <AdminMenu T={T} mobile={mobile} tab={tab} setTab={setTab} sections={ADMIN_MENU_SECTIONS} />
 
       <main style={{ minWidth: 0 }}>
         <h1 style={{ fontSize: 28, fontWeight: 800, color: T.txt, marginBottom: 16 }}>
-          Painel de Administração
+          Admin Panel
         </h1>
 
         {DASHBOARD_TABS.includes(tab) && (
-          <AdminDashboardPanel T={T} loading={dashboardLoading} tab={tab} stats={dashboardStats} card={card} />
+          <>
+            {dashboardError && (
+              <div style={{ ...card, marginBottom: 14, borderColor: 'rgba(255,59,48,.35)', background: 'rgba(255,59,48,.08)' }}>
+                <p style={{ color: '#FF3B30', fontSize: 13, margin: 0 }}>
+                  Supabase error: {dashboardError}
+                </p>
+              </div>
+            )}
+            <AdminDashboardPanel T={T} loading={dashboardLoading} tab={tab} stats={dashboardStats} card={card} />
+          </>
         )}
         {tab === 'attention' && (
           <AdminAttentionPanel
@@ -151,7 +232,16 @@ export function AdminPage() {
           />
         )}
         {tab === 'metrics' && (
-          <AdminMetricsPanel T={T} loading={metricsLoading} stats={metricStats} card={card} />
+          <>
+            {metricsError && (
+              <div style={{ ...card, marginBottom: 14, borderColor: 'rgba(255,59,48,.35)', background: 'rgba(255,59,48,.08)' }}>
+                <p style={{ color: '#FF3B30', fontSize: 13, margin: 0 }}>
+                  Supabase error: {metricsError}
+                </p>
+              </div>
+            )}
+            <AdminMetricsPanel T={T} loading={metricsLoading} stats={metricStats} card={card} />
+          </>
         )}
 
         {tab === 'topics' && (

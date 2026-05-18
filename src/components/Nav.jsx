@@ -54,7 +54,7 @@ const PAGE_ICONS = {
   ),
 }
 
-export function Nav({ page, setPage, userProfile, onLogin, onShowMAL, onSelectCategory, onSelectArchiveYear }) {
+export function Nav({ page, setPage, userProfile, onLogin, onShowMAL, onSelectCategory, onSelectArchiveYear, onOpenNotificationAnime }) {
   const { T, dark, setDark } = useTheme()
   const { user, signOut }    = useAuth()
   const { t }                = useTranslation()
@@ -183,7 +183,7 @@ export function Nav({ page, setPage, userProfile, onLogin, onShowMAL, onSelectCa
             {PAGE_ICONS.search}
           </button>
 
-          {user && <NotificationBell userId={user.id} />}
+          {user && <NotificationBell userId={user.id} onOpenAnime={onOpenNotificationAnime} />}
 
           {user ? (
             <div ref={menuRef} style={{position:"relative"}}>

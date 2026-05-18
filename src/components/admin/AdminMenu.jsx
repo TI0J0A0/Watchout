@@ -10,7 +10,7 @@ export function AdminMenu({ T, mobile, tab, setTab, sections }) {
       border: `1px solid ${T.bord}`,
     }}>
       <p style={{ fontSize: 18, fontWeight: 800, color: T.txt, margin: '0 0 18px' }}>
-        Menu Admin
+        Admin Menu
       </p>
       {sections.map(section => (
         <div key={section.title} style={{ marginBottom: 18 }}>

@@ -140,6 +140,23 @@ function AppInner() {
     if (page === 'top') loadTop()
   }, [page])
 
+  useEffect(() => {
+    if (typeof window === 'undefined' || !window.performance) return
+    const timer = setTimeout(() => {
+      const nav = performance.getEntriesByType?.('navigation')?.[0]
+      const loadTimeMs = nav
+        ? Math.round(nav.loadEventEnd || nav.domContentLoadedEventEnd || nav.duration)
+        : Math.round(performance.now())
+      trackMetricEvent({
+        type: 'page_load',
+        userId: user?.id ?? null,
+        page,
+        metadata: { page, loadTimeMs },
+      })
+    }, 0)
+    return () => clearTimeout(timer)
+  }, [])
+
   const airingItems = useMemo(() => data.filter(i => i.airing), [data])
   const controlledHeroItems = useMemo(() => {
     return adminHeroItems.slice(0, heroMaxItems).map(item => {
@@ -153,6 +170,7 @@ function AppInner() {
     })
   }, [adminHeroItems, data, heroMaxItems])
   const heroItems = controlledHeroItems.length > 0 ? controlledHeroItems : airingItems
+  const hero = heroItems[heroIdx % Math.max(heroItems.length, 1)] || data[0]
 
   useEffect(() => {
     if (heroItems.length <= 1) return
@@ -163,6 +181,17 @@ function AppInner() {
   useEffect(() => {
     setHeroIdx(0)
   }, [heroItems.length])
+
+  useEffect(() => {
+    if (!hero?.id || page !== 'seasonal') return
+    trackMetricEvent({
+      type: 'banner_view',
+      userId: user?.id ?? null,
+      animeId: hero.id,
+      page: 'seasonal',
+      metadata: { title: hero.title, heroIndex: heroIdx },
+    })
+  }, [hero?.id, heroIdx, page, user?.id])
 
   const loadHeroConfig = () => {
     let cancelled = false
@@ -229,6 +258,21 @@ function AppInner() {
     openDetailFromSource(item, page)
   }
 
+  const openAnimeById = async (animeId, source = 'notification') => {
+    const local = data.find(item => item.id === animeId)
+    if (local) {
+      openDetailFromSource(local, source)
+      return
+    }
+    try {
+      const anime = await fetchAnimeById(animeId)
+      openDetailFromSource(anime, source)
+    } catch {
+      setDetailId(animeId)
+      window.scrollTo({ top: 0, behavior: 'instant' })
+    }
+  }
+
   const openDetailFromSource = (item, source = page) => {
     addToData(item)
     setDetailId(item.id)
@@ -250,8 +294,6 @@ function AppInner() {
   const library = useMemo(() => data.filter(i => i.userStatus), [data])
   const seasonal = useMemo(() => data.filter(i => typeF === 'all' || i.type === typeF), [data, typeF])
 
-  const hero = heroItems[heroIdx % Math.max(heroItems.length, 1)] || data[0]
-
   return (
     <div style={{
       minHeight: '100vh', background: T.bg, color: T.txt,
@@ -262,6 +304,7 @@ function AppInner() {
         userProfile={userProfile}
         onSelectCategory={openCategory}
         onSelectArchiveYear={openArchiveYear}
+        onOpenNotificationAnime={(animeId) => openAnimeById(animeId, 'notification')}
         onLogin={() => setShowAuth(true)} onShowMAL={() => setShowMAL(true)} />
 
       <AnnouncementBanner page={page} />
@@ -293,7 +336,16 @@ function AppInner() {
             <SeasonalPage
               seasonal={seasonal} data={data} hero={hero} heroIdx={heroIdx} setHeroIdx={setHeroIdx}
               airingItems={airingItems} heroItems={heroItems} typeF={typeF} setTypeF={setTypeF}
-              loading={loading} onOpen={(item) => openDetailFromSource(item, 'seasonal')} onHeroOpen={(item) => openDetailFromSource(item, 'hero')} onStatus={handleStatus}
+              loading={loading} onOpen={(item) => openDetailFromSource(item, 'seasonal')} onHeroOpen={(item) => {
+                trackMetricEvent({
+                  type: 'banner_click',
+                  userId: user?.id ?? null,
+                  animeId: item.id,
+                  page: 'seasonal',
+                  metadata: { title: item.title, heroIndex: heroIdx },
+                })
+                openDetailFromSource(item, 'hero')
+              }} onStatus={handleStatus}
               initialArchiveYear={selectedArchiveYear} />
           )}
 
@@ -314,7 +366,8 @@ function AppInner() {
           {page === 'search' && (
             <SearchPage
               onOpen={(item) => openDetailFromSource(item, 'search')} onStatus={handleStatus}
-              onAddToData={addToData} />
+              onAddToData={addToData}
+              userId={user?.id ?? null} />
           )}
           {page === 'profile' && (
             <ProfilePage

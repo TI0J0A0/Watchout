@@ -1,20 +1,15 @@
 import { supabase } from './supabase'
-import { incrementCounter, mapById, sortByNumericFieldsDesc } from './adminShared'
+import { buildAdminMetricStats, EMPTY_ADMIN_METRICS } from './metricsAnalytics'
 
 const SESSION_KEY = 'watchout_metrics_session'
-const EMPTY_ADMIN_METRICS = {
-  trackedUsers: 0,
-  trackedItems: 0,
-  totalWatchedEpisodes: 0,
-  avgScore: 0,
-  totalClicks: 0,
-  totalLikes: 0,
-  notesCount: 0,
-  topClickedAnimes: [],
-  clickSources: [],
-  countryBreakdown: [],
-  topTrackedAnimes: [],
-  eventBreakdown: [],
+
+function getDeviceType() {
+  if (typeof window === 'undefined') return null
+  const width = window.innerWidth || 0
+  const ua = window.navigator?.userAgent || ''
+  if (/TV|SmartTV|AppleTV|GoogleTV|HbbTV|NetCast|Tizen|Web0S/i.test(ua)) return 'tv'
+  if (/Mobi|Android|iPhone|iPad|iPod/i.test(ua) || width <= 760) return 'mobile'
+  return 'desktop'
 }
 
 function getSessionId() {
@@ -41,7 +36,7 @@ export async function trackMetricEvent({ type, userId = null, animeId = null, pa
       animeId,
       page,
       sessionId,
-      metadata: { ...metadata, timezone },
+      metadata: { ...metadata, timezone, deviceType: metadata.deviceType || getDeviceType() },
     },
   }).then(() => {}).catch(() => {})
 }
@@ -49,7 +44,7 @@ export async function trackMetricEvent({ type, userId = null, animeId = null, pa
 export async function fetchAdminMetrics() {
   if (!supabase) return EMPTY_ADMIN_METRICS
 
-  const [eventsRes, userAnimeRes, animeRes, votesRes] = await Promise.all([
+  const results = await Promise.allSettled([
     supabase
       .from('site_metrics_events')
       .select('event_type, anime_id, user_id, page, metadata, created_at')
@@ -66,91 +61,19 @@ export async function fetchAdminMetrics() {
       .select('user_id, feedback_id'),
   ])
 
-  for (const result of [eventsRes, userAnimeRes, animeRes, votesRes]) {
-    if (result.error) throw result.error
+  const [eventsRes, userAnimeRes, animeRes, votesRes] = results.map(result =>
+    result.status === 'fulfilled' ? result.value : { data: [], error: result.reason }
+  )
+
+  const blockingError = [eventsRes, userAnimeRes, animeRes].find(result => result.error)?.error
+  if (blockingError) {
+    throw blockingError
   }
 
   const events = eventsRes.data ?? []
   const userAnime = userAnimeRes.data ?? []
   const animes = animeRes.data ?? []
-  const votes = votesRes.data ?? []
+  const votes = votesRes.error ? [] : votesRes.data ?? []
 
-  const animeById = mapById(animes)
-  const trackedUsers = new Set(userAnime.map(item => item.user_id).filter(Boolean)).size
-  const trackedItems = userAnime.length
-  const totalWatchedEpisodes = userAnime.reduce((sum, item) => sum + (item.ep_progress ?? 0), 0)
-
-  const scored = userAnime.filter(item => item.user_score != null)
-  const avgScore = scored.length
-    ? scored.reduce((sum, item) => sum + Number(item.user_score || 0), 0) / scored.length
-    : 0
-
-  const notesCount = userAnime.filter(item => item.notes && item.notes.trim()).length
-  const totalClicks = events.filter(item => item.event_type === 'anime_open').length
-  const totalLikes = votes.length
-
-  const clicksByAnime = new Map()
-  const clicksBySource = new Map()
-  const eventsByCountry = new Map()
-  const eventsByType = new Map()
-  for (const event of events) {
-    incrementCounter(eventsByType, event.event_type)
-    const country = event.metadata?.country || event.metadata?.countryCode || 'unknown'
-    incrementCounter(eventsByCountry, country)
-    if (event.event_type === 'anime_open' && event.anime_id) {
-      incrementCounter(clicksByAnime, event.anime_id)
-      const source = event.metadata?.source || event.page || 'unknown'
-      incrementCounter(clicksBySource, source)
-    }
-  }
-
-  const trackedByAnime = new Map()
-  for (const item of userAnime) {
-    if (!trackedByAnime.has(item.anime_id)) {
-      trackedByAnime.set(item.anime_id, {
-        animeId: item.anime_id,
-        users: 0,
-        progress: 0,
-        completed: 0,
-      })
-    }
-    const current = trackedByAnime.get(item.anime_id)
-    current.users += 1
-    current.progress += item.ep_progress ?? 0
-    if (item.status === 'completed') current.completed += 1
-  }
-
-  return {
-    trackedUsers,
-    trackedItems,
-    totalWatchedEpisodes,
-    avgScore,
-    totalClicks,
-    totalLikes,
-    notesCount,
-    topClickedAnimes: [...clicksByAnime.entries()]
-      .map(([animeId, clicks]) => ({
-        animeId,
-        clicks,
-        title: animeById.get(animeId)?.title ?? `Anime #${animeId}`,
-      }))
-      .sort((a, b) => b.clicks - a.clicks)
-      .slice(0, 5),
-    clickSources: [...clicksBySource.entries()]
-      .map(([source, clicks]) => ({ source, clicks }))
-      .sort((a, b) => b.clicks - a.clicks),
-    countryBreakdown: [...eventsByCountry.entries()]
-      .map(([country, events]) => ({ country, events }))
-      .sort((a, b) => b.events - a.events),
-    topTrackedAnimes: [...trackedByAnime.values()]
-      .map(item => ({
-        ...item,
-        title: animeById.get(item.animeId)?.title ?? `Anime #${item.animeId}`,
-      }))
-      .sort((a, b) => sortByNumericFieldsDesc(a, b, ['users', 'progress', 'completed']))
-      .slice(0, 5),
-    eventBreakdown: [...eventsByType.entries()]
-      .map(([type, count]) => ({ type, count }))
-      .sort((a, b) => b.count - a.count),
-  }
+  return buildAdminMetricStats({ events, userAnime, animes, votes })
 }

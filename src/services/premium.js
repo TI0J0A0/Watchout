@@ -41,6 +41,14 @@ export async function fetchAdminDashboard() {
     }
   }
 
+  const safeCount = async (table, applyQuery) => {
+    try {
+      return await fetchExactCount(table, applyQuery)
+    } catch {
+      return 0
+    }
+  }
+
   const [
     totalUsers,
     activeUsers,
@@ -50,10 +58,10 @@ export async function fetchAdminDashboard() {
     animeCatalog,
     recentErrors,
   ] = await Promise.all([
-    fetchExactCount('profiles'),
-    fetchExactCount('profiles', query => query.eq('is_banned', false)),
-    fetchExactCount('profiles', query => query.eq('is_premium', true)),
-    fetchExactCount('profiles', query => query.eq('is_banned', true)),
+    safeCount('profiles'),
+    safeCount('profiles', query => query.eq('is_banned', false)),
+    safeCount('profiles', query => query.eq('is_premium', true)),
+    safeCount('profiles', query => query.eq('is_banned', true)),
     supabase
       .from('user_anime')
       .select('anime_id, status, ep_progress'),
@@ -67,9 +75,8 @@ export async function fetchAdminDashboard() {
       .limit(10),
   ])
 
-  for (const result of [trackedAnime, animeCatalog]) {
-    if (result.error) throw result.error
-  }
+  if (trackedAnime.error) throw trackedAnime.error
+  if (animeCatalog.error) throw animeCatalog.error
 
   const animeById = mapById(animeCatalog.data)
   const trackedByAnime = new Map()

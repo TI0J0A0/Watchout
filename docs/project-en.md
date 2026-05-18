@@ -44,6 +44,18 @@
 
 **Technical premise:** The frontend is a React SPA with no URL-based routing — navigation is handled by state (`page` and `detailId` in `App.jsx`). There is no Next.js, React Router, or similar.
 
+### 1.1 Current Admin and Analytics Capabilities
+
+The admin area is available from the `admin` page for the configured admin email. The interface is in English and grouped into Overview, Users, Content, and Moderation sections.
+
+The `Real Metrics` panel reads real Supabase data from `site_metrics_events`, `user_anime`, `animes`, and `feedback_votes`. It shows anime views, episode plays, average watch time, completion rate, video start time, player errors, buffering events, banner CTR, views trend, top anime views, top episode plays, top searches, watchlist adds, banner performance, device performance, streaming quality, and trending anime.
+
+Analytics events are sent through `trackMetricEvent()` in `src/services/metrics.js` and ingested by the `metrics-ingest` Supabase Edge Function. Current event types include `page_load`, `anime_open`, `search`, `search_result_click`, `search_recent_click`, `watchlist_add`, `banner_view`, `banner_click`, `episode_play`, `video_start_time`, `episode_complete`, `player_error`, and `player_buffering`.
+
+New episode notifications use a 5-hour duplicate prevention window via `hasRecentEpisodeNotification()` and include anime metadata so `NotificationBell` can open the related anime detail page.
+
+The search page centers the primary search box and stores opened search results in local storage under `watchout_recent_search_results`. Users can clear this list from the `Recent Search Results` section.
+
 ---
 
 ## 2. Stack & Dependencies
