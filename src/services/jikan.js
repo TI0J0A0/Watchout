@@ -22,6 +22,22 @@ const GENRE_PT = {
   "School":"Escola", Military:"Militar",
 };
 
+const MAIN_STREAMING_PROVIDERS = new Map([
+  ['crunchyroll', 'Crunchyroll'],
+  ['netflix', 'Netflix'],
+  ['prime video', 'Prime Video'],
+  ['amazon prime video', 'Prime Video'],
+  ['amazon video', 'Prime Video'],
+  ['disney+', 'Disney+'],
+  ['disney plus', 'Disney+'],
+  ['hulu', 'Hulu'],
+  ['max', 'Max'],
+  ['hidive', 'HIDIVE'],
+  ['apple tv', 'Apple TV'],
+  ['apple tv+', 'Apple TV'],
+  ['youtube', 'YouTube'],
+])
+
 function parseDuration(str) {
   if (!str) return 24;
   const hr  = str.match(/(\d+)\s*hr/);
@@ -32,10 +48,15 @@ function parseDuration(str) {
 function mapStreaming(streaming = []) {
   return streaming
     .filter(s => s && typeof s.name === 'string' && s.name.trim())
-    .map(s => ({
-      name: s.name.trim(),
-      url: typeof s.url === 'string' ? s.url : '',
-    }))
+    .map(s => {
+      const canonicalName = MAIN_STREAMING_PROVIDERS.get(s.name.trim().toLowerCase())
+      if (!canonicalName) return null
+      return {
+        name: canonicalName,
+        url: typeof s.url === 'string' ? s.url : '',
+      }
+    })
+    .filter(Boolean)
 }
 
 export function mapAnime(a) {

@@ -74,8 +74,11 @@ export const SC = {
   Max:           "#002BE7",
   "Disney+":     "#0063E5",
   "Prime Video": "#00A8E0",
+  Hulu:          "#1CE783",
   Funimation:    "#410099",
   HIDIVE:        "#00BAFF",
+  "Apple TV":    "#A2AAAD",
+  YouTube:       "#FF0000",
   Stremio:       "#8A2BE2",
 };
 
@@ -85,8 +88,11 @@ export const STREAMING_URLS = {
   Max:           t => `https://www.max.com/search?q=${encodeURIComponent(t)}`,
   "Disney+":     t => `https://www.disneyplus.com/search/${encodeURIComponent(t)}`,
   "Prime Video": t => `https://www.amazon.com.br/s?k=${encodeURIComponent(t)}`,
+  Hulu:          t => `https://www.hulu.com/search?q=${encodeURIComponent(t)}`,
   Funimation:    t => `https://www.funimation.com/search/?q=${encodeURIComponent(t)}`,
   HIDIVE:        t => `https://www.hidive.com/search?q=${encodeURIComponent(t)}`,
+  "Apple TV":    t => `https://tv.apple.com/search?term=${encodeURIComponent(t)}`,
+  YouTube:       t => `https://www.youtube.com/results?search_query=${encodeURIComponent(t)}`,
   Stremio:       t => `https://web.strem.io/#/search?search=${encodeURIComponent(t)}`,
 };
 
