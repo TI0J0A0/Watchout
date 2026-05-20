@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useTheme } from '../context/ThemeContext'
+import { useTvMode } from '../context/TvModeContext'
 import { useAuth } from '../context/AuthContext'
 import { useClickOutside } from '../hooks/useClickOutside'
 import { AvatarPic } from './AvatarPic'
@@ -56,6 +57,7 @@ const PAGE_ICONS = {
 
 export function Nav({ page, setPage, userProfile, onLogin, onShowMAL, onSelectCategory, onSelectArchiveYear, onOpenNotificationAnime }) {
   const { T, dark, setDark } = useTheme()
+  const { isTvMode, toggleTvMode } = useTvMode()
   const { user, signOut }    = useAuth()
   const { t }                = useTranslation()
   const [menu, setMenu]      = useState(false)
@@ -191,6 +193,25 @@ export function Nav({ page, setPage, userProfile, onLogin, onShowMAL, onSelectCa
             {PAGE_ICONS.search}
           </button>
 
+          <button
+            className="t tv-mode-toggle hide-sm"
+            type="button"
+            aria-pressed={isTvMode}
+            title="Modo TV/Cinema"
+            onClick={toggleTvMode}
+            style={{
+              border:`1px solid ${isTvMode ? 'rgba(79,140,255,.5)' : T.bord}`,
+              background:isTvMode ? 'rgba(79,140,255,.16)' : T.surf,
+              color:isTvMode ? '#DCE8FF' : T.sub,
+              display:'flex',
+              alignItems:'center',
+              gap:10,
+              flexShrink:0,
+            }}>
+            <span aria-hidden="true">{isTvMode ? '▣' : '▢'}</span>
+            <span className="tv-mode-copy">{isTvMode ? 'TV Ativado' : 'Modo TV/Cinema'}</span>
+          </button>
+
           {user && <NotificationBell userId={user.id} onOpenAnime={onOpenNotificationAnime} />}
 
           {user ? (
@@ -225,6 +246,13 @@ export function Nav({ page, setPage, userProfile, onLogin, onShowMAL, onSelectCa
                       border:"none",cursor:"pointer",background:"transparent",
                       color:T.txt,fontSize:13.5,fontWeight:500,alignItems:"center",gap:8}}>
                     <span style={{fontSize:15}}>⇪</span> {t('nav.importMAL')}
+                  </button>
+                  <button className="t rbtn" onClick={() => { toggleTvMode(); setMenu(false) }}
+                    aria-pressed={isTvMode}
+                    style={{display:"flex",width:"100%",padding:"9px 12px",borderRadius:9,
+                      border:"none",cursor:"pointer",background:isTvMode ? 'rgba(79,140,255,.12)' : "transparent",
+                      color:isTvMode ? '#4F8CFF' : T.txt,fontSize:13.5,fontWeight:600,alignItems:"center",gap:8}}>
+                    <span style={{fontSize:15}}>{isTvMode ? '▣' : '▢'}</span> Modo TV/Cinema {isTvMode ? 'Ativado' : 'Desativado'}
                   </button>
                   {isAdmin(user) && (
                     <button className="t rbtn" onClick={() => navigate("admin")}

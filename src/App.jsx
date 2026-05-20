@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useMemo } from 'react'
 import { useLibrary } from './hooks/useLibrary'
 import { ThemeProvider, useTheme } from './context/ThemeContext'
+import { TvModeProvider, useTvMode } from './context/TvModeContext'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import { Nav } from './components/Nav'
 import { Toast } from './components/Toast'
@@ -25,6 +26,7 @@ import { AdminPage } from './pages/AdminPage'
 import { CategoriesPage } from './pages/CategoriesPage'
 import { AnnouncementBanner } from './components/AnnouncementBanner'
 import { getGenreById } from './constants/browse'
+import { ensureTvElementVisible, focusFirstTvElement, moveTvFocus } from './utils/tvNavigation'
 
 const VALID_PAGES = new Set(['seasonal', 'top', 'calendar', 'categories', 'search', 'profile', 'news', 'community', 'admin'])
 
@@ -46,6 +48,7 @@ const HERO_UPDATED_EVENT = 'watchout:hero-updated'
 function AppInner() {
   const { T } = useTheme()
   const { user } = useAuth()
+  const { isTvMode } = useTvMode()
   const {
     data, loading,
     topData, topLoaded, loadTop,
@@ -157,6 +160,98 @@ function AppInner() {
     }, 0)
     return () => clearTimeout(timer)
   }, [])
+
+  useEffect(() => {
+    if (!isTvMode) return
+
+    const timer = window.setTimeout(() => {
+      if (!(document.activeElement instanceof HTMLElement) || document.activeElement === document.body) {
+        focusFirstTvElement()
+      }
+    }, 80)
+
+    return () => window.clearTimeout(timer)
+  }, [isTvMode, page, detailId, friendId, showAuth, showMAL])
+
+  useEffect(() => {
+    if (!isTvMode) return
+
+    const handleFocusIn = event => {
+      ensureTvElementVisible(event.target)
+    }
+
+    document.addEventListener('focusin', handleFocusIn)
+    return () => document.removeEventListener('focusin', handleFocusIn)
+  }, [isTvMode])
+
+  useEffect(() => {
+    if (!isTvMode) return
+
+    const isEditableTarget = target => {
+      if (!(target instanceof HTMLElement)) return false
+      return target.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName)
+    }
+
+    const closeTopLayer = () => {
+      if (showMAL) { setShowMAL(false); return true }
+      if (showAuth) { setShowAuth(false); return true }
+      if (detailId !== null) { setDetailId(null); return true }
+      if (friendId !== null) { setFriendId(null); setFriendshipId(null); return true }
+      return false
+    }
+
+    const handleKeyDown = event => {
+      if (isEditableTarget(event.target)) return
+
+      if (event.key === 'ArrowRight') {
+        event.preventDefault()
+        moveTvFocus('right')
+        return
+      }
+
+      if (event.key === 'ArrowLeft') {
+        event.preventDefault()
+        moveTvFocus('left')
+        return
+      }
+
+      if (event.key === 'ArrowDown') {
+        event.preventDefault()
+        moveTvFocus('down')
+        return
+      }
+
+      if (event.key === 'ArrowUp') {
+        event.preventDefault()
+        moveTvFocus('up')
+        return
+      }
+
+      if (event.key === 'Escape' || event.key === 'Backspace') {
+        event.preventDefault()
+        if (closeTopLayer()) return
+        if (window.history.length > 1) {
+          window.history.back()
+        } else {
+          navigate('seasonal')
+        }
+        return
+      }
+
+      if (event.key === ' ' || event.code === 'Space') {
+        const activeElement = document.activeElement instanceof HTMLElement ? document.activeElement : null
+        const player = activeElement?.closest('[data-tv-player="true"]')
+
+        if (player instanceof HTMLElement && activeElement === player) {
+          event.preventDefault()
+          player.dispatchEvent(new CustomEvent('tv-toggle-play', { bubbles: true }))
+        }
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [isTvMode, showMAL, showAuth, detailId, friendId, page])
 
   const airingItems = useMemo(() => data.filter(i => i.airing), [data])
   const controlledHeroItems = useMemo(() => {
@@ -307,7 +402,7 @@ function AppInner() {
   const seasonal = useMemo(() => data.filter(i => typeF === 'all' || i.type === typeF), [data, typeF])
 
   return (
-    <div style={{
+    <div className={isTvMode ? 'tv-mode-shell' : undefined} style={{
       minHeight: '100vh', background: T.bg, color: T.txt,
       fontFamily: "-apple-system,'SF Pro Display','Helvetica Neue',sans-serif",
       transition: 'background .3s,color .3s',
@@ -407,9 +502,11 @@ function AppInner() {
 export default function App() {
   return (
     <AuthProvider>
-      <ThemeProvider>
-        <AppInner />
-      </ThemeProvider>
+      <TvModeProvider>
+        <ThemeProvider>
+          <AppInner />
+        </ThemeProvider>
+      </TvModeProvider>
     </AuthProvider>
   )
 }

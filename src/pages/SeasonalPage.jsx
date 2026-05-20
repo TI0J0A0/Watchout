@@ -218,14 +218,14 @@ export function SeasonalPage({
       {/* ── Archive / Season picker ── */}
       {isArchive && (
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', paddingTop: 20, marginBottom: 18 }}>
-        <button className="pill t" onClick={() => { setArchYear(null); setArchSeason(null) }}
+        <button className="pill t tv-pill" onClick={() => { setArchYear(null); setArchSeason(null) }}
           style={pillStyle(archYear === null)}>
           {t('seasonal.current')}
         </button>
         {archYear !== null && (
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
             {SEASON_KEYS.map(s => (
-              <button key={s} className="pill t" onClick={() => setArchSeason(s)}
+              <button key={s} className="pill t tv-pill" onClick={() => setArchSeason(s)}
                 style={{
                   ...pillStyle(archSeason === s),
                   background: archSeason === s ? '#0A84FF' : T.surf2,
@@ -242,6 +242,15 @@ export function SeasonalPage({
       {/* ── Hero (hidden in archive mode) ── */}
       {!isArchive && (
         <section key={hero.id} className="card hf hero hero-h" onClick={() => onHeroOpen(hero)}
+          role="button"
+          tabIndex={0}
+          data-tv-section="true"
+          onKeyDown={e => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault()
+              onHeroOpen(hero)
+            }
+          }}
           style={{
             margin: '0 0 4px calc(50% - 50vw)', width: '100vw',
             borderRadius: 0, overflow: 'visible', height: 'clamp(660px, 82vh, 860px)',
@@ -452,7 +461,7 @@ export function SeasonalPage({
             headerRight={
               <div style={{ display: 'flex', gap: 6 }}>
                 {typeFilters.map(([v, l]) => (
-                  <button key={v} className="pill t" onClick={() => setTypeF(v)}
+                  <button key={v} className="pill t tv-pill" onClick={() => setTypeF(v)}
                     style={pillStyle(typeF === v)}>
                     {l}
                   </button>
@@ -553,7 +562,7 @@ export function SeasonalPage({
           </div>
           <div style={{ display: 'flex', gap: 6 }}>
             {typeFilters.map(([v, l]) => (
-              <button key={v} className="pill t" onClick={() => setTypeF(v)}
+              <button key={v} className="pill t tv-pill" onClick={() => setTypeF(v)}
                 style={pillStyle(typeF === v)}>
                 {l}
               </button>
