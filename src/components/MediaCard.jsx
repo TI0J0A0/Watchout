@@ -39,7 +39,7 @@ export const MediaCard = memo(function MediaCard({ item, delay, onOpen, onStatus
       flexShrink: isShelf ? 0 : undefined,
       width: isShelf ? (isMobile ? 130 : 178) : undefined,
     }}>
-      <div className="card media-card t" role="button" tabIndex={0} data-tv-focusable="true"
+      <div className="card media-card t" role="button" tabIndex={0}
         onPointerDown={handlePointerDown}
         onClick={handleOpen}
         onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onOpen(item) } }}

@@ -32,10 +32,10 @@ export const ShelfRow = memo(function ShelfRow({ title, emoji, subtitle, items, 
   if (!loading && items.length === 0) return null
 
   return (
-    <section data-tv-section="true" style={{ marginBottom: 44 }}>
+    <section style={{ marginBottom: 44 }}>
 
       {/* Header */}
-      <div className="tv-section-header" style={{ display: 'flex', alignItems: 'flex-end',
+      <div style={{ display: 'flex', alignItems: 'flex-end',
         justifyContent: 'space-between', marginBottom: 16 }}>
         <div>
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
@@ -94,7 +94,7 @@ export const ShelfRow = memo(function ShelfRow({ title, emoji, subtitle, items, 
           </>
         )}
 
-        <div ref={scrollRef} className="tv-shelf-track" style={{ display: 'flex', gap: 14, overflowX: 'auto',
+        <div ref={scrollRef} style={{ display: 'flex', gap: 14, overflowX: 'auto',
           paddingBottom: 8, scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch',
           touchAction: 'pan-x', overscrollBehaviorX: 'contain',
           scrollSnapType: isMobile ? 'x proximity' : undefined }}>

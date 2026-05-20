@@ -57,6 +57,9 @@ export function ProfilePage({ library, onOpen, onStatus, onLogin, onViewFriend =
   const [nameAvailable, setNameAvailable] = useState(null)
   const [nameChecking,  setNameChecking]  = useState(false)
   const nameCheckTimer = useRef(null)
+  const identitySectionRef = useRef(null)
+  const bannerSectionRef = useRef(null)
+  const featuredSectionRef = useRef(null)
 
   const [libF,      setLibF]      = useState('all')
   const [libSort,   setLibSort]   = useState('title')
@@ -162,6 +165,7 @@ export function ProfilePage({ library, onOpen, onStatus, onLogin, onViewFriend =
   const displayName = active.displayName || username
   const initials    = displayName.slice(0, 2).toUpperCase()
   const avatarGrad  = AVATAR_GRADS[active.avatarGrad] ?? AVATAR_GRADS[0]
+  const hasUnsavedChanges = editOpen && JSON.stringify(draft) !== JSON.stringify(committed)
 
   const {
     animeLib,
@@ -193,6 +197,34 @@ export function ProfilePage({ library, onOpen, onStatus, onLogin, onViewFriend =
   const bannerColor     = hasCustomBanner ? BANNER_THEMES[active.bannerTheme] : autoBannerColor
 
   const bannerBlurImg = pinnedBanner ? null : (pinnedAnime?.img ?? (hasCustomBanner ? null : autoBannerAnime?.img))
+  const draftPinnedAnime = animeLib.find(i => i.id === draft.pinnedAnimeId)
+  const editBannerPreview = draft.bannerUrl || pinnedBanner || bannerBlurImg
+  const editActionDisabled = saving || nameAvailable === false || nameChecking || !hasUnsavedChanges
+
+  const sectionCardStyle = {
+    borderRadius: 18,
+    padding: isMobile ? 16 : 18,
+    background: dark ? 'rgba(255,255,255,.035)' : 'rgba(0,0,0,.02)',
+    border: `1px solid ${T.bord}`,
+  }
+
+  const sectionLabelStyle = {
+    fontSize: 12,
+    fontWeight: 700,
+    color: T.sub,
+    letterSpacing: '.04em',
+    textTransform: 'uppercase',
+  }
+
+  const sectionHelpStyle = {
+    fontSize: 12.5,
+    color: T.sub,
+    lineHeight: 1.55,
+  }
+
+  const scrollToEditSection = ref => {
+    ref.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
 
   if (!user) {
     return (
@@ -358,22 +390,132 @@ export function ProfilePage({ library, onOpen, onStatus, onLogin, onViewFriend =
           boxShadow:`0 8px 32px rgba(0,0,0,${dark?.22:.10})`,
           marginBottom:28 }}>
 
-          {/* Display name */}
-          <div style={{ marginBottom:20 }}>
-            <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:8 }}>
-              <p style={{ fontSize:12, fontWeight:600, color:T.sub,
-                letterSpacing:'.04em', textTransform:'uppercase' }}>
-                {t('profile.displayName')}
+          <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start',
+            gap:16, flexWrap:'wrap', marginBottom:18 }}>
+            <div>
+              <h2 style={{ fontSize:22, fontWeight:800, color:T.txt, letterSpacing:'-.03em', marginBottom:6 }}>
+                Customize your profile
+              </h2>
+              <p style={{ fontSize:13.5, color:T.sub, lineHeight:1.55, maxWidth:560 }}>
+                Refine identity, banner and featured anime in one place. Changes only apply after saving.
               </p>
-              {nameChecking && (
-                <span style={{ fontSize:11, color:T.sub }}>verificando…</span>
+            </div>
+            <div style={{ display:'flex', alignItems:'center', gap:8, flexWrap:'wrap' }}>
+              <button className="t pill" onClick={() => scrollToEditSection(identitySectionRef)}
+                style={{ padding:'7px 12px', borderRadius:999, border:`1px solid ${T.bord}`,
+                  background:'transparent', color:T.sub, fontSize:12.5, fontWeight:600 }}>
+                Identity
+              </button>
+              <button className="t pill" onClick={() => scrollToEditSection(bannerSectionRef)}
+                style={{ padding:'7px 12px', borderRadius:999, border:`1px solid ${T.bord}`,
+                  background:'transparent', color:T.sub, fontSize:12.5, fontWeight:600 }}>
+                Banner
+              </button>
+              <button className="t pill" onClick={() => scrollToEditSection(featuredSectionRef)}
+                style={{ padding:'7px 12px', borderRadius:999, border:`1px solid ${T.bord}`,
+                  background:'transparent', color:T.sub, fontSize:12.5, fontWeight:600 }}>
+                Featured
+              </button>
+            </div>
+          </div>
+
+          <div style={{ ...sectionCardStyle, marginBottom:18, overflow:'hidden' }}>
+            <div style={{ position:'relative', borderRadius:16, overflow:'hidden', minHeight:170,
+              background:`linear-gradient(135deg,${bannerColor.a},${bannerColor.b})`, marginBottom:16 }}>
+              {editBannerPreview && (
+                <img src={editBannerPreview} alt="" style={{ position:'absolute', inset:0,
+                  width:'100%', height:'100%', objectFit:'cover',
+                  opacity: draft.bannerUrl || pinnedBanner ? 1 : .28,
+                  filter: draft.bannerUrl || pinnedBanner ? 'none' : 'blur(18px)',
+                  transform: draft.bannerUrl || pinnedBanner ? 'none' : 'scale(1.08)' }}/>
               )}
-              {!nameChecking && nameAvailable === true && (
-                <span style={{ fontSize:11, fontWeight:600, color:'#30D158' }}>✓ disponível</span>
-              )}
-              {!nameChecking && nameAvailable === false && (
-                <span style={{ fontSize:11, fontWeight:600, color:'#FF3B30' }}>✗ já em uso</span>
-              )}
+              <div style={{ position:'absolute', inset:0,
+                background:'linear-gradient(180deg, rgba(0,0,0,.1) 0%, rgba(0,0,0,.56) 100%)' }}/>
+              <div style={{ position:'relative', zIndex:1, display:'flex', alignItems:'flex-end',
+                gap:14, padding:18, minHeight:170 }}>
+                <div style={{ width:76, height:76, borderRadius:'50%',
+                  background: `linear-gradient(135deg,${avatarGrad[0]},${avatarGrad[1]})`,
+                  border:'3px solid rgba(255,255,255,.88)', overflow:(draft.avatarUrl && !avatarBroken) ? 'hidden' : 'visible',
+                  display:'flex', alignItems:'center', justifyContent:'center',
+                  fontSize:22, fontWeight:800, color:'#fff', flexShrink:0 }}>
+                  {(draft.avatarUrl && !avatarBroken)
+                    ? <img src={draft.avatarUrl} alt="" style={{ width:'100%', height:'100%', objectFit:'cover' }}
+                        onError={() => setAvatarBroken(true)}
+                      />
+                    : initials}
+                </div>
+                <div style={{ minWidth:0 }}>
+                  <p style={{ fontSize:11, fontWeight:700, color:'rgba(255,255,255,.72)',
+                    letterSpacing:'.08em', textTransform:'uppercase', marginBottom:6 }}>
+                    Live Preview
+                  </p>
+                  <p style={{ fontSize:24, fontWeight:800, color:'#fff', lineHeight:1.05,
+                    marginBottom:6, letterSpacing:'-.03em' }}>
+                    {draft.displayName?.trim() || username}
+                  </p>
+                  <p style={{ fontSize:13, color:'rgba(255,255,255,.78)', lineHeight:1.5 }}>
+                    {draftPinnedAnime ? `Featured: ${draftPinnedAnime.title}` : 'No featured anime selected yet'}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center',
+              gap:12, flexWrap:'wrap' }}>
+              <div>
+                <p style={{ fontSize:13, fontWeight:700, color:T.txt, marginBottom:4 }}>
+                  {hasUnsavedChanges ? 'Unsaved changes' : 'Everything is saved'}
+                </p>
+                <p style={sectionHelpStyle}>
+                  {hasUnsavedChanges
+                    ? 'Review the preview above and save when you are ready.'
+                    : 'Make a change to update your identity, banner or featured anime.'}
+                </p>
+              </div>
+              <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
+                <button className="t" onClick={cancelEdit}
+                  style={{ padding:'10px 16px', borderRadius:12, border:`1px solid ${T.bord}`,
+                    background:'transparent', color:T.sub, fontSize:13, fontWeight:700 }}>
+                  {t('profile.cancel')}
+                </button>
+                <button onClick={saveEdit} disabled={editActionDisabled}
+                  style={{ padding:'10px 18px', borderRadius:12, border:'none',
+                    cursor: editActionDisabled ? 'not-allowed' : 'pointer',
+                    background: nameAvailable === false ? '#FF3B30' : '#0A84FF',
+                    color:'#fff', fontSize:13, fontWeight:800,
+                    opacity: editActionDisabled ? .55 : 1 }}>
+                  {saving ? t('profile.saving') : t('profile.save')}
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Display name */}
+          <div ref={identitySectionRef} style={{ ...sectionCardStyle, marginBottom:18 }}>
+            <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between',
+              gap:12, flexWrap:'wrap', marginBottom:12 }}>
+              <div>
+                <p style={sectionLabelStyle}>{t('profile.displayName')}</p>
+                <p style={{ ...sectionHelpStyle, marginTop:6 }}>
+                  This is the public name shown to friends and across your profile.
+                </p>
+              </div>
+              <div style={{ display:'flex', alignItems:'center', gap:10, minHeight:18 }}>
+                {nameChecking && (
+                  <span style={{ fontSize:11, color:T.sub }}>verificando…</span>
+                )}
+                {!nameChecking && nameAvailable === true && (
+                  <span style={{ fontSize:11, fontWeight:700, color:'#30D158' }}>✓ disponível</span>
+                )}
+                {!nameChecking && nameAvailable === false && (
+                  <span style={{ fontSize:11, fontWeight:700, color:'#FF3B30' }}>✗ já em uso</span>
+                )}
+              </div>
+            </div>
+
+            <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:8 }}>
+              <span style={{ fontSize:11, color:T.sub }}>Max 30 characters</span>
+              <span style={{ fontSize:11, color:T.sub }}>{draft.displayName.length}/30</span>
             </div>
             <input
               type="text" placeholder={username}
@@ -389,87 +531,99 @@ export function ProfilePage({ library, onOpen, onStatus, onLogin, onViewFriend =
           </div>
 
           {/* Profile picture */}
-          <div style={{ marginBottom:20 }}>
-            <p style={{ fontSize:12, fontWeight:600, color:T.sub,
-              letterSpacing:'.04em', textTransform:'uppercase', marginBottom:8 }}>
-              {t('profile.profilePicture')}
-            </p>
-            <div style={{ display:'flex', gap:8, flexWrap:'wrap', marginBottom:12 }}>
-              {AVATAR_GRADS.map(([a, b], i) => (
-                <button key={i} onClick={() => setDraft(d => ({ ...d, avatarGrad:i, avatarUrl:'' }))}
-                  style={{ width:40, height:40, borderRadius:'50%', border:'none', cursor:'pointer',
-                    background:`linear-gradient(135deg,${a},${b})`,
-                    outline: draft.avatarGrad === i && !draft.avatarUrl
-                      ? `3px solid ${T.txt}` : `3px solid transparent`,
-                    outlineOffset:2, transition:'outline .15s' }}/>
-              ))}
+          <div style={{ ...sectionCardStyle, marginBottom:18 }}>
+            <div style={{ marginBottom:12 }}>
+              <p style={sectionLabelStyle}>{t('profile.profilePicture')}</p>
+              <p style={{ ...sectionHelpStyle, marginTop:6 }}>
+                Choose a color avatar, search a character or paste a direct image URL.
+              </p>
             </div>
-            {/* Character search */}
-            <p style={{ fontSize: 11, fontWeight: 600, color: T.sub, marginBottom: 6 }}>
-              Personagens
-            </p>
-            <input
-              type="text" placeholder="Buscar personagem…"
-              value={charQuery}
-              onChange={e => setCharQuery(e.target.value)}
-              style={{ width:'100%', padding:'8px 12px', borderRadius:10, fontSize:13,
-                background: dark ? 'rgba(255,255,255,.07)' : 'rgba(0,0,0,.05)',
-                border:`1px solid ${T.bord}`, color:T.txt, outline:'none',
-                fontFamily:'inherit', boxSizing:'border-box', marginBottom:8 }}
-            />
-            <div style={{
-              display: 'grid', gridTemplateColumns: 'repeat(8, 1fr)', gap: 5, marginBottom: 10,
-              minHeight: 80,
-            }}>
-              {charLoading
-                ? Array.from({ length: 16 }).map((_, i) => (
-                    <div key={i} style={{
-                      aspectRatio:'1', borderRadius:8,
-                      background: dark ? 'rgba(255,255,255,.06)' : 'rgba(0,0,0,.05)',
-                      display:'flex', alignItems:'center', justifyContent:'center',
-                    }}>
-                      <div style={{ width:14, height:14, borderRadius:'50%', border:`2px solid ${dark?'rgba(255,255,255,.2)':'rgba(0,0,0,.15)'}`, borderTopColor:'#0A84FF', animation:'spin .7s linear infinite' }}/>
-                    </div>
-                  ))
-                : charResults.map(node => {
-                    const selected = draft.avatarUrl === node.image.large
-                    return (
-                      <button key={node.id} className="t" title={node.name.full}
-                        onClick={() => setDraft(d => ({ ...d, avatarUrl: node.image.large }))}
-                        style={{
-                          padding: 0, border: selected ? '2.5px solid #0A84FF' : '2.5px solid transparent',
-                          borderRadius: 8, overflow: 'hidden', cursor: 'pointer',
-                          aspectRatio: '1', background: dark ? 'rgba(255,255,255,.06)' : 'rgba(0,0,0,.05)',
+
+            <div style={{ display:'grid', gridTemplateColumns: isMobile ? '1fr' : 'minmax(0, 240px) minmax(0, 1fr)', gap:16 }}>
+              <div>
+                <div style={{ display:'flex', gap:8, flexWrap:'wrap', marginBottom:12 }}>
+                  {AVATAR_GRADS.map(([a, b], i) => (
+                    <button key={i} onClick={() => setDraft(d => ({ ...d, avatarGrad:i, avatarUrl:'' }))}
+                      style={{ width:42, height:42, borderRadius:'50%', border:'none', cursor:'pointer',
+                        background:`linear-gradient(135deg,${a},${b})`,
+                        outline: draft.avatarGrad === i && !draft.avatarUrl
+                          ? `3px solid ${T.txt}` : `3px solid transparent`,
+                        outlineOffset:2, transition:'outline .15s' }}/>
+                  ))}
+                </div>
+
+                <p style={{ fontSize: 11, fontWeight: 700, color: T.sub, marginBottom: 6, letterSpacing: '.04em', textTransform: 'uppercase' }}>
+                  Character Search
+                </p>
+                <input
+                  type="text" placeholder="Buscar personagem…"
+                  value={charQuery}
+                  onChange={e => setCharQuery(e.target.value)}
+                  style={{ width:'100%', padding:'10px 12px', borderRadius:10, fontSize:13,
+                    background: dark ? 'rgba(255,255,255,.07)' : 'rgba(0,0,0,.05)',
+                    border:`1px solid ${T.bord}`, color:T.txt, outline:'none',
+                    fontFamily:'inherit', boxSizing:'border-box', marginBottom:10 }}
+                />
+                <input
+                  type="url" placeholder={t('profile.pasteImageUrl')}
+                  value={draft.avatarUrl}
+                  onChange={e => setDraft(d => ({ ...d, avatarUrl: e.target.value }))}
+                  style={{ width:'100%', padding:'10px 14px', borderRadius:12, fontSize:13,
+                    background: dark ? 'rgba(255,255,255,.07)' : 'rgba(0,0,0,.05)',
+                    border:`1px solid ${T.bord}`, color:T.txt, outline:'none',
+                    fontFamily:'inherit', boxSizing:'border-box' }}
+                />
+              </div>
+
+              <div>
+                <div style={{
+                  display: 'grid', gridTemplateColumns: isMobile ? 'repeat(4, 1fr)' : 'repeat(6, 1fr)', gap: 8,
+                  minHeight: 100,
+                }}>
+                  {charLoading
+                    ? Array.from({ length: isMobile ? 8 : 12 }).map((_, i) => (
+                        <div key={i} style={{
+                          aspectRatio:'1', borderRadius:10,
+                          background: dark ? 'rgba(255,255,255,.06)' : 'rgba(0,0,0,.05)',
+                          display:'flex', alignItems:'center', justifyContent:'center',
                         }}>
-                        <img src={node.image.large} alt={node.name.full}
-                          style={{ width:'100%', height:'100%', objectFit:'cover', display:'block' }} />
-                      </button>
-                    )
-                  })
-              }
+                          <div style={{ width:14, height:14, borderRadius:'50%', border:`2px solid ${dark?'rgba(255,255,255,.2)':'rgba(0,0,0,.15)'}`, borderTopColor:'#0A84FF', animation:'spin .7s linear infinite' }}/>
+                        </div>
+                      ))
+                    : charResults.map(node => {
+                        const selected = draft.avatarUrl === node.image.large
+                        return (
+                          <button key={node.id} className="t" title={node.name.full}
+                            onClick={() => setDraft(d => ({ ...d, avatarUrl: node.image.large }))}
+                            style={{
+                              padding: 0, border: selected ? '2.5px solid #0A84FF' : '2.5px solid transparent',
+                              borderRadius: 10, overflow: 'hidden', cursor: 'pointer',
+                              aspectRatio: '1', background: dark ? 'rgba(255,255,255,.06)' : 'rgba(0,0,0,.05)',
+                            }}>
+                            <img src={node.image.large} alt={node.name.full}
+                              style={{ width:'100%', height:'100%', objectFit:'cover', display:'block' }} />
+                          </button>
+                        )
+                      })
+                  }
+                </div>
+              </div>
             </div>
-            <input
-              type="url" placeholder={t('profile.pasteImageUrl')}
-              value={draft.avatarUrl}
-              onChange={e => setDraft(d => ({ ...d, avatarUrl: e.target.value }))}
-              style={{ width:'100%', padding:'9px 14px', borderRadius:12, fontSize:13,
-                background: dark ? 'rgba(255,255,255,.07)' : 'rgba(0,0,0,.05)',
-                border:`1px solid ${T.bord}`, color:T.txt, outline:'none',
-                fontFamily:'inherit', boxSizing:'border-box' }}
-            />
           </div>
 
           {/* Banner */}
-          <div style={{ marginBottom:20 }}>
-            <p style={{ fontSize:12, fontWeight:600, color:T.sub,
-              letterSpacing:'.04em', textTransform:'uppercase', marginBottom:8 }}>
-              {t('profile.banner')}
-            </p>
-            {/* Gradients row */}
-            <div style={{ display:'flex', gap:8, flexWrap:'wrap', marginBottom:10 }}>
+          <div ref={bannerSectionRef} style={{ ...sectionCardStyle, marginBottom:18 }}>
+            <div style={{ marginBottom:12 }}>
+              <p style={sectionLabelStyle}>{t('profile.banner')}</p>
+              <p style={{ ...sectionHelpStyle, marginTop:6 }}>
+                Pick an automatic banner, a gradient preset or reuse artwork from your library.
+              </p>
+            </div>
+
+            <div style={{ display:'flex', gap:8, flexWrap:'wrap', marginBottom:12 }}>
               <button onClick={() => setDraft(d => ({ ...d, bannerTheme: null, bannerUrl: null, bannerAnimeId: null }))}
-                style={{ height:36, padding:'0 14px', borderRadius:12, border:'none',
-                  cursor:'pointer', fontSize:12, fontWeight:600,
+                style={{ height:38, padding:'0 14px', borderRadius:12, border:'none',
+                  cursor:'pointer', fontSize:12, fontWeight:700,
                   background: draft.bannerTheme === null && !draft.bannerUrl
                     ? (dark ? '#3A3A3C' : '#1D1D1F') : T.surf2,
                   color: draft.bannerTheme === null && !draft.bannerUrl ? '#fff' : T.sub,
@@ -478,18 +632,19 @@ export function ProfilePage({ library, onOpen, onStatus, onLogin, onViewFriend =
               </button>
               {BANNER_THEMES.map(({ a, b }, i) => (
                 <button key={i} onClick={() => setDraft(d => ({ ...d, bannerTheme: i, bannerUrl: null, bannerAnimeId: null }))}
-                  style={{ width:36, height:36, borderRadius:12, border:'none', cursor:'pointer',
+                  style={{ width:38, height:38, borderRadius:12, border:'none', cursor:'pointer',
                     background:`linear-gradient(135deg,${a},${b})`,
                     outline: draft.bannerTheme === i && !draft.bannerUrl
                       ? `3px solid ${T.txt}` : `3px solid transparent`,
                     outlineOffset:2, transition:'outline .15s' }}/>
               ))}
             </div>
-            {/* Library anime banners */}
             {animeLib.length > 0 && (
               <>
-                <p style={{ fontSize:11, fontWeight:600, color:T.sub, marginBottom:6 }}>Banner de um anime</p>
-                <div style={{ display:'flex', gap:7, overflowX:'auto', scrollbarWidth:'none', paddingBottom:4 }}>
+                <p style={{ fontSize:11, fontWeight:700, color:T.sub, marginBottom:8, letterSpacing:'.04em', textTransform:'uppercase' }}>
+                  Banner de um anime
+                </p>
+                <div style={{ display:'grid', gridTemplateColumns: isMobile ? 'repeat(3, 1fr)' : 'repeat(5, minmax(0, 1fr))', gap:10 }}>
                   {[...animeLib].sort((a,b) => (b.userScore??0)-(a.userScore??0)).slice(0,20).map(item => {
                     const loading  = bannerLoading === item.id
                     const selected = draft.bannerUrl && bannerLoading !== item.id &&
@@ -498,8 +653,8 @@ export function ProfilePage({ library, onOpen, onStatus, onLogin, onViewFriend =
                       <button key={item.id} className="t" title={item.title}
                         onClick={() => pickAnimeBanner(item)}
                         style={{
-                          flexShrink:0, padding:0, borderRadius:10, overflow:'hidden', cursor:'pointer',
-                          width:72, height:100, position:'relative',
+                          padding:0, borderRadius:12, overflow:'hidden', cursor:'pointer',
+                          width:'100%', aspectRatio:'0.72', position:'relative',
                           border: selected ? '2.5px solid #0A84FF' : '2.5px solid transparent',
                           background: dark ? 'rgba(255,255,255,.06)' : 'rgba(0,0,0,.05)',
                         }}>
@@ -519,12 +674,14 @@ export function ProfilePage({ library, onOpen, onStatus, onLogin, onViewFriend =
           </div>
 
           {/* Featured anime */}
-          <div style={{ marginBottom:20 }}>
+          <div ref={featuredSectionRef} style={{ ...sectionCardStyle, marginBottom:18 }}>
             <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:8 }}>
-              <p style={{ fontSize:12, fontWeight:600, color:T.sub,
-                letterSpacing:'.04em', textTransform:'uppercase' }}>
-                {t('profile.pinnedAnime')}
-              </p>
+              <div>
+                <p style={sectionLabelStyle}>{t('profile.pinnedAnime')}</p>
+                <p style={{ ...sectionHelpStyle, marginTop:6 }}>
+                  Select one title to visually represent your taste on the profile header.
+                </p>
+              </div>
               {draft.pinnedAnimeId && (
                 <button onClick={() => setDraft(d => ({ ...d, pinnedAnimeId: null }))}
                   style={{ fontSize:12, color:'#FF3B30', background:'none', border:'none',
@@ -533,46 +690,55 @@ export function ProfilePage({ library, onOpen, onStatus, onLogin, onViewFriend =
                 </button>
               )}
             </div>
-            {draft.pinnedAnimeId && (() => {
-              const p = animeLib.find(i => i.id === draft.pinnedAnimeId)
-              return p ? (
+            {draftPinnedAnime && (
                 <div style={{ display:'flex', alignItems:'center', gap:10, padding:'8px 12px',
                   borderRadius:12, background:'rgba(10,132,255,.1)',
                   border:'1px solid rgba(10,132,255,.2)', marginBottom:10 }}>
-                  <img src={p.img} alt="" style={{ width:32, height:44, objectFit:'cover', borderRadius:6 }}/>
+                  <img src={draftPinnedAnime.img} alt="" style={{ width:32, height:44, objectFit:'cover', borderRadius:6 }}/>
                   <p style={{ fontSize:13, fontWeight:600, color:'#0A84FF',
-                    overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{p.title}</p>
+                    overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{draftPinnedAnime.title}</p>
                 </div>
-              ) : null
-            })()}
-            <div style={{ display:'flex', gap:8, overflowX:'auto',
-              scrollbarWidth:'none', paddingBottom:4 }}>
+            )}
+            <div style={{ display:'grid', gridTemplateColumns: isMobile ? 'repeat(4, 1fr)' : 'repeat(6, minmax(0, 1fr))', gap:10 }}>
               {animeLib
                 .filter(i => i.userStatus === 'watching' || i.userStatus === 'completed')
                 .slice(0, 24)
                 .map(item => (
-                  <div key={item.id} className="t" onClick={() => setDraft(d => ({ ...d, pinnedAnimeId: item.id }))}
-                    style={{ flexShrink:0, cursor:'pointer', borderRadius:10,
+                  <button key={item.id} type="button" className="t" onClick={() => setDraft(d => ({ ...d, pinnedAnimeId: item.id }))}
+                    style={{ cursor:'pointer', borderRadius:12, padding:0, background:'transparent', border:'none',
                       outline: draft.pinnedAnimeId === item.id
                         ? '2.5px solid #0A84FF' : '2.5px solid transparent',
                       outlineOffset:1, transition:'outline .15s' }}>
                     <img src={item.img} alt={item.title}
-                      style={{ width:52, height:72, objectFit:'cover', borderRadius:10, display:'block' }}/>
-                  </div>
+                      style={{ width:'100%', aspectRatio:'0.72', objectFit:'cover', borderRadius:12, display:'block' }}/>
+                  </button>
                 ))
               }
             </div>
             <p style={{ fontSize:11, color:T.sub, marginTop:6 }}>{t('profile.selectPinned')}</p>
           </div>
 
-          <button onClick={saveEdit} disabled={saving || nameAvailable === false || nameChecking}
-            style={{ padding:'10px 28px', borderRadius:22, border:'none',
-              cursor: (saving || nameAvailable === false || nameChecking) ? 'not-allowed' : 'pointer',
+          <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center',
+            gap:12, flexWrap:'wrap', paddingTop:4 }}>
+            <p style={{ fontSize:12.5, color:T.sub }}>
+              {hasUnsavedChanges ? 'Profile changes are ready to save.' : 'No pending changes.'}
+            </p>
+            <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
+              <button className="t" onClick={cancelEdit}
+                style={{ padding:'10px 16px', borderRadius:12, border:`1px solid ${T.bord}`,
+                  background:'transparent', color:T.sub, fontSize:13, fontWeight:700 }}>
+                {t('profile.cancel')}
+              </button>
+              <button onClick={saveEdit} disabled={editActionDisabled}
+                style={{ padding:'10px 28px', borderRadius:22, border:'none',
+              cursor: editActionDisabled ? 'not-allowed' : 'pointer',
               background: nameAvailable === false ? '#FF3B30' : '#0A84FF',
               color:'#fff', fontSize:14, fontWeight:600,
-              opacity: (saving || nameChecking) ? .6 : 1, transition:'opacity .2s,background .2s' }}>
-            {saving ? t('profile.saving') : nameAvailable === false ? 'Nome indisponível' : t('profile.save')}
-          </button>
+              opacity: editActionDisabled ? .6 : 1, transition:'opacity .2s,background .2s' }}>
+                {saving ? t('profile.saving') : nameAvailable === false ? 'Nome indisponível' : t('profile.save')}
+              </button>
+            </div>
+          </div>
         </div>
       )}
 

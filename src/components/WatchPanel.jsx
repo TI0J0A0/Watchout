@@ -6,7 +6,6 @@ import { fetchAnilistData } from '../services/anilist'
 import { fetchSkipTimes } from '../services/aniskip'
 import { trackMetricEvent } from '../services/metrics'
 import { useAuth } from '../context/AuthContext'
-import { useTvMode } from '../context/TvModeContext'
 import { getNextAiredEpisode, shouldShowNextEpisodeButton } from '../utils/playerNavigation'
 
 function parseEpNum(title) {
@@ -58,7 +57,6 @@ function setFloatingHover(target, active) {
 export function WatchPanel({ item, onEp, onStatus }) {
   const { T, dark } = useTheme()
   const { user } = useAuth()
-  const { isTvMode } = useTvMode()
   const { t } = useTranslation()
   const isMobile = useIsMobile()
 
@@ -81,7 +79,6 @@ export function WatchPanel({ item, onEp, onStatus }) {
   const pendingSeek  = useRef(0)
   const saveTimer    = useRef(null)
   const playerLoadStarted = useRef(0)
-  const playerShellRef = useRef(null)
 
   useEffect(() => {
     markedRef.current = false
@@ -257,35 +254,10 @@ export function WatchPanel({ item, onEp, onStatus }) {
     win.postMessage({ type: 'seek', time }, 'https://megaplay.buzz')
   }
 
-  function togglePlayPause() {
-    const win = iframeRef.current?.contentWindow
-    if (!win) return
-
-    const messages = [
-      { event: 'togglePlay' },
-      { type: 'togglePlay' },
-      { event: 'playPause' },
-      { type: 'playPause' },
-      { event: 'keyboard', key: 'Space' },
-      { type: 'keyboard', key: 'Space' },
-    ]
-
-    messages.forEach(message => win.postMessage(message, 'https://megaplay.buzz'))
-  }
-
   function goToNextEpisode() {
     if (!nextEpisode) return
     setActiveEp(nextEpisode)
   }
-
-  useEffect(() => {
-    const player = playerShellRef.current
-    if (!player) return
-
-    const handleToggle = () => togglePlayPause()
-    player.addEventListener('tv-toggle-play', handleToggle)
-    return () => player.removeEventListener('tv-toggle-play', handleToggle)
-  }, [activeEp, lang, quality])
 
   const showSkipIntro = !skipDismissed && activeEp !== null && skipTimes.op !== null &&
     currentTime >= skipTimes.op.startTime && currentTime <= skipTimes.op.endTime
@@ -303,7 +275,7 @@ export function WatchPanel({ item, onEp, onStatus }) {
     <div style={{ marginBottom: 28 }}>
 
       {/* ── Header ── */}
-      <div className="tv-player-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <p style={{ fontSize: 13, fontWeight: 600, color: T.txt }}>{t('premium.watchOnline')}</p>
           <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 5,
@@ -313,7 +285,7 @@ export function WatchPanel({ item, onEp, onStatus }) {
         </div>
 
         {state === 'ready' && (
-          <div className="tv-player-controls" style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
             {!isMobile && (
               <>
                 <div style={{ display: 'flex', gap: 3 }}>
@@ -352,12 +324,8 @@ export function WatchPanel({ item, onEp, onStatus }) {
         <>
           {/* ── Player ── */}
           {activeEp !== null && (
-            <div
-              ref={playerShellRef}
-              data-tv-player="true"
-              tabIndex={isTvMode ? 0 : -1}
-              style={{ position: 'relative', paddingBottom: '56.25%', borderRadius: 14,
-                overflow: 'hidden', background: '#000', marginBottom: 20 }}>
+            <div style={{ position: 'relative', paddingBottom: '56.25%', borderRadius: 14,
+              overflow: 'hidden', background: '#000', marginBottom: 20 }}>
               <iframe
                 ref={iframeRef}
                 key={`${item.id}-${activeEp}-${lang}-${quality}`}
@@ -391,23 +359,6 @@ export function WatchPanel({ item, onEp, onStatus }) {
                   })
                 }}
               />
-
-              {isTvMode && (
-                <button
-                  type="button"
-                  onClick={togglePlayPause}
-                  style={{
-                    ...floatingButtonBase,
-                    left: 14,
-                    top: 14,
-                    background: 'rgba(255,255,255,.14)',
-                  }}
-                  onMouseEnter={e => setFloatingHover(e.currentTarget, true)}
-                  onMouseLeave={e => setFloatingHover(e.currentTarget, false)}
-                >
-                  Play/Pause
-                </button>
-              )}
 
               {/* Skip Intro button */}
               {(showSkipIntro || showSkipOutro) && (
@@ -459,7 +410,7 @@ export function WatchPanel({ item, onEp, onStatus }) {
           )}
 
           {/* ── Episode cards grid ── */}
-          <div data-tv-episode-grid="true" style={{
+          <div style={{
             display: 'grid',
             gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(auto-fill, minmax(190px, 1fr))',
             gap: 10,
@@ -476,7 +427,7 @@ export function WatchPanel({ item, onEp, onStatus }) {
               return (
                 <button key={ep}
                   type="button"
-                  className="t tv-episode-card"
+                  className="t"
                   onClick={() => setActiveEp(ep)}
                   onMouseEnter={() => setHoveredEp(ep)}
                   onMouseLeave={() => setHoveredEp(null)}
