@@ -16,6 +16,7 @@ export function useLibrary() {
   const [topLoaded, setTopLoaded] = useState(false)
   const noteTimer = useRef(null)
   const supabaseLoaded = useRef(false)
+  const enrichRunRef = useRef(0)
 
   useEffect(() => {
     fetchSeasonal()
@@ -80,28 +81,37 @@ export function useLibrary() {
           }
         })()
 
-        // Enrich items that have no image (e.g. from MAL import)
+        // Enrich items that have no image (e.g. from MAL import) without blocking initial render.
         const needsEnrich = library.filter(i => !i.img).slice(0, 60)
         if (needsEnrich.length === 0) return
+        const runId = enrichRunRef.current + 1
+        enrichRunRef.current = runId
         ;(async () => {
-          for (const item of needsEnrich) {
-            await new Promise(r => setTimeout(r, 360))
-            try {
-              const full = await fetchAnimeById(item.id)
-              const enriched = {
-                ...full,
-                userStatus: item.userStatus,
-                userScore:  item.userScore,
-                userEp:     item.userEp,
-                userNotes:  item.userNotes,
-              }
-              setData(prev => prev.map(i => i.id === enriched.id ? enriched : i))
-              upsertAnime(user.id, enriched).catch(() => {})
-            } catch {}
+          const queue = [...needsEnrich]
+          async function worker() {
+            while (queue.length && enrichRunRef.current === runId) {
+              const item = queue.shift()
+              await new Promise(r => setTimeout(r, 250))
+              try {
+                const full = await fetchAnimeById(item.id)
+                if (enrichRunRef.current !== runId) return
+                const enriched = {
+                  ...full,
+                  userStatus: item.userStatus,
+                  userScore:  item.userScore,
+                  userEp:     item.userEp,
+                  userNotes:  item.userNotes,
+                }
+                setData(prev => prev.map(i => i.id === enriched.id ? enriched : i))
+                upsertAnime(user.id, enriched).catch(() => {})
+              } catch {}
+            }
           }
+          await Promise.all([worker(), worker()])
         })()
       })
       .catch(console.error)
+    return () => { enrichRunRef.current += 1 }
   }, [user?.id])
 
   //desabilado por hora -  erro de sync local storage
@@ -119,9 +129,13 @@ export function useLibrary() {
 
   const addToData = (item) => {
     setData(d => {
+      if (!item?.id) return d
       const existing = d.find(i => i.id === item.id)
       if (!existing) return [...d, item]
-      return d.map(i => i.id === item.id ? { ...i, ...item } : i)
+      const merged = { ...existing, ...item }
+      const unchanged = Object.keys(merged).every(key => Object.is(existing[key], merged[key]))
+      if (unchanged) return d
+      return d.map(i => i.id === item.id ? merged : i)
     })
   }
 

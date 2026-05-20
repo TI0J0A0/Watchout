@@ -17,8 +17,23 @@ function toAutoplayUrl(url) {
 function useTilt(maxDeg = 10) {
   const ref = useRef(null)
   const [t, setT] = useState({ rx: 0, ry: 0, gx: 50, gy: 50, on: false })
+  const [canTilt, setCanTilt] = useState(false)
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || !window.matchMedia) return
+    const hoverQuery = window.matchMedia('(hover: hover) and (pointer: fine)')
+    const update = event => setCanTilt(event.matches)
+    setCanTilt(hoverQuery.matches)
+    if (hoverQuery.addEventListener) {
+      hoverQuery.addEventListener('change', update)
+      return () => hoverQuery.removeEventListener('change', update)
+    }
+    hoverQuery.addListener(update)
+    return () => hoverQuery.removeListener(update)
+  }, [])
 
   const move = (e) => {
+    if (!canTilt) return
     const el = ref.current
     if (!el) return
     const r = el.getBoundingClientRect()
@@ -27,15 +42,18 @@ function useTilt(maxDeg = 10) {
     setT({ rx: (0.5 - y) * maxDeg * 2, ry: (x - 0.5) * maxDeg * 2, gx: x * 100, gy: y * 100, on: true })
   }
 
-  const leave = () => setT({ rx: 0, ry: 0, gx: 50, gy: 50, on: false })
-
-  const tiltStyle = {
-    transform: `perspective(700px) rotateX(${t.rx}deg) rotateY(${t.ry}deg) scale(${t.on ? 1.03 : 1})`,
-    transition: t.on ? 'transform 0.08s linear' : 'transform 0.5s cubic-bezier(0.23,1,0.32,1)',
-    willChange: 'transform',
+  const leave = () => {
+    if (!canTilt) return
+    setT({ rx: 0, ry: 0, gx: 50, gy: 50, on: false })
   }
 
-  return { ref, tiltStyle, gx: t.gx, gy: t.gy, on: t.on, move, leave }
+  const tiltStyle = {
+    transform: canTilt ? `perspective(700px) rotateX(${t.rx}deg) rotateY(${t.ry}deg) scale(${t.on ? 1.03 : 1})` : undefined,
+    transition: canTilt ? (t.on ? 'transform 0.08s linear' : 'transform 0.5s cubic-bezier(0.23,1,0.32,1)') : undefined,
+    willChange: canTilt ? 'transform' : 'auto',
+  }
+
+  return { ref, tiltStyle, gx: t.gx, gy: t.gy, on: canTilt && t.on, move, leave }
 }
 
 function TrailerCard({ item, isPlaying, onToggle, T }) {

@@ -1,4 +1,4 @@
-import { memo, useRef, useState, useEffect } from 'react'
+import { memo, useRef, useState, useEffect, useCallback } from 'react'
 import { useTheme } from '../context/ThemeContext'
 import { useIsMobile } from '../hooks/useIsMobile'
 import { MediaCard } from './MediaCard'
@@ -7,25 +7,47 @@ export const ShelfRow = memo(function ShelfRow({ title, emoji, subtitle, items, 
   const { T, dark } = useTheme()
   const isMobile = useIsMobile()
   const scrollRef = useRef(null)
+  const rafRef = useRef(0)
+  const scrollStateRef = useRef({ left: false, right: true })
   const [canLeft,  setCanLeft]  = useState(false)
   const [canRight, setCanRight] = useState(true)
 
-  const checkScroll = () => {
+  const checkScrollNow = useCallback(() => {
     const el = scrollRef.current
     if (!el) return
-    setCanLeft(el.scrollLeft > 8)
-    setCanRight(el.scrollLeft + el.clientWidth < el.scrollWidth - 8)
-  }
+    const next = {
+      left: el.scrollLeft > 8,
+      right: el.scrollLeft + el.clientWidth < el.scrollWidth - 8,
+    }
+    const prev = scrollStateRef.current
+    if (prev.left === next.left && prev.right === next.right) return
+    scrollStateRef.current = next
+    setCanLeft(next.left)
+    setCanRight(next.right)
+  }, [])
+
+  const checkScroll = useCallback(() => {
+    if (rafRef.current) return
+    rafRef.current = requestAnimationFrame(() => {
+      rafRef.current = 0
+      checkScrollNow()
+    })
+  }, [checkScrollNow])
 
   useEffect(() => {
     const el = scrollRef.current
     if (!el) return
-    checkScroll()
+    checkScrollNow()
     const ro = new ResizeObserver(checkScroll)
     ro.observe(el)
     el.addEventListener('scroll', checkScroll, { passive: true })
-    return () => { el.removeEventListener('scroll', checkScroll); ro.disconnect() }
-  }, [items])
+    return () => {
+      el.removeEventListener('scroll', checkScroll)
+      ro.disconnect()
+      if (rafRef.current) cancelAnimationFrame(rafRef.current)
+      rafRef.current = 0
+    }
+  }, [items, checkScroll, checkScrollNow])
 
   const scroll = dir => scrollRef.current?.scrollBy({ left: dir * 620, behavior: 'smooth' })
 

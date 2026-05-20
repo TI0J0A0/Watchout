@@ -1,7 +1,10 @@
 import { supabase } from './supabase'
 import { buildAdminMetricStats, EMPTY_ADMIN_METRICS } from './metricsAnalytics'
+import { createMetricDedupe } from '../utils/metricsThrottle'
 
 const SESSION_KEY = 'watchout_metrics_session'
+const noisyMetricDedupe = createMetricDedupe({ windowMs: 5000 })
+const NOISY_METRIC_TYPES = new Set(['player_buffering', 'video_start_time'])
 
 function getDeviceType() {
   if (typeof window === 'undefined') return null
@@ -24,6 +27,18 @@ function getSessionId() {
 
 export async function trackMetricEvent({ type, userId = null, animeId = null, page = null, metadata = {} }) {
   if (!supabase || !type) return
+  if (NOISY_METRIC_TYPES.has(type)) {
+    const dedupeKey = [
+      type,
+      userId ?? '',
+      animeId ?? '',
+      page ?? '',
+      metadata.episode ?? '',
+      metadata.quality ?? '',
+      metadata.language ?? '',
+    ].join(':')
+    if (!noisyMetricDedupe.shouldSend(dedupeKey)) return
+  }
   const sessionId = getSessionId()
   const timezone = typeof window !== 'undefined'
     ? Intl.DateTimeFormat().resolvedOptions().timeZone || null

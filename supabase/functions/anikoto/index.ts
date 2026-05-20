@@ -5,24 +5,61 @@ const SERVICE_KEY  = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 
 const ANILIST_TTL_MS = 24 * 60 * 60 * 1000  // 24 h
 
-function corsHeaders() {
+const DEFAULT_ALLOWED_ORIGINS = [
+  'https://funnyroll.com',
+  'https://www.funnyroll.com',
+  'http://localhost:5173',
+  'http://127.0.0.1:5173',
+  'http://localhost:5174',
+  'http://127.0.0.1:5174',
+]
+
+function allowedOrigins() {
+  return (Deno.env.get('ALLOWED_ORIGINS') || DEFAULT_ALLOWED_ORIGINS.join(','))
+    .split(',')
+    .map(origin => origin.trim())
+    .filter(Boolean)
+}
+
+function isAllowedOrigin(origin: string | null) {
+  if (!origin) return true
+  return allowedOrigins().includes(origin)
+}
+
+function corsHeaders(req: Request) {
+  const origin = req.headers.get('Origin')
+  const allowedOrigin = isAllowedOrigin(origin) ? origin : null
   return {
-    'Access-Control-Allow-Origin': '*',
+    ...(allowedOrigin ? { 'Access-Control-Allow-Origin': allowedOrigin } : {}),
+    'Vary': 'Origin',
     'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
     'Access-Control-Allow-Methods': 'POST, GET, OPTIONS',
   }
 }
 
+function jsonResponse(req: Request, body: unknown, status = 200) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { 'Content-Type': 'application/json', ...corsHeaders(req) },
+  })
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
-    return new Response(null, { status: 204, headers: corsHeaders() })
+    return new Response(null, { status: 204, headers: corsHeaders(req) })
+  }
+
+  if (!isAllowedOrigin(req.headers.get('Origin'))) {
+    return jsonResponse(req, { error: 'Forbidden' }, 403)
+  }
+
+  if (req.method !== 'POST') {
+    return jsonResponse(req, { error: 'Method not allowed' }, 405)
   }
 
   const authHeader = req.headers.get('Authorization')
   if (!authHeader?.startsWith('Bearer ')) {
-    return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-      status: 401, headers: { 'Content-Type': 'application/json', ...corsHeaders() },
-    })
+    return jsonResponse(req, { error: 'Unauthorized' }, 401)
   }
   const jwt = authHeader.slice(7)
 
@@ -33,9 +70,7 @@ Deno.serve(async (req) => {
   })
   const { data: { user }, error: authErr } = await userClient.auth.getUser()
   if (authErr || !user) {
-    return new Response(JSON.stringify({ error: 'Invalid token' }), {
-      status: 401, headers: { 'Content-Type': 'application/json', ...corsHeaders() },
-    })
+    return jsonResponse(req, { error: 'Invalid token' }, 401)
   }
 
   const { data: profile } = await admin
@@ -44,25 +79,25 @@ Deno.serve(async (req) => {
     .eq('id', user.id)
     .single()
 
-  const isAdmin = user.email === 'joaoguiar99@gmail.com'
+  const { data: isAdminResult } = await userClient.rpc('is_admin')
+  const isAdmin = Boolean(isAdminResult)
   if (!profile?.is_premium && !isAdmin) {
-    return new Response(JSON.stringify({ error: 'Premium required' }), {
-      status: 403, headers: { 'Content-Type': 'application/json', ...corsHeaders() },
-    })
+    return jsonResponse(req, { error: 'Premium required' }, 403)
   }
 
   const body  = await req.json().catch(() => ({}))
   const route: string = body.route ?? ''
+  if (!['anilist', 'animeSearch'].includes(route)) {
+    return jsonResponse(req, { error: 'Unknown route' }, 400)
+  }
 
   // ── Route: anilist ─────────────────────────────────────────────────────────
   // Converts MAL ID → AniList ID + episode count via AniList public GraphQL API.
   // Result cached in anikoto_cache for 24 h.
   if (route === 'anilist') {
     const malId: number = Number(body.malId)
-    if (!malId) {
-      return new Response(JSON.stringify({ error: 'Missing malId' }), {
-        status: 400, headers: { 'Content-Type': 'application/json', ...corsHeaders() },
-      })
+    if (!Number.isInteger(malId) || malId <= 0 || malId > 1000000) {
+      return jsonResponse(req, { error: 'Invalid malId' }, 400)
     }
 
     const cacheKey = `anilist_mal_${malId}`
@@ -76,9 +111,7 @@ Deno.serve(async (req) => {
     if (cached) {
       const age = Date.now() - new Date(cached.cached_at).getTime()
       if (age < ANILIST_TTL_MS) {
-        return new Response(JSON.stringify(cached.data), {
-          headers: { 'Content-Type': 'application/json', ...corsHeaders() },
-        })
+        return jsonResponse(req, cached.data)
       }
     }
 
@@ -115,7 +148,7 @@ Deno.serve(async (req) => {
 
     if (!anilistId) {
       return new Response(JSON.stringify({ anilistId: null, episodes: null }), {
-        headers: { 'Content-Type': 'application/json', ...corsHeaders() },
+        headers: { 'Content-Type': 'application/json', ...corsHeaders(req) },
       })
     }
 
@@ -125,25 +158,19 @@ Deno.serve(async (req) => {
       cache_key: cacheKey, data: payload, cached_at: new Date().toISOString(),
     })
 
-    return new Response(JSON.stringify(payload), {
-      headers: { 'Content-Type': 'application/json', ...corsHeaders() },
-    })
+    return jsonResponse(req, payload)
   }
 
   // ── Route: animeSearch ─────────────────────────────────────────────────────
   // Searches Jikan by anime name and returns lightweight metadata for admin UI.
   if (route === 'animeSearch') {
     if (!isAdmin) {
-      return new Response(JSON.stringify({ error: 'Admin required' }), {
-        status: 403, headers: { 'Content-Type': 'application/json', ...corsHeaders() },
-      })
+      return jsonResponse(req, { error: 'Admin required' }, 403)
     }
 
     const query: string = String(body.query ?? '').trim()
-    if (!query) {
-      return new Response(JSON.stringify({ error: 'Missing query' }), {
-        status: 400, headers: { 'Content-Type': 'application/json', ...corsHeaders() },
-      })
+    if (!query || query.length > 80) {
+      return jsonResponse(req, { error: 'Invalid query' }, 400)
     }
 
     try {
@@ -154,9 +181,7 @@ Deno.serve(async (req) => {
       })
 
       if (!res.ok) {
-        return new Response(JSON.stringify({ error: `Jikan ${res.status}` }), {
-          status: 502, headers: { 'Content-Type': 'application/json', ...corsHeaders() },
-        })
+        return jsonResponse(req, { error: 'Anime search failed' }, 502)
       }
 
       const json = await res.json()
@@ -185,18 +210,12 @@ Deno.serve(async (req) => {
         trailerUrl: anime.trailer?.embed_url ?? anime.trailer?.url ?? null,
       }))
 
-      return new Response(JSON.stringify({ items }), {
-        headers: { 'Content-Type': 'application/json', ...corsHeaders() },
-      })
+      return jsonResponse(req, { items })
     } catch (error) {
       console.error('animeSearch error:', error)
-      return new Response(JSON.stringify({ error: 'Anime search failed' }), {
-        status: 502, headers: { 'Content-Type': 'application/json', ...corsHeaders() },
-      })
+      return jsonResponse(req, { error: 'Anime search failed' }, 502)
     }
   }
 
-  return new Response(JSON.stringify({ error: 'Unknown route' }), {
-    status: 400, headers: { 'Content-Type': 'application/json', ...corsHeaders() },
-  })
+  return jsonResponse(req, { error: 'Unknown route' }, 400)
 })

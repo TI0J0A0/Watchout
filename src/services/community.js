@@ -93,15 +93,13 @@ export async function createFeedback({ userId, type, title, description }) {
 
 export async function toggleVote(feedbackId, userId, currentVotes, hasVoted) {
   if (!supabase) return currentVotes
-  const newVotes = hasVoted ? Math.max(0, currentVotes - 1) : currentVotes + 1
-  if (hasVoted) {
-    await supabase.from('feedback_votes').delete()
-      .eq('feedback_id', feedbackId).eq('user_id', userId)
-  } else {
-    await supabase.from('feedback_votes').insert({ feedback_id: feedbackId, user_id: userId })
-  }
-  await supabase.from('feedback').update({ votes: newVotes }).eq('id', feedbackId)
-  return newVotes
+  const fallbackVotes = hasVoted ? Math.max(0, currentVotes - 1) : currentVotes + 1
+  const { data, error } = await supabase.rpc('set_feedback_vote', {
+    p_feedback_id: feedbackId,
+    p_has_voted: hasVoted,
+  })
+  if (error) throw error
+  return typeof data === 'number' ? data : fallbackVotes
 }
 
 export async function fetchMyVotes(userId) {

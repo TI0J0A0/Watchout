@@ -419,7 +419,12 @@ select:focus-visible {
   .card:hover { transform: none; }
   .media-card:hover { transform: none; box-shadow: none !important; }
   .card:hover .cimg { transform: none; }
-  .card:hover .card-overlay { opacity: 0; }
+  .card-overlay,
+  .card:hover .card-overlay {
+    display: none;
+    opacity: 0;
+    backdrop-filter: none;
+  }
 }
 
 /* ── Small phones (320–480px) ── */
@@ -434,11 +439,20 @@ select:focus-visible {
 /* ── Standard phones (≤640px) ── */
 @media (max-width: 640px) {
   .fu { animation: none !important; }
+  .shimmer::after { animation-duration: 2.4s; }
   .media-card {
     touch-action: manipulation;
     will-change: auto;
   }
   .media-card .cimg { transition: none !important; }
+  .card-overlay { display: none !important; backdrop-filter: none !important; }
+  .heroOverlay,
+  .heroBottomFade,
+  .watchout-hero-secondary,
+  .watchout-hero-arrow,
+  .watchout-hero-dots button {
+    backdrop-filter: none !important;
+  }
   .hide-sm    { display: none !important; }
   .show-sm    { display: flex !important; }
   .nav-spacer { height: 56px; }
@@ -499,6 +513,17 @@ select:focus-visible {
   /* Touch-friendly minimum targets */
   button { min-height: 36px; }
   .nav-tab { min-height: 56px !important; min-width: 44px !important; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: .01ms !important;
+  }
 }
 
 /* ── Tablets (641–900px) ── */

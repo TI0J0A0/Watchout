@@ -1,4 +1,7 @@
+import { createCachedJsonFetcher } from '../utils/apiCache.js'
+
 const BASE = "https://api.jikan.moe/v4";
+const cachedGet = createCachedJsonFetcher({ ttlMs: 5 * 60 * 1000 })
 
 const PALETTES = [
   ["#FF6B35","#FF9A5C"], ["#5856D6","#AF52DE"], ["#34AADC","#5AC8FA"],
@@ -85,9 +88,7 @@ export function mapAnime(a) {
 }
 
 async function get(path) {
-  const res = await fetch(`${BASE}${path}`);
-  if (!res.ok) throw new Error(`Jikan ${res.status}: ${path}`);
-  return res.json();
+  return cachedGet(`${BASE}${path}`)
 }
 
 export async function fetchSeasonal() {

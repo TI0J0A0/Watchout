@@ -66,27 +66,53 @@ function parseRSS(xml: string): NewsItem[] {
   return items
 }
 
-function cors() {
+const DEFAULT_ALLOWED_ORIGINS = [
+  'https://funnyroll.com',
+  'https://www.funnyroll.com',
+  'http://localhost:5173',
+  'http://127.0.0.1:5173',
+  'http://localhost:5174',
+  'http://127.0.0.1:5174',
+]
+
+function allowedOrigins() {
+  return (Deno.env.get('ALLOWED_ORIGINS') || DEFAULT_ALLOWED_ORIGINS.join(','))
+    .split(',')
+    .map(origin => origin.trim())
+    .filter(Boolean)
+}
+
+function isAllowedOrigin(origin: string | null) {
+  if (!origin) return true
+  return allowedOrigins().includes(origin)
+}
+
+function cors(req: Request) {
+  const origin = req.headers.get('Origin')
+  const allowedOrigin = isAllowedOrigin(origin) ? origin : null
   return {
-    'Access-Control-Allow-Origin':  '*',
+    ...(allowedOrigin ? { 'Access-Control-Allow-Origin': allowedOrigin } : {}),
+    'Vary': 'Origin',
     'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
     'Access-Control-Allow-Methods': 'GET, OPTIONS',
   }
 }
 
-function jsonResponse(body: unknown, status = 200, extra: Record<string, string> = {}) {
+function jsonResponse(req: Request, body: unknown, status = 200, extra: Record<string, string> = {}) {
   return new Response(JSON.stringify(body), {
     status,
-    headers: { 'Content-Type': 'application/json', ...cors(), ...extra },
+    headers: { 'Content-Type': 'application/json', ...cors(req), ...extra },
   })
 }
 
 Deno.serve(async (req) => {
-  if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors() })
+  if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors(req) })
+  if (!isAllowedOrigin(req.headers.get('Origin'))) return jsonResponse(req, { error: 'Forbidden' }, 403)
+  if (req.method !== 'GET') return jsonResponse(req, { error: 'Method not allowed' }, 405)
 
   // Serve from cache if still fresh
   if (cache && Date.now() - cache.at < TTL_MS) {
-    return jsonResponse(cache.items, 200, { 'Cache-Control': 'public, max-age=900' })
+    return jsonResponse(req, cache.items, 200, { 'Cache-Control': 'public, max-age=900' })
   }
 
   try {
@@ -99,11 +125,11 @@ Deno.serve(async (req) => {
     const items = parseRSS(xml)
     if (items.length === 0) throw new Error('Empty RSS parse result')
     cache = { items, at: Date.now() }
-    return jsonResponse(items, 200, { 'Cache-Control': 'public, max-age=900' })
+    return jsonResponse(req, items, 200, { 'Cache-Control': 'public, max-age=900' })
   } catch (err) {
     console.error('[fetch-ann-news]', err)
     // Return stale cache rather than an error when available
-    if (cache) return jsonResponse(cache.items, 200, { 'X-Cache': 'stale' })
-    return jsonResponse({ error: 'Failed to fetch news' }, 502)
+    if (cache) return jsonResponse(req, cache.items, 200, { 'X-Cache': 'stale' })
+    return jsonResponse(req, { error: 'Failed to fetch news' }, 502)
   }
 })

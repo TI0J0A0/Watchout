@@ -1,4 +1,6 @@
 const GQL = 'https://graphql.anilist.co'
+const gqlCache = new Map()
+const GQL_TTL_MS = 10 * 60 * 1000
 
 export function getAnilistHeroImages(media) {
   return {
@@ -8,6 +10,12 @@ export function getAnilistHeroImages(media) {
 }
 
 async function gql(query, variables = {}) {
+  const key = JSON.stringify({ query, variables })
+  const cached = gqlCache.get(key)
+  if (cached?.expiresAt > Date.now()) return cached.value
+  if (cached?.promise) return cached.promise
+
+  const promise = (async () => {
   try {
     const res = await fetch(GQL, {
       method: 'POST',
@@ -16,10 +24,19 @@ async function gql(query, variables = {}) {
     })
     if (!res.ok) return null
     const json = await res.json()
-    return json?.data ?? null
+    const value = json?.data ?? null
+    gqlCache.set(key, { value, expiresAt: Date.now() + GQL_TTL_MS })
+    return value
   } catch {
     return null
+  } finally {
+    const current = gqlCache.get(key)
+    if (current?.promise) gqlCache.delete(key)
   }
+  })()
+
+  gqlCache.set(key, { promise, expiresAt: Date.now() + GQL_TTL_MS })
+  return promise
 }
 
 export async function fetchAnilistData(malId) {

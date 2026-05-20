@@ -54,7 +54,7 @@ export const MediaCard = memo(function MediaCard({ item, delay, onOpen, onStatus
       }}>
         <div style={{position:"relative",paddingTop:"142%",overflow:"hidden"}}>
           {item.img ? (
-            <img className="cimg t" src={item.img} alt="" loading="lazy"
+            <img className="cimg t" src={item.img} alt="" loading="lazy" decoding="async"
               style={{position:"absolute",inset:0,width:"100%",height:"100%",objectFit:"cover"}}/>
           ) : (
             <div className="cimg t" style={{position:"absolute",inset:0,

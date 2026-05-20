@@ -21,6 +21,7 @@ import {
 } from '../services/friends'
 import { useProfileStats } from '../hooks/profile/useProfileStats'
 import { useProfileFriends } from '../hooks/profile/useProfileFriends'
+import { getProgressiveLimit } from '../utils/progressiveList'
 
 
 function initMeta(user) {
@@ -64,6 +65,7 @@ export function ProfilePage({ library, onOpen, onStatus, onLogin, onViewFriend =
   const [libF,      setLibF]      = useState('all')
   const [libSort,   setLibSort]   = useState('title')
   const [libSearch, setLibSearch] = useState('')
+  const [libraryLimit, setLibraryLimit] = useState(36)
   const libSectionRef = useRef(null)
 
   const {
@@ -200,6 +202,11 @@ export function ProfilePage({ library, onOpen, onStatus, onLogin, onViewFriend =
   const draftPinnedAnime = animeLib.find(i => i.id === draft.pinnedAnimeId)
   const editBannerPreview = draft.bannerUrl || pinnedBanner || bannerBlurImg
   const editActionDisabled = saving || nameAvailable === false || nameChecking || !hasUnsavedChanges
+  const visibleLibrary = displayed.slice(0, libraryLimit)
+
+  useEffect(() => {
+    setLibraryLimit(isMobile ? 24 : 36)
+  }, [libF, libSort, libSearch, isMobile])
 
   const sectionCardStyle = {
     borderRadius: 18,
@@ -997,9 +1004,27 @@ export function ProfilePage({ library, onOpen, onStatus, onLogin, onViewFriend =
         ) : (
           <div style={{ display:'grid',
             gridTemplateColumns:`repeat(auto-fill,minmax(${isMobile ? 140 : 190}px,1fr))`, gap:18 }}>
-            {displayed.map((it, i) => (
+            {visibleLibrary.map((it, i) => (
               <MediaCard key={it.id} item={it} delay={i * 35} onOpen={onOpen} onStatus={onStatus}/>
             ))}
+            {libraryLimit < displayed.length && (
+              <button
+                className="pill t"
+                onClick={() => setLibraryLimit(limit => getProgressiveLimit({ current: limit, total: displayed.length, initial: isMobile ? 24 : 36, step: isMobile ? 18 : 24 }))}
+                style={{
+                  minHeight: isMobile ? 196 : 260,
+                  borderRadius: 18,
+                  border: `1px dashed ${T.bord}`,
+                  background: T.surf,
+                  color: T.txt,
+                  fontSize: 13,
+                  fontWeight: 800,
+                  cursor: 'pointer',
+                }}
+              >
+                Load more
+              </button>
+            )}
           </div>
         )}
       </section>

@@ -35,6 +35,19 @@ function toUserAnimeRow(userId, item) {
   }
 }
 
+async function saveAnimeMetadata(row) {
+  const { error: rpcError } = await supabase.rpc('upsert_anime_metadata', { p_anime: row })
+  if (!rpcError) return
+
+  const missingRpc = rpcError.code === 'PGRST202' || /upsert_anime_metadata/i.test(rpcError.message || '')
+  if (!missingRpc) throw rpcError
+
+  const { error } = await supabase
+    .from('animes')
+    .upsert(row, { onConflict: 'id' })
+  if (error) throw error
+}
+
 function fromRow(row) {
   // row.animes is populated after split migration; fall back to row columns if null
   const a = row.animes || row
@@ -83,10 +96,7 @@ export async function loadUserLibrary() {
 
 export async function upsertAnime(userId, item) {
   if (!supabase) return
-  const { error: e1 } = await supabase
-    .from('animes')
-    .upsert(toAnimeRow(item), { onConflict: 'id' })
-  if (e1) throw e1
+  await saveAnimeMetadata(toAnimeRow(item))
   const { error: e2 } = await supabase
     .from('user_anime')
     .upsert(toUserAnimeRow(userId, item), { onConflict: 'user_id,anime_id' })
@@ -98,10 +108,7 @@ export async function upsertAnimesBatch(userId, items) {
   const CHUNK = 50
   for (let i = 0; i < items.length; i += CHUNK) {
     const chunk = items.slice(i, i + CHUNK)
-    const { error: e1 } = await supabase
-      .from('animes')
-      .upsert(chunk.map(toAnimeRow), { onConflict: 'id' })
-    if (e1) throw e1
+    await Promise.all(chunk.map(item => saveAnimeMetadata(toAnimeRow(item))))
     const { error: e2 } = await supabase
       .from('user_anime')
       .upsert(chunk.map(item => toUserAnimeRow(userId, item)), { onConflict: 'user_id,anime_id' })

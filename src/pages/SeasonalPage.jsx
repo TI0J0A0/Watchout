@@ -259,7 +259,7 @@ export function SeasonalPage({
           }}>
 
           {heroBackground && (
-            <img className="heroImage" src={heroBackground} alt={hero.title} style={{
+            <img className="heroImage" src={heroBackground} alt={hero.title} fetchPriority="high" decoding="async" style={{
               position: 'absolute', left: 0, right: 0, top: 0, bottom: -58,
               width: '100%', height: 'calc(100% + 58px)', objectFit: 'cover', objectPosition: heroFocalPoint,
               filter: 'saturate(1.08) contrast(1.03)'

@@ -71,6 +71,7 @@ function AppInner() {
   const [heroMaxItems, setHeroMaxItems] = useState(5)
 
   const notify = msg => { setToast(msg); setTimeout(() => setToast(null), 2400) }
+  const dataById = useMemo(() => new Map(data.map(item => [item.id, item])), [data])
 
 
   useEffect(() => {
@@ -115,9 +116,9 @@ function AppInner() {
   // Deep-link: fetch anime data if we landed on #anime-{id} but data isn't loaded yet
   useEffect(() => {
     if (detailId === null) return
-    if (data.find(i => i.id === detailId)) return
+    if (dataById.has(detailId)) return
     fetchAnimeById(detailId).then(addToData).catch(() => { })
-  }, [detailId, data.length])
+  }, [detailId, dataById])
 
   // ───────────────────────────────────────────────────────────────────────────
 
@@ -161,7 +162,7 @@ function AppInner() {
   const airingItems = useMemo(() => data.filter(i => i.airing), [data])
   const controlledHeroItems = useMemo(() => {
     return adminHeroItems.slice(0, heroMaxItems).map(item => {
-      const local = data.find(d => d.id === item.id)
+      const local = dataById.get(item.id)
       return {
         ...(local ?? item),
         heroImageUrl: item.heroImageUrl,
@@ -169,7 +170,7 @@ function AppInner() {
         heroHideTitle: item.heroHideTitle,
       }
     })
-  }, [adminHeroItems, data, heroMaxItems])
+  }, [adminHeroItems, dataById, heroMaxItems])
   const heroItems = controlledHeroItems.length > 0 ? controlledHeroItems : airingItems
   const hero = heroItems[heroIdx % Math.max(heroItems.length, 1)] || data[0]
 
@@ -233,11 +234,6 @@ function AppInner() {
   }, [])
 
   useEffect(() => {
-    if (page !== 'seasonal') return
-    return loadHeroConfig()
-  }, [page])
-
-  useEffect(() => {
     const handleHeroUpdated = () => loadHeroConfig()
     window.addEventListener(HERO_UPDATED_EVENT, handleHeroUpdated)
     return () => window.removeEventListener(HERO_UPDATED_EVENT, handleHeroUpdated)
@@ -260,7 +256,7 @@ function AppInner() {
   }
 
   const openAnimeById = async (animeId, source = 'notification') => {
-    const local = data.find(item => item.id === animeId)
+    const local = dataById.get(animeId)
     if (local) {
       openDetailFromSource(local, source)
       return
@@ -330,7 +326,7 @@ function AppInner() {
           onNavigate={navigate} />
       ) : detailId !== null ? (
         (() => {
-          const detailItem = data.find(d => d.id === detailId)
+          const detailItem = dataById.get(detailId)
           return detailItem
             ? <AnimePage
               item={detailItem}

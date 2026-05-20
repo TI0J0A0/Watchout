@@ -10,6 +10,7 @@ import { WatchPanel } from '../components/WatchPanel'
 import { StatBox } from '../components/StatBox'
 import { fmt, fmtTime } from '../utils'
 import { getStreamingProviderName, getStreamingProviderUrl } from '../utils/streaming'
+import { getSafeExternalLinkProps } from '../utils/externalLinks'
 import { fetchRecommendations, fetchRelations, fetchAnimeById } from '../services/jikan'
 import { fetchAnilistBanner } from '../services/anilist'
 import { fetchAnimeComments, createAnimeComment, deleteAnimeComment } from '../services/community'
@@ -575,10 +576,11 @@ export function AnimePage({ item, onClose, onStatus, onScore, onEp, onNotes, onO
                   const s = getStreamingProviderName(provider)
                   const url = getStreamingProviderUrl(provider)
                   if (!s) return null
+                  const linkProps = getSafeExternalLinkProps(url ?? STREAMING_URLS[s]?.(item.title) ?? `https://www.google.com/search?q=${encodeURIComponent(item.title + ' ' + s)}`)
+                  if (!linkProps) return null
                   return (
                   <a key={`${s}-${url ?? 'search'}`}
-                    href={url ?? STREAMING_URLS[s]?.(item.title) ?? `https://www.google.com/search?q=${encodeURIComponent(item.title + ' ' + s)}`}
-                    target="_blank" rel="noopener noreferrer"
+                    {...linkProps}
                     className="t hbtn"
                     style={{
                       padding: '9px 18px', borderRadius: 12, fontSize: 14, fontWeight: 600,
@@ -590,7 +592,7 @@ export function AnimePage({ item, onClose, onStatus, onScore, onEp, onNotes, onO
                   </a>
                   )
                 })}
-                <a href={STREAMING_URLS.Stremio(item.title)} target="_blank" rel="noopener noreferrer"
+                <a {...getSafeExternalLinkProps(STREAMING_URLS.Stremio(item.title))}
                   className="t hbtn"
                   style={{
                     padding: '9px 18px', borderRadius: 12, fontSize: 14, fontWeight: 600,

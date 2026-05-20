@@ -7,6 +7,7 @@ import { fetchSkipTimes } from '../services/aniskip'
 import { trackMetricEvent } from '../services/metrics'
 import { useAuth } from '../context/AuthContext'
 import { getNextAiredEpisode, shouldShowNextEpisodeButton } from '../utils/playerNavigation'
+import { buildMegaplayEmbedUrl, getTrustedPlayerMessage } from '../utils/playerSecurity'
 
 function parseEpNum(title) {
   const m = title?.match(/Episode\s+(\d+)/i)
@@ -79,6 +80,7 @@ export function WatchPanel({ item, onEp, onStatus }) {
   const pendingSeek  = useRef(0)
   const saveTimer    = useRef(null)
   const playerLoadStarted = useRef(0)
+  const lastProgressUiUpdate = useRef(0)
 
   useEffect(() => {
     markedRef.current = false
@@ -87,6 +89,7 @@ export function WatchPanel({ item, onEp, onStatus }) {
     setSkipDismissed(false)
     setSkipTimes({ op: null, ed: null })
     durationRef.current = 0
+    lastProgressUiUpdate.current = 0
     playerLoadStarted.current = Date.now()
     if (activeEp !== null) {
       trackMetricEvent({
@@ -155,17 +158,20 @@ export function WatchPanel({ item, onEp, onStatus }) {
   useEffect(() => {
     if (activeEp === null) return
     function handleMessage(event) {
-      if (event.origin !== 'https://megaplay.buzz') return
-      let data = event.data
-      if (typeof data === 'string') { try { data = JSON.parse(data) } catch { return } }
+      const data = getTrustedPlayerMessage(event)
+      if (!data) return
 
       // Track playback position for skip buttons + progress save
       if (data.type === 'watching-log' && data.duration > 0) {
         durationRef.current = data.duration
-        setCurrentTime(data.currentTime)
 
         const pct = data.currentTime / data.duration
-        setProgressRatio(pct)
+        const now = Date.now()
+        if (now - lastProgressUiUpdate.current > 500 || pct >= 0.9) {
+          lastProgressUiUpdate.current = now
+          setCurrentTime(data.currentTime)
+          setProgressRatio(pct)
+        }
         if (data.currentTime > 60 && pct < 0.9) {
           clearTimeout(saveTimer.current)
           saveTimer.current = setTimeout(() => {
@@ -177,8 +183,12 @@ export function WatchPanel({ item, onEp, onStatus }) {
         }
       }
       if (data.event === 'time' && typeof data.percent === 'number' && durationRef.current > 0) {
-        setCurrentTime(data.percent * durationRef.current)
-        setProgressRatio(data.percent)
+        const now = Date.now()
+        if (now - lastProgressUiUpdate.current > 500 || data.percent >= 0.9) {
+          lastProgressUiUpdate.current = now
+          setCurrentTime(data.percent * durationRef.current)
+          setProgressRatio(data.percent)
+        }
       }
       if (data.event === 'buffering' || data.type === 'buffering') {
         trackMetricEvent({
@@ -266,7 +276,7 @@ export function WatchPanel({ item, onEp, onStatus }) {
     currentTime >= skipTimes.ed.startTime && currentTime <= skipTimes.ed.endTime
 
   const embedUrl = activeEp !== null
-    ? `https://megaplay.buzz/stream/mal/${item.id}/${activeEp}/${lang}${quality !== 'auto' ? `?quality=${quality}` : ''}`
+    ? buildMegaplayEmbedUrl({ animeId: item.id, episode: activeEp, lang, quality })
     : null
 
   const LANGS = [{ code: 'sub', label: 'Sub' }, { code: 'dub', label: 'Dub' }]
@@ -323,7 +333,12 @@ export function WatchPanel({ item, onEp, onStatus }) {
       {state === 'ready' && (
         <>
           {/* ── Player ── */}
-          {activeEp !== null && (
+          {activeEp !== null && !embedUrl && (
+            <div style={{ padding: 18, borderRadius: 14, background: T.surf, color: T.sub, marginBottom: 20 }}>
+              Player unavailable
+            </div>
+          )}
+          {activeEp !== null && embedUrl && (
             <div style={{ position: 'relative', paddingBottom: '56.25%', borderRadius: 14,
               overflow: 'hidden', background: '#000', marginBottom: 20 }}>
               <iframe
@@ -333,6 +348,7 @@ export function WatchPanel({ item, onEp, onStatus }) {
                 style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', border: 'none' }}
                 allow="autoplay; fullscreen; picture-in-picture"
                 sandbox="allow-scripts allow-same-origin allow-presentation allow-forms"
+                referrerPolicy="strict-origin-when-cross-origin"
                 allowFullScreen
                 onLoad={() => {
                   const startTimeMs = playerLoadStarted.current ? Date.now() - playerLoadStarted.current : 0
