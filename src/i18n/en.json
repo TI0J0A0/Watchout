@@ -36,6 +36,8 @@
     "archiveLabel": "Season Archive",
     "continueWatching": "Continue Watching",
     "continueWatchingSubtitle": "Pick up where you left off",
+    "trendingNow": "Trending Now",
+    "trendingNowSubtitle": "What everyone's watching this week",
     "airing": "On Air",
     "airingSubtitle": "Current season",
     "filterAll": "All",
@@ -227,7 +229,11 @@
     "noOnAir": "No anime currently airing.",
     "tabTrailers": "Trailers",
     "tabOnAir": "On Air",
-    "tabUpcoming": "Coming Soon"
+    "tabUpcoming": "Coming Soon",
+    "newOnly": "New",
+    "allGenres": "All",
+    "refresh": "Refresh trailers",
+    "updatedAt": "Updated {{time}}"
   },
   "premium": {
     "badge": "PREMIUM",

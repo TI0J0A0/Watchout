@@ -41,6 +41,22 @@ test('createCachedJsonFetcher uses ttl cache then refetches after expiry', async
   assert.deepEqual(await fetcher('/top'), { calls: 2 })
 })
 
+test('createCachedJsonFetcher forceRefresh bypasses cache but repopulates it', async () => {
+  let calls = 0
+  const fetcher = createCachedJsonFetcher({
+    ttlMs: 1000,
+    fetchImpl: async () => {
+      calls += 1
+      return { ok: true, json: async () => ({ calls }) }
+    },
+  })
+
+  assert.deepEqual(await fetcher('/popular'), { calls: 1 })
+  assert.deepEqual(await fetcher('/popular'), { calls: 1 }) // served from cache
+  assert.deepEqual(await fetcher('/popular', { forceRefresh: true }), { calls: 2 }) // bypass
+  assert.deepEqual(await fetcher('/popular'), { calls: 2 }) // refreshed value cached
+})
+
 test('createCachedJsonFetcher throws on failed response without caching failure', async () => {
   let calls = 0
   const fetcher = createCachedJsonFetcher({

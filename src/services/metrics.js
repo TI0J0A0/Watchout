@@ -1,6 +1,8 @@
 import { supabase } from './supabase'
-import { buildAdminMetricStats, EMPTY_ADMIN_METRICS } from './metricsAnalytics'
+import { buildAdminMetricStats, EMPTY_ADMIN_METRICS, aggregateTrendingEventIds } from './metricsAnalytics'
 import { createMetricDedupe } from '../utils/metricsThrottle'
+
+const DAY_MS = 24 * 60 * 60 * 1000
 
 const SESSION_KEY = 'watchout_metrics_session'
 const noisyMetricDedupe = createMetricDedupe({ windowMs: 5000 })
@@ -54,6 +56,27 @@ export async function trackMetricEvent({ type, userId = null, animeId = null, pa
       metadata: { ...metadata, timezone, deviceType: metadata.deviceType || getDeviceType() },
     },
   }).then(() => {}).catch(() => {})
+}
+
+// Public "Trending Now" feed — recent engagement aggregated into ranked ids.
+// Returns [] on any failure (e.g. RLS blocks the table) so callers degrade
+// gracefully and simply hide the shelf.
+export async function fetchTrendingAnimeIds({ days = 7, limit = 12 } = {}) {
+  if (!supabase) return []
+  const since = new Date(Date.now() - days * DAY_MS).toISOString()
+  try {
+    const { data, error } = await supabase
+      .from('site_metrics_events')
+      .select('event_type, anime_id, created_at')
+      .gte('created_at', since)
+      .not('anime_id', 'is', null)
+      .order('created_at', { ascending: false })
+      .limit(4000)
+    if (error || !data) return []
+    return aggregateTrendingEventIds(data, { limit })
+  } catch {
+    return []
+  }
 }
 
 export async function fetchAdminMetrics() {

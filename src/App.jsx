@@ -24,6 +24,7 @@ import { hasStreamingProviderLinks } from './utils/streaming'
 import { AdminPage } from './pages/AdminPage'
 import { CategoriesPage } from './pages/CategoriesPage'
 import { AnnouncementBanner } from './components/AnnouncementBanner'
+import { BackToTop } from './components/BackToTop'
 import { getGenreById } from './constants/browse'
 
 const VALID_PAGES = new Set(['seasonal', 'top', 'calendar', 'categories', 'search', 'profile', 'news', 'community', 'admin'])
@@ -393,6 +394,7 @@ function AppInner() {
         </div>
       )}
 
+      <BackToTop />
       {toast && <Toast message={toast} />}
       {showAuth && <AuthPage onClose={() => setShowAuth(false)} />}
       {showMAL && <MALImport onImport={importFromMAL} onClose={() => setShowMAL(false)} />}

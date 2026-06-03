@@ -3,7 +3,29 @@ import assert from 'node:assert/strict'
 import {
   buildAdminMetricStats,
   calculateTrendingScore,
+  aggregateTrendingEventIds,
 } from './metricsAnalytics.js'
+
+test('aggregateTrendingEventIds ranks anime by weighted engagement', () => {
+  const events = [
+    { event_type: 'anime_open', anime_id: 1 },
+    { event_type: 'anime_open', anime_id: 1 },
+    { event_type: 'watchlist_add', anime_id: 2 }, // weight 3 → outranks two opens
+    { event_type: 'banner_click', anime_id: 3 },  // weight 1.5
+    { event_type: 'unknown_type', anime_id: 4 },   // ignored
+    { event_type: 'anime_open', anime_id: null },   // ignored
+  ]
+  assert.deepEqual(aggregateTrendingEventIds(events, { limit: 3 }), [2, 1, 3])
+})
+
+test('aggregateTrendingEventIds respects the limit', () => {
+  const events = [
+    { event_type: 'anime_open', anime_id: 1 },
+    { event_type: 'watchlist_add', anime_id: 2 },
+    { event_type: 'banner_click', anime_id: 3 },
+  ]
+  assert.equal(aggregateTrendingEventIds(events, { limit: 2 }).length, 2)
+})
 
 test('calculateTrendingScore weights recent engagement signals', () => {
   assert.equal(calculateTrendingScore({

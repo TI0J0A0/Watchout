@@ -36,6 +36,37 @@ export const EMPTY_ADMIN_METRICS = {
   trendingAnime: [],
 }
 
+// Engagement weights for the public "Trending Now" shelf. Stronger intent
+// (adding to watchlist, playing an episode) counts more than a passing open.
+export const TRENDING_EVENT_WEIGHTS = {
+  anime_open: 1,
+  anime_view: 1,
+  search_result_click: 1.2,
+  banner_click: 1.5,
+  episode_play: 2,
+  watchlist_add: 3,
+}
+
+// Pure aggregator: turns raw metric events into a ranked list of anime ids.
+// Used by fetchTrendingAnimeIds; kept pure so it can be unit-tested.
+export function aggregateTrendingEventIds(events = [], {
+  weights = TRENDING_EVENT_WEIGHTS,
+  limit = 12,
+} = {}) {
+  const scores = new Map()
+  for (const event of events) {
+    const weight = weights[event.event_type]
+    if (!weight) continue
+    const id = event.anime_id
+    if (id === null || id === undefined || id === '') continue
+    scores.set(id, (scores.get(id) ?? 0) + weight)
+  }
+  return [...scores.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, limit)
+    .map(([id]) => id)
+}
+
 export function calculateTrendingScore({
   views24h = 0,
   plays24h = 0,

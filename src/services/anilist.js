@@ -110,6 +110,72 @@ export async function fetchAnilistHeroImages(malId) {
   return getAnilistHeroImages(data?.Media)
 }
 
+// ── Latest trailers ─────────────────────────────────────────────────────────
+// Pulls currently-releasing + upcoming anime that have a YouTube trailer,
+// ordered by trending so freshly-dropped PVs surface first.
+
+const PALETTES = [
+  ['#FF6B35', '#FF9A5C'], ['#5856D6', '#AF52DE'], ['#34AADC', '#5AC8FA'],
+  ['#30B0C7', '#64D2FF'], ['#FF9F0A', '#FFD60A'], ['#BF5AF2', '#DA8FFF'],
+  ['#32ADE6', '#5AC8FA'], ['#FF2D55', '#FF6B81'], ['#34C759', '#30D158'],
+]
+
+function trailerEmbedUrl(trailer) {
+  if (!trailer?.id) return null
+  if (trailer.site === 'youtube') return `https://www.youtube.com/embed/${trailer.id}`
+  if (trailer.site === 'dailymotion') return `https://www.dailymotion.com/embed/video/${trailer.id}`
+  return null
+}
+
+function mapTrailerMedia(m) {
+  const embed = trailerEmbedUrl(m.trailer)
+  if (!embed) return null
+  const [color, colorB] = PALETTES[(m.idMal ?? m.id) % PALETTES.length]
+  return {
+    id:        m.idMal ?? m.id,
+    anilistId: m.id,
+    title:     m.title?.english || m.title?.romaji || 'Untitled',
+    studio:    m.studios?.nodes?.[0]?.name || '—',
+    year:      m.startDate?.year || new Date().getFullYear(),
+    genres:    m.genres ?? [],
+    score:     m.averageScore ? (m.averageScore / 10) : 0,
+    status:    m.status,
+    img:       m.trailer?.thumbnail || m.coverImage?.extraLarge || m.coverImage?.large || '',
+    color, colorB,
+    trailer:   embed,
+  }
+}
+
+export async function fetchLatestTrailers({ perPage = 40 } = {}) {
+  const data = await gql(`
+    query($perPage: Int) {
+      Page(page: 1, perPage: $perPage) {
+        media(type: ANIME, sort: [TRENDING_DESC], status_in: [RELEASING, NOT_YET_RELEASED]) {
+          id
+          idMal
+          status
+          title { english romaji }
+          startDate { year }
+          genres
+          averageScore
+          studios(isMain: true) { nodes { name } }
+          coverImage { extraLarge large }
+          trailer { id site thumbnail }
+        }
+      }
+    }
+  `, { perPage })
+  const media = data?.Page?.media ?? []
+  const seen = new Set()
+  return media
+    .map(mapTrailerMedia)
+    .filter(item => {
+      if (!item || seen.has(item.id)) return false
+      seen.add(item.id)
+      return true
+    })
+}
+
 // Character search for avatar picker — pass null/empty for global popular
 export async function searchAnilistCharacters(search) {
   const data = await gql(`

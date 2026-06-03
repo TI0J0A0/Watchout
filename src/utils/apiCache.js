@@ -8,9 +8,13 @@ export function createCachedJsonFetcher({
 
   return async function cachedJson(url, options) {
     const key = `${url}|${options?.method ?? 'GET'}|${options?.body ?? ''}`
-    const cached = cache.get(key)
-    if (cached && cached.expiresAt > now()) return cached.value
-    if (inFlight.has(key)) return inFlight.get(key)
+    // forceRefresh skips the cached value (and any in-flight read) but the fresh
+    // result is still written back to the cache for subsequent callers.
+    if (!options?.forceRefresh) {
+      const cached = cache.get(key)
+      if (cached && cached.expiresAt > now()) return cached.value
+      if (inFlight.has(key)) return inFlight.get(key)
+    }
 
     const promise = Promise.resolve(fetchImpl(url, options))
       .then(async res => {

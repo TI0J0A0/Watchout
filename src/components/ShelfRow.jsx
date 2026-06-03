@@ -3,7 +3,24 @@ import { useTheme } from '../context/ThemeContext'
 import { useIsMobile } from '../hooks/useIsMobile'
 import { MediaCard } from './MediaCard'
 
-export const ShelfRow = memo(function ShelfRow({ title, emoji, subtitle, items, loading, onOpen, onStatus, headerRight, matchScores = {} }) {
+function RefreshButton({ onClick, busy, T, label }) {
+  return (
+    <button className="t" onClick={onClick} disabled={busy} aria-label={label}
+      style={{ width: 32, height: 32, borderRadius: '50%', flexShrink: 0,
+        border: `1px solid ${T.bord}`, background: T.surf, color: T.sub,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        cursor: busy ? 'default' : 'pointer', opacity: busy ? .55 : 1 }}>
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+        strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"
+        style={{ animation: busy ? 'spin .7s linear infinite' : 'none' }}>
+        <polyline points="23 4 23 10 17 10" />
+        <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
+      </svg>
+    </button>
+  )
+}
+
+export const ShelfRow = memo(function ShelfRow({ title, emoji, subtitle, items, loading, onOpen, onStatus, headerRight, matchScores = {}, onRefresh, refreshing }) {
   const { T, dark } = useTheme()
   const isMobile = useIsMobile()
   const scrollRef = useRef(null)
@@ -72,7 +89,12 @@ export const ShelfRow = memo(function ShelfRow({ title, emoji, subtitle, items, 
             </p>
           )}
         </div>
-        {headerRight}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          {headerRight}
+          {onRefresh && (
+            <RefreshButton onClick={onRefresh} busy={refreshing} T={T} label="Refresh" />
+          )}
+        </div>
       </div>
 
       {/* Scroll container */}

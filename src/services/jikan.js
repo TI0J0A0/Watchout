@@ -87,8 +87,8 @@ export function mapAnime(a) {
   };
 }
 
-async function get(path) {
-  return cachedGet(`${BASE}${path}`)
+async function get(path, { fresh = false } = {}) {
+  return cachedGet(`${BASE}${path}`, fresh ? { forceRefresh: true } : undefined)
 }
 
 export async function fetchSeasonal() {
@@ -106,21 +106,45 @@ export async function searchAnime(query) {
   return data.map(mapAnime);
 }
 
-export async function fetchPopular() {
-  const { data } = await get('/anime?status=airing&order_by=members&sort=desc&limit=15&sfw=true');
+export async function fetchPopular({ fresh = false } = {}) {
+  const { data } = await get('/anime?status=airing&order_by=members&sort=desc&limit=15&sfw=true', { fresh });
   return data.map(mapAnime);
 }
 
-export async function fetchUpcoming() {
-  const { data } = await get('/seasons/upcoming?limit=15');
+export async function fetchUpcoming({ fresh = false } = {}) {
+  const { data } = await get('/seasons/upcoming?limit=15', { fresh });
   return data.map(mapAnime);
 }
 
-export async function fetchByGenre(genreId, limit = 15) {
+export async function fetchByGenre(genreId, limit = 15, { fresh = false } = {}) {
   const { data } = await get(
-    `/anime?genres=${genreId}&order_by=score&sort=desc&limit=${limit}&sfw=true&type=tv`
+    `/anime?genres=${genreId}&order_by=score&sort=desc&limit=${limit}&sfw=true&type=tv`,
+    { fresh }
   );
   return data.map(mapAnime);
+}
+
+// Fallback trailer feed (used when AniList is unavailable): current + upcoming
+// season anime that ship a trailer, de-duplicated and shaped like the AniList feed.
+export async function fetchSeasonalTrailers() {
+  const [nowRes, soonRes] = await Promise.allSettled([
+    get('/seasons/now?limit=24'),
+    get('/seasons/upcoming?limit=24'),
+  ])
+  const raw = []
+  if (nowRes.status === 'fulfilled') raw.push(...(nowRes.value.data ?? []))
+  if (soonRes.status === 'fulfilled') raw.push(...(soonRes.value.data ?? []))
+  const seen = new Set()
+  return raw
+    .map(a => ({
+      ...mapAnime(a),
+      status: a.status === 'Not yet aired' ? 'NOT_YET_RELEASED' : 'RELEASING',
+    }))
+    .filter(a => {
+      if (!a.trailer || seen.has(a.id)) return false
+      seen.add(a.id)
+      return true
+    })
 }
 
 export async function fetchSeasonArchive(year, season) {

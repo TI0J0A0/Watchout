@@ -35,6 +35,9 @@
 
 * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
 ::-webkit-scrollbar { width: 0; }
+html {
+  scroll-behavior: smooth;
+}
 body {
   background: var(--bg-main);
   font-family: Poppins, Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
@@ -505,6 +508,10 @@ select:focus-visible {
   .top3-grid  { grid-template-columns: 1fr !important; }
   .navbtn     { padding: 6px 10px !important; font-size: 12px !important; }
   .mobile-nav { display: flex; }
+  .back-to-top {
+    bottom: calc(80px + env(safe-area-inset-bottom, 0px)) !important;
+    right: 14px !important;
+  }
   .main-content {
     padding-bottom: 80px !important;
     padding-left: 16px !important;

@@ -1,8 +1,12 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useTheme } from '../context/ThemeContext'
-import { fetchUpcoming } from '../services/jikan'
-import { NEWS_PAGE_DEFAULT_TAB, NEWS_PAGE_TABS } from './newsPageState'
+import { fetchUpcoming, fetchSeasonalTrailers } from '../services/jikan'
+import { fetchLatestTrailers } from '../services/anilist'
+import {
+  NEWS_PAGE_DEFAULT_TAB, NEWS_PAGE_TABS, TRAILERS_REFRESH_MS,
+  readSeenTrailers, annotateNewTrailers, persistSeenTrailers,
+} from './newsPageState'
 
 function toAutoplayUrl(url) {
   try {
@@ -87,11 +91,23 @@ function TrailerCard({ item, isPlaying, onToggle, T }) {
       )}
 
       <div style={{ position: 'relative', paddingBottom: '56.25%', background: item.color }}>
-        <img src={item.img} alt={item.title}
+        <img src={item.img} alt={item.title} loading="lazy"
           style={{ position: 'absolute', inset: 0, width: '100%', height: '100%',
             objectFit: 'cover', objectPosition: 'top' }} />
         <div style={{ position: 'absolute', inset: 0,
           background: 'linear-gradient(to bottom, rgba(0,0,0,.08), rgba(0,0,0,.55))' }} />
+        {item.isNew && (
+          <span style={{ position: 'absolute', top: 8, left: 8, zIndex: 3,
+            fontSize: 10, fontWeight: 800, padding: '3px 8px', borderRadius: 6,
+            background: '#FF2D55', color: '#fff', letterSpacing: '.05em',
+            boxShadow: '0 2px 10px rgba(255,45,85,.45)' }}>NEW</span>
+        )}
+        {item.status === 'NOT_YET_RELEASED' && (
+          <span style={{ position: 'absolute', top: 8, right: 8, zIndex: 3,
+            fontSize: 10, fontWeight: 700, padding: '3px 7px', borderRadius: 6,
+            background: 'rgba(0,0,0,.6)', color: '#FFD60A', letterSpacing: '.04em',
+            backdropFilter: 'blur(6px)' }}>SOON</span>
+        )}
         <div style={{ position: 'absolute', inset: 0,
           display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <div style={{ width: 52, height: 52, borderRadius: '50%',
@@ -156,6 +172,15 @@ function Spinner({ T }) {
   )
 }
 
+function formatClock(ts) {
+  if (!ts) return ''
+  try {
+    return new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+  } catch {
+    return ''
+  }
+}
+
 export function NewsPage({ data, loading, onOpen }) {
   const { T, dark } = useTheme()
   const { t }       = useTranslation()
@@ -165,6 +190,50 @@ export function NewsPage({ data, loading, onOpen }) {
   const [upcomingLoading, setUpcomingLoading] = useState(true)
   const [playing, setPlaying]                 = useState(null)
 
+  // ── Auto-refreshing trailer feed (AniList) merged with library trailers ──
+  const [feedTrailers, setFeedTrailers]   = useState([])
+  const [trailersLoading, setTrailersLoading] = useState(true)
+  const [refreshing, setRefreshing]       = useState(false)
+  const [lastUpdated, setLastUpdated]     = useState(null)
+  const [genreFilter, setGenreFilter]     = useState(null)
+  const [newOnly, setNewOnly]             = useState(false)
+  const seenRef = useRef(null)
+
+  const loadTrailers = useRef(async (isManual = false) => {})
+  loadTrailers.current = async (isManual = false) => {
+    if (isManual) setRefreshing(true)
+    try {
+      let fetched = await fetchLatestTrailers().catch(() => [])
+      // Fall back to Jikan's seasonal feed if AniList returns nothing.
+      if (!fetched.length) fetched = await fetchSeasonalTrailers().catch(() => [])
+      if (seenRef.current === null) seenRef.current = readSeenTrailers()
+      const { annotated, nextSeen } = annotateNewTrailers(fetched, seenRef.current)
+      seenRef.current = nextSeen
+      persistSeenTrailers(nextSeen)
+      setFeedTrailers(annotated)
+      setLastUpdated(Date.now())
+    } catch {
+      /* keep previous feed on failure */
+    } finally {
+      setTrailersLoading(false)
+      if (isManual) setRefreshing(false)
+    }
+  }
+
+  // Initial load + interval auto-refresh + refresh when tab regains focus.
+  useEffect(() => {
+    loadTrailers.current()
+    const interval = setInterval(() => loadTrailers.current(), TRAILERS_REFRESH_MS)
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') loadTrailers.current()
+    }
+    document.addEventListener('visibilitychange', onVisible)
+    return () => {
+      clearInterval(interval)
+      document.removeEventListener('visibilitychange', onVisible)
+    }
+  }, [])
+
   useEffect(() => {
     fetchUpcoming()
       .then(setUpcoming)
@@ -172,7 +241,33 @@ export function NewsPage({ data, loading, onOpen }) {
       .finally(() => setUpcomingLoading(false))
   }, [])
 
-  const trailers = data.filter(item => item.trailer)
+  // Merge auto-fetched trailers with any trailers from the user's library,
+  // de-duplicating by id and keeping the fresh feed first.
+  const trailers = useMemo(() => {
+    const byId = new Map()
+    for (const item of feedTrailers) byId.set(item.id, item)
+    for (const item of data) {
+      if (item.trailer && !byId.has(item.id)) byId.set(item.id, item)
+    }
+    return [...byId.values()]
+  }, [feedTrailers, data])
+
+  const trailerGenres = useMemo(() => {
+    const set = new Set()
+    for (const item of trailers) for (const g of (item.genres ?? [])) set.add(g)
+    return [...set].sort().slice(0, 12)
+  }, [trailers])
+
+  const visibleTrailers = useMemo(() => {
+    return trailers.filter(item => {
+      if (newOnly && !item.isNew) return false
+      if (genreFilter && !(item.genres ?? []).includes(genreFilter)) return false
+      return true
+    })
+  }, [trailers, newOnly, genreFilter])
+
+  const newCount = useMemo(() => trailers.filter(item => item.isNew).length, [trailers])
+
   const releases = data.filter(item => item.airing)
 
   const tabCounts = { trailers: trailers.length, onair: releases.length, upcoming: upcoming.length }
@@ -213,21 +308,79 @@ export function NewsPage({ data, loading, onOpen }) {
 
       {/* Trailers */}
       {tab === 'trailers' && (
-        loading ? <Spinner T={T} /> :
-        trailers.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '60px 0' }}>
-            <p style={{ fontSize: 38, opacity: .14, marginBottom: 10 }}>▶</p>
-            <p style={{ fontSize: 14, color: T.sub }}>{t('news.noTrailers')}</p>
+        <>
+          {/* Filter + refresh bar */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 18 }}>
+            <button className="t" onClick={() => setNewOnly(v => !v)}
+              style={{ padding: '6px 13px', borderRadius: 18, border: 'none', cursor: 'pointer',
+                fontSize: 12.5, fontWeight: 700, whiteSpace: 'nowrap',
+                background: newOnly ? '#FF2D55' : T.surf2,
+                color: newOnly ? '#fff' : T.sub }}>
+              ✨ {t('news.newOnly')}{newCount > 0 ? ` (${newCount})` : ''}
+            </button>
+
+            <div style={{ display: 'flex', gap: 6, overflowX: 'auto', scrollbarWidth: 'none',
+              flex: 1, minWidth: 0 }}>
+              <button className="t" onClick={() => setGenreFilter(null)}
+                style={{ padding: '6px 13px', borderRadius: 18, border: 'none', cursor: 'pointer',
+                  fontSize: 12.5, fontWeight: genreFilter === null ? 700 : 500, whiteSpace: 'nowrap', flexShrink: 0,
+                  background: genreFilter === null ? (dark ? 'rgba(10,132,255,.18)' : 'rgba(10,132,255,.1)') : T.surf2,
+                  color: genreFilter === null ? '#0A84FF' : T.sub }}>
+                {t('news.allGenres')}
+              </button>
+              {trailerGenres.map(g => {
+                const active = genreFilter === g
+                return (
+                  <button key={g} className="t" onClick={() => setGenreFilter(active ? null : g)}
+                    style={{ padding: '6px 13px', borderRadius: 18, border: 'none', cursor: 'pointer',
+                      fontSize: 12.5, fontWeight: active ? 700 : 500, whiteSpace: 'nowrap', flexShrink: 0,
+                      background: active ? (dark ? 'rgba(10,132,255,.18)' : 'rgba(10,132,255,.1)') : T.surf2,
+                      color: active ? '#0A84FF' : T.sub }}>
+                    {g}
+                  </button>
+                )
+              })}
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginLeft: 'auto' }}>
+              {lastUpdated && (
+                <span style={{ fontSize: 11, color: T.sub, whiteSpace: 'nowrap' }}>
+                  {t('news.updatedAt', { time: formatClock(lastUpdated) })}
+                </span>
+              )}
+              <button className="t" onClick={() => loadTrailers.current(true)} disabled={refreshing}
+                aria-label={t('news.refresh')}
+                style={{ width: 34, height: 34, borderRadius: '50%', flexShrink: 0,
+                  border: `1px solid ${T.bord}`, background: T.surf, color: T.sub,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  cursor: refreshing ? 'default' : 'pointer', opacity: refreshing ? .6 : 1 }}>
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                  strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"
+                  style={{ animation: refreshing ? 'spin .7s linear infinite' : 'none' }}>
+                  <polyline points="23 4 23 10 17 10" />
+                  <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
+                </svg>
+                <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
+              </button>
+            </div>
           </div>
-        ) : (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 18 }}>
-            {trailers.map(item => (
-              <TrailerCard key={item.id} item={item} T={T}
-                isPlaying={playing === item.id}
-                onToggle={() => setPlaying(playing === item.id ? null : item.id)} />
-            ))}
-          </div>
-        )
+
+          {trailersLoading && trailers.length === 0 ? <Spinner T={T} /> :
+          visibleTrailers.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '60px 0' }}>
+              <p style={{ fontSize: 38, opacity: .14, marginBottom: 10 }}>▶</p>
+              <p style={{ fontSize: 14, color: T.sub }}>{t('news.noTrailers')}</p>
+            </div>
+          ) : (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 18 }}>
+              {visibleTrailers.map(item => (
+                <TrailerCard key={item.id} item={item} T={T}
+                  isPlaying={playing === item.id}
+                  onToggle={() => setPlaying(playing === item.id ? null : item.id)} />
+              ))}
+            </div>
+          )}
+        </>
       )}
 
       {/* On Air */}

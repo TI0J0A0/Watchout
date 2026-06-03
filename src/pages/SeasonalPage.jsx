@@ -6,7 +6,8 @@ import { useAuth } from '../context/AuthContext'
 import { MediaCard } from '../components/MediaCard'
 import { LoadingGrid } from '../components/LoadingGrid'
 import { ShelfRow } from '../components/ShelfRow'
-import { fetchPopular, fetchUpcoming, fetchByGenre, fetchSeasonArchive, fetchRecommendations } from '../services/jikan'
+import { fetchPopular, fetchUpcoming, fetchByGenre, fetchSeasonArchive, fetchRecommendations, fetchAnimeById } from '../services/jikan'
+import { fetchTrendingAnimeIds } from '../services/metrics'
 import { fetchAnilistHeroImages } from '../services/anilist'
 import { fetchKitsuCoverByMalId } from '../services/kitsu'
 import { useOnScreen } from '../hooks/useOnScreen'
@@ -25,13 +26,13 @@ function LazyShelf({ children }) {
 }
 
 const DISCOVER_KEYS = [
-  { key: 'popular', emoji: '🔥', fn: fetchPopular },
-  { key: 'upcoming', emoji: '⏳', fn: fetchUpcoming },
-  { key: 'romance', emoji: '💕', fn: () => fetchByGenre(22) },
-  { key: 'action', emoji: '⚡', fn: () => fetchByGenre(1) },
-  { key: 'fantasy', emoji: '✨', fn: () => fetchByGenre(10) },
-  { key: 'comedy', emoji: '😄', fn: () => fetchByGenre(4) },
-  { key: 'sliceoflife', emoji: '🌸', fn: () => fetchByGenre(36) },
+  { key: 'popular', emoji: '🔥', fn: (opts) => fetchPopular(opts) },
+  { key: 'upcoming', emoji: '⏳', fn: (opts) => fetchUpcoming(opts) },
+  { key: 'romance', emoji: '💕', fn: (opts) => fetchByGenre(22, 15, opts) },
+  { key: 'action', emoji: '⚡', fn: (opts) => fetchByGenre(1, 15, opts) },
+  { key: 'fantasy', emoji: '✨', fn: (opts) => fetchByGenre(10, 15, opts) },
+  { key: 'comedy', emoji: '😄', fn: (opts) => fetchByGenre(4, 15, opts) },
+  { key: 'sliceoflife', emoji: '🌸', fn: (opts) => fetchByGenre(36, 15, opts) },
 ]
 
 const SEASON_KEYS = ['winter', 'spring', 'summer', 'fall']
@@ -148,6 +149,8 @@ export function SeasonalPage({
     [data]
   )
 
+  const [refreshingSet, setRefreshingSet] = useState(() => new Set())
+
   useEffect(() => {
     let cancelled = false
     const delay = ms => new Promise(r => setTimeout(r, ms))
@@ -167,6 +170,41 @@ export function SeasonalPage({
       })()
     return () => { cancelled = true }
   }, [])
+
+  // Manual per-shelf refresh — bypasses the API cache for genuinely fresh items.
+  const refreshSection = useCallback(async (key) => {
+    const def = DISCOVER_KEYS.find(s => s.key === key)
+    if (!def) return
+    setRefreshingSet(prev => new Set(prev).add(key))
+    try {
+      const items = await def.fn({ fresh: true })
+      setSections(prev => ({ ...prev, [key]: items }))
+    } catch { }
+    setRefreshingSet(prev => { const s = new Set(prev); s.delete(key); return s })
+  }, [])
+
+  // ── Trending Now (real engagement metrics) ──
+  const [trendingItems, setTrendingItems] = useState([])
+  const [trendingLoading, setTrendingLoading] = useState(true)
+
+  const loadTrending = useCallback(async () => {
+    setTrendingLoading(true)
+    try {
+      const ids = await fetchTrendingAnimeIds({ days: 7, limit: 12 })
+      const resolved = await Promise.all(ids.map(async id => {
+        const local = data.find(d => d.id === id)
+        if (local) return local
+        try { return await fetchAnimeById(id) } catch { return null }
+      }))
+      setTrendingItems(resolved.filter(Boolean))
+    } catch {
+      setTrendingItems([])
+    } finally {
+      setTrendingLoading(false)
+    }
+  }, [data])
+
+  useEffect(() => { loadTrending() }, [])
 
   useEffect(() => {
     if (!archYear || !archSeason) return
@@ -450,6 +488,17 @@ export function SeasonalPage({
             </div>
           )}
 
+          {/* Trending Now — driven by real engagement metrics */}
+          {(trendingLoading || trendingItems.length >= 3) && (
+            <ShelfRow
+              emoji="📈"
+              title={t('seasonal.trendingNow')}
+              subtitle={t('seasonal.trendingNowSubtitle')}
+              items={enrich(trendingItems)} loading={trendingLoading}
+              onOpen={onOpen} onStatus={onStatus}
+              onRefresh={loadTrending} refreshing={trendingLoading} />
+          )}
+
 
           <div style={continueWatching.length > 0 ? undefined : firstShelfOverlapStyle}>
           <ShelfRow
@@ -541,7 +590,8 @@ export function SeasonalPage({
                 title={t(`seasonal.sections.${key}.title`)}
                 subtitle={t(`seasonal.sections.${key}.subtitle`)}
                 items={enrich(sections[key])} loading={loadingSet.has(key)}
-                onOpen={onOpen} onStatus={onStatus} />
+                onOpen={onOpen} onStatus={onStatus}
+                onRefresh={() => refreshSection(key)} refreshing={refreshingSet.has(key)} />
             </LazyShelf>
           ))}
         </>
