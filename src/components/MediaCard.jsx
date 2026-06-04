@@ -38,7 +38,7 @@ export const MediaCard = memo(function MediaCard({ item, delay, onOpen, onStatus
     <div className="fu" style={{
       animationDelay:`${delay}ms`,
       flexShrink: isShelf ? 0 : undefined,
-      width: isShelf ? (isMobile ? 160 : 220) : undefined,
+      width: isShelf ? (isMobile ? 170 : 250) : undefined,
     }}>
       <div className="card media-card t" role="button" tabIndex={0}
         onPointerDown={handlePointerDown}

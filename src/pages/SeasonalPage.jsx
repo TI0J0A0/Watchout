@@ -718,7 +718,7 @@ export function SeasonalPage({
         {archLoading ? <LoadingGrid count={8} /> : (
           <div style={{
             display: 'grid',
-            gridTemplateColumns: `repeat(auto-fill,minmax(${isMobile ? 160 : 220}px,1fr))`,
+            gridTemplateColumns: `repeat(auto-fill,minmax(${isMobile ? 170 : 250}px,1fr))`,
             gap: isMobile ? 14 : 18
           }}>
             {gridItems.map((it, i) => (
