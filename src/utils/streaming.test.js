@@ -18,3 +18,20 @@ test('hasStreamingProviderLinks detects real provider urls', () => {
   assert.equal(hasStreamingProviderLinks([{ name: 'Netflix', url: '' }]), false)
   assert.equal(hasStreamingProviderLinks([{ name: 'Netflix', url: 'https://www.netflix.com/title/80001305' }]), true)
 })
+
+test('parses providers persisted as JSON strings', () => {
+  const json = '{"name":"HIDIVE","url":"https://www.hidive.com/"}'
+  assert.equal(getStreamingProviderName(json), 'HIDIVE')
+  assert.equal(getStreamingProviderUrl(json), 'https://www.hidive.com/')
+  assert.equal(hasStreamingProviderLinks([json]), true)
+})
+
+test('plain name strings without urls stay names', () => {
+  assert.equal(getStreamingProviderName('Netflix'), 'Netflix')
+  assert.equal(getStreamingProviderUrl('Netflix'), null)
+})
+
+test('malformed JSON-ish strings fall back to the raw name', () => {
+  assert.equal(getStreamingProviderName('{not valid json'), '{not valid json')
+  assert.equal(getStreamingProviderUrl('{not valid json'), null)
+})

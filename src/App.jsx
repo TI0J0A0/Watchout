@@ -274,7 +274,9 @@ function AppInner() {
   const openDetailFromSource = (item, source = page) => {
     addToData(item)
     setDetailId(item.id)
-    if (!hasStreamingProviderLinks(item.streaming)) {
+    // Library items loaded from Supabase lack a trailer (and sometimes streaming
+    // links), so re-fetch the full record from Jikan to enrich the detail view.
+    if (!hasStreamingProviderLinks(item.streaming) || !item.trailer) {
       fetchAnimeById(item.id)
         .then(full => addToData({
           ...full,

@@ -99,6 +99,8 @@
     "synopsis": "Synopsis",
     "whereToWatch": "Where to Watch",
     "trailer": "Trailer",
+    "watchTrailer": "Watch Trailer",
+    "hideTrailer": "Hide",
     "characters": "Characters",
     "mainRole": "Main",
     "supportRole": "Support",

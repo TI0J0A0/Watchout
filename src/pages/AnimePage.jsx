@@ -175,6 +175,7 @@ export function AnimePage({ item, onClose, onStatus, onScore, onEp, onNotes, onO
   const [noteText,  setNoteText]  = useState(item?.userNotes ?? '')
   const [noteSaved, setNoteSaved] = useState(false)
   const [relations, setRelations] = useState([])
+  const [showTrailer, setShowTrailer] = useState(false)
   const menuRef      = useRef(null)
   const noteSaveTimer = useRef(null)
   useClickOutside(menuRef, () => setMenu(false))
@@ -189,6 +190,7 @@ export function AnimePage({ item, onClose, onStatus, onScore, onEp, onNotes, onO
     setNoteText(item?.userNotes ?? '')
     setNoteSaved(false)
     setRelations([])
+    setShowTrailer(false)
     fetchRecommendations(item.id).then(setRecs).catch(() => {})
     fetchRelations(item.id).then(setRelations).catch(() => {})
     fetchAnilistBanner(item.id)
@@ -611,16 +613,37 @@ export function AnimePage({ item, onClose, onStatus, onScore, onEp, onNotes, onO
 
         {item.trailer && (
           <div style={{ marginBottom: 32 }}>
-            <p style={{ fontSize: 13, fontWeight: 600, color: T.txt, marginBottom: 12 }}>{t('anime.trailer')}</p>
-            <div style={{ position: 'relative', paddingBottom: '56.25%', borderRadius: 16, overflow: 'hidden', background: '#000' }}>
-              <iframe
-                src={`${item.trailer}?rel=0&modestbranding=1`}
-                style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', border: 'none' }}
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                allowFullScreen
-                title={`Trailer ${item.title}`}
-              />
-            </div>
+            {showTrailer ? (
+              <>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+                  <p style={{ fontSize: 13, fontWeight: 600, color: T.txt }}>{t('anime.trailer')}</p>
+                  <button className="t" onClick={() => setShowTrailer(false)}
+                    style={{ fontSize: 12, fontWeight: 600, color: T.sub, background: 'none',
+                      border: 'none', cursor: 'pointer', padding: '4px 8px' }}>
+                    {t('anime.hideTrailer')}
+                  </button>
+                </div>
+                <div style={{ position: 'relative', paddingBottom: '56.25%', borderRadius: 16, overflow: 'hidden', background: '#000' }}>
+                  <iframe
+                    src={`${item.trailer}?rel=0&modestbranding=1&autoplay=1`}
+                    style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', border: 'none' }}
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowFullScreen
+                    title={`Trailer ${item.title}`}
+                  />
+                </div>
+              </>
+            ) : (
+              <button className="t hbtn" onClick={() => setShowTrailer(true)}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: 10,
+                  padding: '10px 16px', borderRadius: 12, cursor: 'pointer',
+                  background: T.surf2, border: `1px solid ${T.bord}`, color: T.txt }}>
+                <span style={{ width: 26, height: 26, borderRadius: '50%', flexShrink: 0,
+                  background: item.color || '#FF7A00', color: '#fff', fontSize: 11,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', paddingLeft: 2 }}>▶</span>
+                <span style={{ fontSize: 13.5, fontWeight: 600 }}>{t('anime.watchTrailer')}</span>
+              </button>
+            )}
           </div>
         )}
 
