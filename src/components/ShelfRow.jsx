@@ -144,7 +144,7 @@ export const ShelfRow = memo(function ShelfRow({ title, emoji, subtitle, items, 
           scrollSnapType: isMobile ? 'x proximity' : undefined }}>
           {loading
             ? Array.from({ length: 7 }).map((_, i) => (
-                <div key={i} className="shimmer" style={{ flexShrink: 0, width: isMobile ? 150 : 200,
+                <div key={i} className="shimmer" style={{ flexShrink: 0, width: isMobile ? 160 : 220,
                   borderRadius: 16, overflow: 'hidden', background: T.surf,
                   animationDelay: `${i * 100}ms` }}>
                   <div style={{ paddingTop: '150%', background: T.surf2 }}/>

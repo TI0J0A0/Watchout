@@ -38,7 +38,7 @@ export const MediaCard = memo(function MediaCard({ item, delay, onOpen, onStatus
     <div className="fu" style={{
       animationDelay:`${delay}ms`,
       flexShrink: isShelf ? 0 : undefined,
-      width: isShelf ? (isMobile ? 150 : 200) : undefined,
+      width: isShelf ? (isMobile ? 160 : 220) : undefined,
     }}>
       <div className="card media-card t" role="button" tabIndex={0}
         onPointerDown={handlePointerDown}
@@ -128,6 +128,19 @@ export const MediaCard = memo(function MediaCard({ item, delay, onOpen, onStatus
               {item.year ? ` · ${item.year}` : ""}
             </p>
             {item.synopsis && <p className="chi-syn">{item.synopsis}</p>}
+            <div className="chi-actions">
+              <button type="button" className="chi-btn chi-play" aria-label={t('mediaCard.play')}
+                onPointerDown={e => e.stopPropagation()}
+                onClick={e => { e.stopPropagation(); onOpen(item) }}>
+                <span style={{ paddingLeft: 1 }}>▶</span>
+              </button>
+              <button type="button" className="chi-btn chi-ghost" aria-label={t('mediaCard.addToList')}
+                aria-pressed={Boolean(item.userStatus)}
+                onPointerDown={e => e.stopPropagation()}
+                onClick={e => { e.stopPropagation(); onStatus?.(item.id, 'plan_to_watch') }}>
+                {item.userStatus ? '✓' : '+'}
+              </button>
+            </div>
           </div>
         </div>
 
