@@ -4,6 +4,7 @@ import { SM } from '../constants'
 import { useTheme } from '../context/ThemeContext'
 import { useIsMobile } from '../hooks/useIsMobile'
 import { shouldTreatPointerAsTap } from '../utils/mobileInteraction'
+import { fmt } from '../utils'
 import { StatusBtn } from './StatusBtn'
 
 export const MediaCard = memo(function MediaCard({ item, delay, onOpen, onStatus, variant = 'grid', matchPct }) {
@@ -37,7 +38,7 @@ export const MediaCard = memo(function MediaCard({ item, delay, onOpen, onStatus
     <div className="fu" style={{
       animationDelay:`${delay}ms`,
       flexShrink: isShelf ? 0 : undefined,
-      width: isShelf ? (isMobile ? 130 : 178) : undefined,
+      width: isShelf ? (isMobile ? 150 : 200) : undefined,
     }}>
       <div className="card media-card t" role="button" tabIndex={0}
         onPointerDown={handlePointerDown}
@@ -52,7 +53,7 @@ export const MediaCard = memo(function MediaCard({ item, delay, onOpen, onStatus
         touchAction: isShelf ? 'pan-x' : 'manipulation',
         WebkitTapHighlightColor: 'transparent',
       }}>
-        <div style={{position:"relative",paddingTop:"142%",overflow:"hidden"}}>
+        <div style={{position:"relative",paddingTop:"150%",overflow:"hidden"}}>
           {item.img ? (
             <img className="cimg t" src={item.img} alt="" loading="lazy" decoding="async"
               style={{position:"absolute",inset:0,width:"100%",height:"100%",objectFit:"cover"}}/>
@@ -114,12 +115,32 @@ export const MediaCard = memo(function MediaCard({ item, delay, onOpen, onStatus
             </div>
           )}
 
-          {/* Hover overlay */}
-          <div className="card-overlay">
-            <div style={{width:46,height:46,borderRadius:"50%",
-              background:"rgba(255,255,255,.18)",border:"1.5px solid rgba(255,255,255,.35)",
-              display:"flex",alignItems:"center",justifyContent:"center"}}>
-              <span style={{fontSize:18,color:"#fff",lineHeight:1,paddingLeft:2}}>▶</span>
+          {/* Hover info panel (desktop only) */}
+          <div className="card-hover-info">
+            <p className="chi-title">{item.title}</p>
+            <div className="chi-rating">
+              <span style={{ color:"#FFD60A" }}>★</span>
+              <span style={{ fontWeight:700 }}>{item.score || "—"}</span>
+              {item.members ? <span className="chi-dim">({fmt(item.members)})</span> : null}
+            </div>
+            <p className="chi-meta">
+              {item.eps ? `${item.eps} ${t('mediaCard.episodes')}` : typeLabel}
+              {item.year ? ` · ${item.year}` : ""}
+            </p>
+            {item.synopsis && <p className="chi-syn">{item.synopsis}</p>}
+            <div className="chi-actions">
+              <button type="button" className="chi-btn chi-play" aria-label={t('mediaCard.play')}
+                onPointerDown={e => e.stopPropagation()}
+                onClick={e => { e.stopPropagation(); onOpen(item) }}>
+                <span style={{ paddingLeft:1 }}>▶</span>
+              </button>
+              {!item.userStatus && (
+                <button type="button" className="chi-btn chi-add" aria-label={t('mediaCard.addToList')}
+                  onPointerDown={e => e.stopPropagation()}
+                  onClick={e => { e.stopPropagation(); onStatus?.(item.id, 'plan_to_watch') }}>
+                  +
+                </button>
+              )}
             </div>
           </div>
         </div>

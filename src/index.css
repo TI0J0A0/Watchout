@@ -120,22 +120,56 @@ select:focus-visible {
 .hbtn:hover { opacity: .72; }
 .rbtn:hover { background: rgba(120,120,128,.1) !important; }
 
-/* ── Card hover overlay ── */
-.card-overlay {
+/* ── Rich card hover info panel (Crunchyroll-style) ── */
+.card-hover-info {
   position: absolute;
   inset: 0;
-  background: rgba(0,0,0,.44);
-  backdrop-filter: blur(6px);
-  pointer-events: none;
+  z-index: 4;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
+  padding: 13px 13px 12px;
+  background: linear-gradient(to bottom,
+    rgba(8,8,12,.92) 0%, rgba(8,8,12,.66) 42%, rgba(8,8,12,.9) 100%);
   opacity: 0;
-  transition: opacity .18s ease;
+  pointer-events: none;
+  transition: opacity .2s ease;
 }
-.card:hover .card-overlay { opacity: 1; }
+.card:hover .card-hover-info { opacity: 1; pointer-events: auto; }
+.chi-title {
+  font-size: 14px; font-weight: 700; color: #fff; line-height: 1.25;
+  margin-bottom: 7px;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+.chi-rating {
+  display: flex; align-items: center; gap: 5px;
+  font-size: 13px; color: #fff; margin-bottom: 3px;
+}
+.chi-dim { color: rgba(255,255,255,.6); font-weight: 500; font-size: 12px; }
+.chi-meta { font-size: 11.5px; color: rgba(255,255,255,.62); font-weight: 600; margin-bottom: 8px; }
+.chi-syn {
+  font-size: 11.5px; color: rgba(255,255,255,.74); line-height: 1.45;
+  display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden;
+}
+.chi-actions {
+  margin-top: auto; padding-top: 10px;
+  display: flex; align-items: center; gap: 9px;
+}
+.chi-btn {
+  width: 38px; height: 38px; border-radius: 999px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 15px; font-weight: 700; cursor: pointer;
+  transition: transform .16s ease, background .16s ease, box-shadow .16s ease;
+}
+.chi-btn:hover { transform: scale(1.08); }
+.chi-play {
+  border: none; background: var(--cta); color: #111;
+  box-shadow: 0 6px 18px rgba(255,122,0,.4);
+}
+.chi-add {
+  border: 1.5px solid rgba(255,255,255,.5); background: rgba(255,255,255,.12);
+  color: #fff; font-size: 22px; line-height: 1;
+}
+.chi-add:hover { background: rgba(255,255,255,.22); }
 
 /* Watchout cinematic hero */
 .watchout-hero-shell {
@@ -426,8 +460,8 @@ select:focus-visible {
   .card:hover { transform: none; }
   .media-card:hover { transform: none; box-shadow: none !important; }
   .card:hover .cimg { transform: none; }
-  .card-overlay,
-  .card:hover .card-overlay {
+  .card-hover-info,
+  .card:hover .card-hover-info {
     display: none;
     opacity: 0;
     backdrop-filter: none;
@@ -452,7 +486,7 @@ select:focus-visible {
     will-change: auto;
   }
   .media-card .cimg { transition: none !important; }
-  .card-overlay { display: none !important; backdrop-filter: none !important; }
+  .card-hover-info { display: none !important; backdrop-filter: none !important; }
   .heroOverlay,
   .heroBottomFade,
   .watchout-hero-secondary,

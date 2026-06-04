@@ -260,5 +260,10 @@
     "addToList": "+ Add to list",
     "removeFromList": "Remove from list",
     "liveLabel": "LIVE"
+  },
+  "mediaCard": {
+    "episodes": "eps",
+    "play": "View details",
+    "addToList": "Add to list"
   }
 }
