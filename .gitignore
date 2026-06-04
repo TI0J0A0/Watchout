@@ -6,3 +6,6 @@ vite.*.log
 .env.local
 sql/
 docs
+
+# Supabase CLI scratch (version cache, linked-project ref)
+supabase/.temp/
