@@ -114,8 +114,9 @@ export function Nav({ page, setPage, userProfile, onLogin, onShowMAL, onSelectCa
   return (
     <>
     <nav style={{position:"fixed",top:0,left:0,right:0,zIndex:200,
-      background:dark?"rgba(5,5,9,.75)":"rgba(245,245,247,.88)",
-      backdropFilter:"blur(18px) saturate(160%)",
+      background:dark?"rgba(5,5,9,.92)":"rgba(245,245,247,.95)",
+      backdropFilter:"blur(10px)", WebkitBackdropFilter:"blur(10px)",
+      transform:"translateZ(0)", willChange:"transform",
       borderBottom:`1px solid ${dark ? 'rgba(255,255,255,.08)' : T.bord}`,
       boxShadow: dark ? "0 14px 40px rgba(0,0,0,.22)" : "none"}}>
       <div style={{display:"flex",alignItems:"center",
@@ -266,9 +267,9 @@ export function Nav({ page, setPage, userProfile, onLogin, onShowMAL, onSelectCa
 
     {/* Mobile bottom tab bar */}
     <div className="mobile-nav" style={{
-      background: dark ? 'rgba(5,5,9,.82)' : 'rgba(245,245,247,.96)',
+      background: dark ? 'rgba(5,5,9,.94)' : 'rgba(245,245,247,.98)',
       borderTop: `1px solid ${dark ? 'rgba(255,255,255,.08)' : T.bord}`,
-      backdropFilter: 'blur(18px) saturate(160%)',
+      backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)',
     }}>
       {PAGES.map(([id, label]) => {
         const active = page === id

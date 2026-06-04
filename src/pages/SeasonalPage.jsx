@@ -17,9 +17,11 @@ import { getHeroCta, getHeroFocalPoint, getHeroImage, getHeroMeta } from '../uti
 import { getStreamingProviderName } from '../utils/streaming'
 
 function LazyShelf({ children }) {
-  const [ref, visible] = useOnScreen('300px')
+  const [ref, visible] = useOnScreen('400px')
+  // Reserve close to the real shelf height (header + 250px poster card) so the
+  // page doesn't jump when the shelf hydrates while scrolling.
   return (
-    <div ref={ref} style={{ minHeight: visible ? 0 : 340 }}>
+    <div ref={ref} style={{ minHeight: visible ? undefined : 520 }}>
       {visible && children}
     </div>
   )
