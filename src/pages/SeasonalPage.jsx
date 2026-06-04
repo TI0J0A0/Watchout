@@ -153,6 +153,9 @@ export function SeasonalPage({
     return () => { cancelled = true }
   }, [hero?.id])
 
+  const heroRef = useRef(null)
+  const [heroInView, setHeroInView] = useState(true)
+
   // Fade the background trailer in shortly after the poster settles.
   useEffect(() => {
     setHeroTrailerOn(false)
@@ -162,6 +165,15 @@ export function SeasonalPage({
     const timer = setTimeout(() => setHeroTrailerOn(true), 1400)
     return () => clearTimeout(timer)
   }, [hero?.id, isMobile, prefersReducedMotion])
+
+  // Stop loading/decoding the background trailer once the hero scrolls away.
+  useEffect(() => {
+    const el = heroRef.current
+    if (!el || typeof IntersectionObserver === 'undefined') return
+    const io = new IntersectionObserver(([entry]) => setHeroInView(entry.isIntersecting), { threshold: 0.1 })
+    io.observe(el)
+    return () => io.disconnect()
+  }, [hero?.id])
 
   // Map lookup keeps enrichment O(n) instead of O(n²) across many shelves.
   const dataById = useMemo(() => new Map(data.map(d => [d.id, d])), [data])
@@ -236,7 +248,24 @@ export function SeasonalPage({
       .finally(() => setArchLoading(false))
   }, [archYear, archSeason])
 
-  const continueWatching = data.filter(i => i.type === 'anime' && i.userStatus === 'watching')
+  // Memoize enriched lists so ShelfRow (memo) keeps a stable reference and
+  // doesn't re-render when unrelated state (e.g. the hero) changes.
+  const enrichedSections = useMemo(() => {
+    const out = {}
+    for (const { key } of DISCOVER_KEYS) out[key] = enrich(sections[key])
+    return out
+  }, [sections, enrich])
+  const enrichedTrending = useMemo(() => enrich(trendingItems), [trendingItems, enrich])
+  // Stable per-section refresh handlers so the discover ShelfRows stay memoized.
+  const refreshHandlers = useMemo(
+    () => Object.fromEntries(DISCOVER_KEYS.map(({ key }) => [key, () => refreshSection(key)])),
+    [refreshSection]
+  )
+
+  const continueWatching = useMemo(
+    () => data.filter(i => i.type === 'anime' && i.userStatus === 'watching'),
+    [data]
+  )
   const isArchive = archYear !== null && archSeason !== null
   const ytId = hero?.trailer?.match(/embed\/([^?]+)/)?.[1]
   const ytThumb = ytId ? `https://img.youtube.com/vi/${ytId}/maxresdefault.jpg` : null
@@ -300,7 +329,7 @@ export function SeasonalPage({
 
       {/* ── Hero (hidden in archive mode) ── */}
       {!isArchive && (
-        <section key={hero.id} className="card hf hero hero-h" onClick={() => onHeroOpen(hero)}
+        <section key={hero.id} ref={heroRef} className="card hf hero hero-h" onClick={() => onHeroOpen(hero)}
           role="button"
           tabIndex={0}
           onKeyDown={e => {
@@ -326,7 +355,7 @@ export function SeasonalPage({
           )}
 
           {/* Muted autoplay trailer — fades over the poster on desktop */}
-          {heroTrailerOn && ytId && (
+          {heroTrailerOn && heroInView && ytId && (
             <div aria-hidden="true" style={{
               position: 'absolute', left: 0, right: 0, top: 0, bottom: -58,
               overflow: 'hidden', pointerEvents: 'none',
@@ -346,7 +375,7 @@ export function SeasonalPage({
           )}
 
           {/* Mute / unmute toggle */}
-          {heroTrailerOn && ytId && (
+          {heroTrailerOn && heroInView && ytId && (
             <button className="t" onClick={e => { e.stopPropagation(); setHeroMuted(m => !m) }}
               aria-label={heroMuted ? 'Unmute trailer' : 'Mute trailer'}
               style={{
@@ -562,7 +591,7 @@ export function SeasonalPage({
               emoji="📈"
               title={t('seasonal.trendingNow')}
               subtitle={t('seasonal.trendingNowSubtitle')}
-              items={enrich(trendingItems)} loading={trendingLoading}
+              items={enrichedTrending} loading={trendingLoading}
               onOpen={onOpen} onStatus={onStatus}
               onRefresh={loadTrending} refreshing={trendingLoading} />
           )}
@@ -657,9 +686,9 @@ export function SeasonalPage({
                 emoji={emoji}
                 title={t(`seasonal.sections.${key}.title`)}
                 subtitle={t(`seasonal.sections.${key}.subtitle`)}
-                items={enrich(sections[key])} loading={loadingSet.has(key)}
+                items={enrichedSections[key]} loading={loadingSet.has(key)}
                 onOpen={onOpen} onStatus={onStatus}
-                onRefresh={() => refreshSection(key)} refreshing={refreshingSet.has(key)} />
+                onRefresh={refreshHandlers[key]} refreshing={refreshingSet.has(key)} />
             </LazyShelf>
           ))}
         </>

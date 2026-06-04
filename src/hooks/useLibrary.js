@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { mergeWithUserData, saveUserData } from '../utils'
 import { fetchSeasonal, fetchTop, fetchAnimeById } from '../services/jikan'
@@ -17,6 +17,16 @@ export function useLibrary() {
   const noteTimer = useRef(null)
   const supabaseLoaded = useRef(false)
   const enrichRunRef = useRef(0)
+
+  // Latest data/user without making the callbacks below depend on them — keeps
+  // their identity stable so memoized cards don't re-render on unrelated state
+  // changes (e.g. the hero rotating every few seconds).
+  const dataRef = useRef(data)
+  dataRef.current = data
+  const userRef = useRef(user)
+  userRef.current = user
+  const topLoadedRef = useRef(topLoaded)
+  topLoadedRef.current = topLoaded
 
   useEffect(() => {
     fetchSeasonal()
@@ -120,14 +130,14 @@ export function useLibrary() {
 //  }, [data, user])
 //
 
-  const loadTop = () => {
-    if (topLoaded) return
+  const loadTop = useCallback(() => {
+    if (topLoadedRef.current) return
     fetchTop()
       .then(items => { setTopData(items); setTopLoaded(true) })
       .catch(() => {})
-  }
+  }, [])
 
-  const addToData = (item) => {
+  const addToData = useCallback((item) => {
     setData(d => {
       if (!item?.id) return d
       const existing = d.find(i => i.id === item.id)
@@ -137,9 +147,11 @@ export function useLibrary() {
       if (unchanged) return d
       return d.map(i => i.id === item.id ? merged : i)
     })
-  }
+  }, [])
 
-const setStatus = (id, s) => {
+const setStatus = useCallback((id, s) => {
+    const user = userRef.current
+    const data = dataRef.current
     // 1. Bloqueia a execução imediatamente se não houver utilizador logado
     if (!user) {
       // Podes retornar null ou uma mensagem para o Toast avisar o utilizador
@@ -183,10 +195,11 @@ const setStatus = (id, s) => {
     }
 
     return removing ? t('common.removedFromList') : `${it.title} → ${t(`status.${s}`)}`
-  }
-  
-  const setScore = (id, v) => {
-    const it = data.find(i => i.id === id)
+  }, [t])
+
+  const setScore = useCallback((id, v) => {
+    const user = userRef.current
+    const it = dataRef.current.find(i => i.id === id)
     if (!it) return
     const next = { ...it, userScore: v }
     setData(d => d.map(i => i.id === id ? next : i))
@@ -199,10 +212,11 @@ const setStatus = (id, s) => {
         metadata: { score: v },
       })
     }
-  }
+  }, [])
 
-  const setEp = (id, v) => {
-    const it = data.find(i => i.id === id)
+  const setEp = useCallback((id, v) => {
+    const user = userRef.current
+    const it = dataRef.current.find(i => i.id === id)
     if (!it) return
     const next = { ...it, userEp: v }
     setData(d => d.map(i => i.id === id ? next : i))
@@ -215,10 +229,11 @@ const setStatus = (id, s) => {
         metadata: { progress: v },
       })
     }
-  }
+  }, [])
 
-  const setNotes = (id, text) => {
-    const it = data.find(i => i.id === id)
+  const setNotes = useCallback((id, text) => {
+    const user = userRef.current
+    const it = dataRef.current.find(i => i.id === id)
     if (!it) return
     const updated = { ...it, userNotes: text }
     setData(d => d.map(i => i.id === id ? updated : i))
@@ -237,9 +252,10 @@ const setStatus = (id, s) => {
         800
       )
     }
-  }
+  }, [])
 
-  const importFromMAL = async (items) => {
+  const importFromMAL = useCallback(async (items) => {
+    const user = userRef.current
     const unique = [...new Map(items.map(i => [i.id, i])).values()]
     setData(prev => {
       const updated = prev.map(p => {
@@ -252,7 +268,7 @@ const setStatus = (id, s) => {
       return [...updated, ...unique.filter(i => !existingIds.has(i.id))]
     })
     if (user) await upsertAnimesBatch(user.id, unique)
-  }
+  }, [])
 
   return {
     data, setData, loading,

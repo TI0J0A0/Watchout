@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo, lazy, Suspense } from 'react'
+import { useState, useEffect, useRef, useMemo, useCallback, lazy, Suspense } from 'react'
 import { useLibrary } from './hooks/useLibrary'
 import { ThemeProvider, useTheme } from './context/ThemeContext'
 import { AuthProvider, useAuth } from './context/AuthContext'
@@ -75,8 +75,15 @@ function AppInner() {
   const [adminHeroItems, setAdminHeroItems] = useState([])
   const [heroMaxItems, setHeroMaxItems] = useState(5)
 
-  const notify = msg => { setToast(msg); setTimeout(() => setToast(null), 2400) }
+  const notify = useCallback(msg => { setToast(msg); setTimeout(() => setToast(null), 2400) }, [])
   const dataById = useMemo(() => new Map(data.map(item => [item.id, item])), [data])
+
+  // Refs so hot callbacks can read latest page/user without depending on them,
+  // keeping their identity stable across the periodic hero re-render.
+  const pageRef = useRef(page)
+  pageRef.current = page
+  const userIdRef = useRef(user?.id)
+  userIdRef.current = user?.id
 
 
   useEffect(() => {
@@ -180,10 +187,12 @@ function AppInner() {
   const hero = heroItems[heroIdx % Math.max(heroItems.length, 1)] || data[0]
 
   useEffect(() => {
-    if (heroItems.length <= 1) return
+    // Only rotate while the hero is actually on screen (seasonal page) — avoids
+    // re-rendering the whole app every few seconds on other pages.
+    if (heroItems.length <= 1 || page !== 'seasonal' || detailId !== null) return
     const t = setInterval(() => setHeroIdx(h => (h + 1) % heroItems.length), HERO_ROTATE_MS)
     return () => clearInterval(t)
-  }, [heroItems.length])
+  }, [heroItems.length, page, detailId])
 
   useEffect(() => {
     setHeroIdx(0)
@@ -275,7 +284,8 @@ function AppInner() {
     }
   }
 
-  const openDetailFromSource = (item, source = page) => {
+  const openDetailFromSource = useCallback((item, source) => {
+    const page = pageRef.current
     addToData(item)
     setDetailId(item.id)
     // Library items loaded from Supabase lack a trailer (and sometimes streaming
@@ -293,18 +303,22 @@ function AppInner() {
     }
     trackMetricEvent({
       type: 'anime_open',
-      userId: user?.id ?? null,
+      userId: userIdRef.current ?? null,
       animeId: item.id,
       page,
-      metadata: { title: item.title, source },
+      metadata: { title: item.title, source: source ?? page },
     })
     window.scrollTo({ top: 0, behavior: 'instant' })
-  }
+  }, [addToData])
 
-  const handleStatus = (id, s) => {
+  const handleStatus = useCallback((id, s) => {
     const msg = setStatus(id, s)
     if (msg) notify(msg)
-  }
+  }, [setStatus, notify])
+
+  // Stable bound handler for the seasonal shelves/grid so memoized cards
+  // don't re-render when the hero rotates.
+  const onOpenSeasonal = useCallback(item => openDetailFromSource(item, 'seasonal'), [openDetailFromSource])
 
   const library = useMemo(() => data.filter(i => i.userStatus), [data])
   const seasonal = useMemo(() => data.filter(i => typeF === 'all' || i.type === typeF), [data, typeF])
@@ -357,7 +371,7 @@ function AppInner() {
               seasonal={seasonal} data={data} hero={hero} heroIdx={heroIdx} setHeroIdx={setHeroIdx}
               heroRotateMs={HERO_ROTATE_MS}
               airingItems={airingItems} heroItems={heroItems} typeF={typeF} setTypeF={setTypeF}
-              loading={loading} onOpen={(item) => openDetailFromSource(item, 'seasonal')} onHeroOpen={(item) => {
+              loading={loading} onOpen={onOpenSeasonal} onHeroOpen={(item) => {
                 trackMetricEvent({
                   type: 'banner_click',
                   userId: user?.id ?? null,
