@@ -75,6 +75,10 @@ a:focus:not(:focus-visible) { outline: none; }
 @keyframes spin {
   to { transform: rotate(360deg); }
 }
+@keyframes heroDotFill {
+  from { transform: scaleX(0); }
+  to   { transform: scaleX(1); }
+}
 
 .fu  { animation: fadeUp  .34s ease both; }
 .sc  { animation: scaleIn .2s  ease both; }

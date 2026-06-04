@@ -1,31 +1,34 @@
-import { useState, useEffect, useRef, useMemo } from 'react'
+import { useState, useEffect, useRef, useMemo, lazy, Suspense } from 'react'
 import { useLibrary } from './hooks/useLibrary'
 import { ThemeProvider, useTheme } from './context/ThemeContext'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import { Nav } from './components/Nav'
 import { Toast } from './components/Toast'
-import { MALImport } from './components/MALImport'
-import { AnimePage } from './pages/AnimePage'
-import { AuthPage } from './pages/AuthPage'
 import { SeasonalPage } from './pages/SeasonalPage'
-import { TopPage } from './pages/TopPage'
-import { CalendarPage } from './pages/CalendarPage'
-import { SearchPage } from './pages/SearchPage'
-import { ProfilePage } from './pages/ProfilePage'
-import { NewsPage } from './pages/NewsPage'
-import { FriendProfilePage } from './pages/FriendProfilePage'
-import { CommunityPage } from './pages/CommunityPage'
+import { AnimePage } from './pages/AnimePage'
 import { loadPremiumStatus, isAdmin } from './services/premium'
 import { getProfile } from './services/friends'
 import { fetchAnimeById } from './services/jikan'
 import { fetchHeroEntries, fetchHeroSettings } from './services/heroAdmin'
 import { trackMetricEvent } from './services/metrics'
 import { hasStreamingProviderLinks } from './utils/streaming'
-import { AdminPage } from './pages/AdminPage'
-import { CategoriesPage } from './pages/CategoriesPage'
 import { AnnouncementBanner } from './components/AnnouncementBanner'
 import { BackToTop } from './components/BackToTop'
 import { getGenreById } from './constants/browse'
+
+// Code-split rarely-used / heavy routes so they stay out of the initial bundle.
+const named = (loader, key) => lazy(() => loader().then(m => ({ default: m[key] })))
+const TopPage = named(() => import('./pages/TopPage'), 'TopPage')
+const CalendarPage = named(() => import('./pages/CalendarPage'), 'CalendarPage')
+const SearchPage = named(() => import('./pages/SearchPage'), 'SearchPage')
+const ProfilePage = named(() => import('./pages/ProfilePage'), 'ProfilePage')
+const NewsPage = named(() => import('./pages/NewsPage'), 'NewsPage')
+const FriendProfilePage = named(() => import('./pages/FriendProfilePage'), 'FriendProfilePage')
+const CommunityPage = named(() => import('./pages/CommunityPage'), 'CommunityPage')
+const CategoriesPage = named(() => import('./pages/CategoriesPage'), 'CategoriesPage')
+const AdminPage = named(() => import('./pages/AdminPage'), 'AdminPage')
+const AuthPage = named(() => import('./pages/AuthPage'), 'AuthPage')
+const MALImport = named(() => import('./components/MALImport'), 'MALImport')
 
 const VALID_PAGES = new Set(['seasonal', 'top', 'calendar', 'categories', 'search', 'profile', 'news', 'community', 'admin'])
 
@@ -43,6 +46,7 @@ function buildHash(page, detailId) {
 }
 
 const HERO_UPDATED_EVENT = 'watchout:hero-updated'
+const HERO_ROTATE_MS = 8000
 
 function AppInner() {
   const { T } = useTheme()
@@ -177,7 +181,7 @@ function AppInner() {
 
   useEffect(() => {
     if (heroItems.length <= 1) return
-    const t = setInterval(() => setHeroIdx(h => (h + 1) % heroItems.length), 5000)
+    const t = setInterval(() => setHeroIdx(h => (h + 1) % heroItems.length), HERO_ROTATE_MS)
     return () => clearInterval(t)
   }, [heroItems.length])
 
@@ -320,6 +324,11 @@ function AppInner() {
 
       <AnnouncementBanner page={page} />
 
+      <Suspense fallback={
+        <div style={{ padding: '120px 28px', textAlign: 'center', color: T.sub, fontSize: 14 }}>
+          Loading…
+        </div>
+      }>
       {friendId !== null ? (
         <FriendProfilePage
           userId={friendId}
@@ -346,6 +355,7 @@ function AppInner() {
           {page === 'seasonal' && (
             <SeasonalPage
               seasonal={seasonal} data={data} hero={hero} heroIdx={heroIdx} setHeroIdx={setHeroIdx}
+              heroRotateMs={HERO_ROTATE_MS}
               airingItems={airingItems} heroItems={heroItems} typeF={typeF} setTypeF={setTypeF}
               loading={loading} onOpen={(item) => openDetailFromSource(item, 'seasonal')} onHeroOpen={(item) => {
                 trackMetricEvent({
@@ -395,11 +405,14 @@ function AppInner() {
           )}
         </div>
       )}
+      </Suspense>
 
       <BackToTop />
       {toast && <Toast message={toast} />}
-      {showAuth && <AuthPage onClose={() => setShowAuth(false)} />}
-      {showMAL && <MALImport onImport={importFromMAL} onClose={() => setShowMAL(false)} />}
+      <Suspense fallback={null}>
+        {showAuth && <AuthPage onClose={() => setShowAuth(false)} />}
+        {showMAL && <MALImport onImport={importFromMAL} onClose={() => setShowMAL(false)} />}
+      </Suspense>
     </div>
   )
 }

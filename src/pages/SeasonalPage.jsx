@@ -43,11 +43,20 @@ export function SeasonalPage({
   seasonal, data, hero, heroIdx, setHeroIdx, airingItems,
   heroItems = airingItems, typeF, setTypeF, loading,
   onOpen, onHeroOpen = onOpen, onStatus, initialArchiveYear,
+  heroRotateMs = 8000,
 }) {
   const { T } = useTheme()
   const { t } = useTranslation()
   const { user } = useAuth()
   const isMobile = useIsMobile()
+
+  // Hero background trailer (muted autoplay), desktop only & reduced-motion aware.
+  const [heroTrailerOn, setHeroTrailerOn] = useState(false)
+  const [heroMuted, setHeroMuted] = useState(true)
+  const prefersReducedMotion = useMemo(
+    () => typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches,
+    []
+  )
 
   const tasteProfile = useMemo(() => computeTasteProfile(data), [data])
   const personality = useMemo(() => personalityText(tasteProfile), [tasteProfile])
@@ -144,9 +153,21 @@ export function SeasonalPage({
     return () => { cancelled = true }
   }, [hero?.id])
 
+  // Fade the background trailer in shortly after the poster settles.
+  useEffect(() => {
+    setHeroTrailerOn(false)
+    if (isMobile || prefersReducedMotion) return
+    const ytId = hero?.trailer?.match(/embed\/([^?]+)/)?.[1]
+    if (!ytId) return
+    const timer = setTimeout(() => setHeroTrailerOn(true), 1400)
+    return () => clearTimeout(timer)
+  }, [hero?.id, isMobile, prefersReducedMotion])
+
+  // Map lookup keeps enrichment O(n) instead of O(n²) across many shelves.
+  const dataById = useMemo(() => new Map(data.map(d => [d.id, d])), [data])
   const enrich = useCallback(
-    items => items.map(i => data.find(d => d.id === i.id) ?? i),
-    [data]
+    items => items.map(i => dataById.get(i.id) ?? i),
+    [dataById]
   )
 
   const [refreshingSet, setRefreshingSet] = useState(() => new Set())
@@ -304,6 +325,41 @@ export function SeasonalPage({
             }} />
           )}
 
+          {/* Muted autoplay trailer — fades over the poster on desktop */}
+          {heroTrailerOn && ytId && (
+            <div aria-hidden="true" style={{
+              position: 'absolute', left: 0, right: 0, top: 0, bottom: -58,
+              overflow: 'hidden', pointerEvents: 'none',
+              opacity: heroTrailerOn ? 1 : 0, transition: 'opacity .8s ease',
+            }}>
+              <iframe
+                title={`${hero.title} trailer`}
+                src={`https://www.youtube-nocookie.com/embed/${ytId}?autoplay=1&mute=${heroMuted ? 1 : 0}&controls=0&loop=1&playlist=${ytId}&playsinline=1&modestbranding=1&rel=0&disablekb=1&iv_load_policy=3`}
+                allow="autoplay; encrypted-media"
+                style={{
+                  position: 'absolute', top: '50%', left: '50%',
+                  width: '177.78vh', minWidth: '100%', height: '56.25vw', minHeight: '100%',
+                  transform: 'translate(-50%, -50%)', border: 'none',
+                }}
+              />
+            </div>
+          )}
+
+          {/* Mute / unmute toggle */}
+          {heroTrailerOn && ytId && (
+            <button className="t" onClick={e => { e.stopPropagation(); setHeroMuted(m => !m) }}
+              aria-label={heroMuted ? 'Unmute trailer' : 'Mute trailer'}
+              style={{
+                position: 'absolute', bottom: 24, right: 24, zIndex: 4,
+                width: 42, height: 42, borderRadius: '50%',
+                border: '1px solid rgba(255,255,255,.22)', background: 'rgba(0,0,0,.42)',
+                color: '#fff', fontSize: 17, backdropFilter: 'blur(12px)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}>
+              {heroMuted ? '🔇' : '🔊'}
+            </button>
+          )}
+
           <div className="heroOverlay" style={{
             position: 'absolute', left: 0, right: 0, top: 0, bottom: -58,
             background: 'linear-gradient(90deg, rgba(0,0,0,.86) 0%, rgba(0,0,0,.45) 48%, rgba(0,0,0,.05) 100%)'
@@ -428,16 +484,28 @@ export function SeasonalPage({
               </div>
               {heroItems.length > 1 && (
                 <div style={{ display: 'flex', gap: 7 }} onClick={e => e.stopPropagation()}>
-                  {heroItems.map((_, i) => (
-                    <button key={i} onClick={() => setHeroIdx(i)}
-                      style={{
-                        width: i === heroIdx ? 22 : 6, height: 6, borderRadius: 8,
-                        border: 'none', padding: 0, cursor: 'pointer',
-                        minHeight: 6,
-                        background: i === heroIdx ? '#FF7A00' : 'rgba(255,255,255,.38)',
-                        transition: 'all .3s ease'
-                      }} />
-                  ))}
+                  {heroItems.map((_, i) => {
+                    const active = i === heroIdx
+                    return (
+                      <button key={i} onClick={() => setHeroIdx(i)}
+                        aria-label={`Go to hero ${i + 1}`}
+                        style={{
+                          position: 'relative', overflow: 'hidden',
+                          width: active ? 26 : 6, height: 6, borderRadius: 8,
+                          border: 'none', padding: 0, cursor: 'pointer', minHeight: 6,
+                          background: active ? 'rgba(255,122,0,.35)' : 'rgba(255,255,255,.38)',
+                          transition: 'width .3s ease, background .3s ease'
+                        }}>
+                        {active && (
+                          <span key={heroIdx} aria-hidden="true" style={{
+                            position: 'absolute', inset: 0, borderRadius: 8,
+                            background: '#FF7A00', transformOrigin: 'left center',
+                            animation: `heroDotFill ${heroRotateMs}ms linear forwards`,
+                          }} />
+                        )}
+                      </button>
+                    )
+                  })}
                 </div>
               )}
             </div>
