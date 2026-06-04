@@ -378,6 +378,13 @@ select:focus-visible {
   box-shadow: 0 0 20px rgba(167,139,250,.64);
 }
 
+/* Skip painting cards while they're off-screen; `auto` length caches the real
+   size after first render so the scrollbar doesn't drift. */
+.media-card-wrap {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 480px;
+}
+
 .media-card {
   background: linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,0)), var(--bg-card) !important;
 }

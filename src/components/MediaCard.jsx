@@ -35,7 +35,7 @@ export const MediaCard = memo(function MediaCard({ item, delay, onOpen, onStatus
   }
 
   return (
-    <div className="fu" style={{
+    <div className="fu media-card-wrap" style={{
       animationDelay:`${delay}ms`,
       flexShrink: isShelf ? 0 : undefined,
       width: isShelf ? (isMobile ? 170 : 250) : undefined,
@@ -69,7 +69,7 @@ export const MediaCard = memo(function MediaCard({ item, delay, onOpen, onStatus
 
           {/* Score */}
           <div style={{position:"absolute",top:isShelf?8:9,right:isShelf?8:9,padding:"3px 7px",
-            borderRadius:8,background:"rgba(0,0,0,.52)",backdropFilter:"blur(4px)",
+            borderRadius:8,background:"rgba(0,0,0,.66)",
             display:"flex",alignItems:"center",gap:3}}>
             <span style={{color:"#FFD60A",fontSize:10}}>★</span>
             <span style={{fontSize:12,fontWeight:700,color:"#fff"}}>{item.score}</span>
@@ -107,8 +107,8 @@ export const MediaCard = memo(function MediaCard({ item, delay, onOpen, onStatus
           {matchPct != null && !item.airing && (
             <div style={{
               position: 'absolute', bottom: isShelf ? 8 : 9, right: isShelf ? 8 : 9,
-              padding: '2px 7px', borderRadius: 8, backdropFilter: 'blur(4px)',
-              background: matchPct >= 80 ? 'rgba(52,199,89,.88)' : matchPct >= 60 ? 'rgba(255,159,10,.88)' : 'rgba(142,142,147,.75)',
+              padding: '2px 7px', borderRadius: 8,
+              background: matchPct >= 80 ? 'rgb(40,160,72)' : matchPct >= 60 ? 'rgb(214,130,8)' : 'rgb(110,110,116)',
               fontSize: 10, fontWeight: 700, color: '#fff',
             }}>
               {matchPct}%
