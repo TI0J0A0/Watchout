@@ -1,40 +1,45 @@
 # Watchout
 
-> Personal tracker for anime, series, and films — with cloud sync via Supabase and real-time data from the MyAnimeList API.
+> Discover, track, and watch anime — live data from MyAnimeList/AniList, cloud sync via Supabase, a Crunchyroll-style browse experience, and a built-in premium player.
 
 ![React](https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=white)
 ![Vite](https://img.shields.io/badge/Vite-6-646CFF?logo=vite&logoColor=white)
-![Supabase](https://img.shields.io/badge/Supabase-PostgreSQL-3ECF8E?logo=supabase&logoColor=white)
+![Supabase](https://img.shields.io/badge/Supabase-PostgreSQL%20%2B%20Edge-3ECF8E?logo=supabase&logoColor=white)
+![i18next](https://img.shields.io/badge/i18n-i18next-26A69A)
 
 ---
 
 ## About
 
-Watchout is a Portuguese-language media tracker that lets you discover and manage your anime, series, and film watchlist. It pulls live data from [Jikan API v4](https://jikan.moe/) (the unofficial MyAnimeList API) and syncs your personal library to Supabase when you're logged in — or falls back to `localStorage` when offline or unauthenticated.
+Watchout (deployed as **funnyroll.com**) is a media tracker and discovery app for anime. It pulls live data from [Jikan API v4](https://jikan.moe/) (MyAnimeList) and the [AniList GraphQL API](https://anilist.gitbook.io/anilist-apiv2-docs/), enriches artwork from Kitsu, and surfaces trailers and news. Your library, profile, social graph, and analytics are stored in **Supabase** (PostgreSQL + Auth + Edge Functions). The UI is localized with i18next (English by default).
 
 ---
 
 ## Features
 
-- **Seasonal browser** — displays currently airing anime with an auto-cycling hero banner
-- **Top rankings** — lazy-loaded list of the top-rated anime from MyAnimeList
-- **Weekly calendar** — see what airs on each day of the week
-- **Personal library** — filter by status and sort by title, MAL score, or your score
-- **Search** — global search across the entire MyAnimeList catalogue (debounced, 500 ms)
-- **Profile & stats** — total watch time, episodes watched, average score, genre/studio breakdown
-- **Dark / light theme** — toggle persisted across sessions
-- **MAL import** — import your existing list from a MyAnimeList XML export file
-- **Authentication** — sign up / log in via Supabase Auth
-- **Offline-first** — all actions work without an account; data is saved to `localStorage`
+- **Seasonal browser** — cinematic hero carousel with a muted autoplay trailer (desktop), animated progress dots, and horizontally-scrolling shelves (Continue Watching, Trending Now, For You, genre rows).
+- **Trending Now** — a shelf ranked from **real engagement metrics** (views, plays, watchlist adds, banner clicks) aggregated from `site_metrics_events`.
+- **Trailers & Releases (News)** — an **auto-refreshing** trailer feed (AniList, with a Jikan fallback) that flags newly-dropped trailers with a **NEW** badge, plus genre filters, On-Air, and Upcoming tabs.
+- **Crunchyroll-style cards** — large 2:3 posters with a rich hover panel (title, rating, episodes, synopsis).
+- **Top rankings**, **weekly calendar**, and **categories/genre** browsing.
+- **Search** — debounced global search across MyAnimeList with recent-search history.
+- **Anime detail** — synopsis, characters, relations, recommendations, streaming providers ("Where to Watch"), and a collapsible trailer.
+- **Premium player** — in-app episode playback (AniSkip intro/outro markers, quality/language switch) for premium users.
+- **Profile & stats** — watch time, episodes, average score, taste profile, and genre/studio breakdown.
+- **Community & friends** — friend profiles, comments, and a community page.
+- **Notifications** — new-episode alerts (with duplicate-prevention window).
+- **Admin panel** — dashboard, users, content (hero carousel, announcements), moderation, support, and a metrics analytics suite.
+- **MAL import** — import your list from a MyAnimeList XML export.
+- **Dark / light theme** — persisted across sessions.
 
-### Status labels
+### Status labels (i18n keys under `status.*`)
 
-| Status | Meaning |
+| Key | English label |
 |---|---|
-| Assistindo | Currently watching |
-| Planejo Assistir | Plan to watch |
-| Concluído | Completed |
-| Dropado | Dropped |
+| `watching` | Watching |
+| `plan_to_watch` | Plan to watch |
+| `completed` | Completed |
+| `dropped` | Dropped |
 
 ---
 
@@ -43,9 +48,11 @@ Watchout is a Portuguese-language media tracker that lets you discover and manag
 | Layer | Technology |
 |---|---|
 | Frontend | React 18, Vite 6 |
-| Backend / Auth | Supabase (PostgreSQL + Auth) |
-| Anime data | Jikan API v4 (MyAnimeList) |
-| Styling | Global CSS + inline styles (no UI library) |
+| Styling | Tailwind CSS v4 + inline styles (no component library) |
+| i18n | i18next + react-i18next |
+| Backend / Auth | Supabase (PostgreSQL, Auth, Edge Functions) |
+| Anime data | Jikan API v4 (MyAnimeList), AniList GraphQL, Kitsu (covers) |
+| News | Anime News Network (via the `fetch-ann-news` edge function) |
 
 ---
 
@@ -54,16 +61,13 @@ Watchout is a Portuguese-language media tracker that lets you discover and manag
 ### Prerequisites
 
 - **Node.js** v18 or newer
-- A **Supabase** project (free tier is sufficient) — [supabase.com](https://supabase.com)
+- A **Supabase** project — [supabase.com](https://supabase.com)
 
 ### Installation
 
 ```bash
-# Clone the repository
-git clone https://github.com/your-username/watchout.git
-cd watchout
-
-# Install dependencies
+git clone https://github.com/TI0J0A0/Watchout.git
+cd Watchout
 npm install
 ```
 
@@ -79,27 +83,37 @@ VITE_SUPABASE_ANON_KEY=eyJ...
 | Variable | Where to find it |
 |---|---|
 | `VITE_SUPABASE_URL` | Supabase dashboard → Project Settings → API → Project URL |
-| `VITE_SUPABASE_ANON_KEY` | Supabase dashboard → Project Settings → API → Project API keys → `anon public` |
+| `VITE_SUPABASE_ANON_KEY` | Supabase dashboard → Project Settings → API → `anon public` key |
 
-> The app works without these variables — it will run in offline/localStorage mode with no authentication.
+> Without these, the app still boots but auth, the personal library, and analytics are disabled.
 
-### Database setup
+### Database & Edge Functions
 
-Run the SQL in `supabase_schema.sql` inside your Supabase project:
+Schema is managed as SQL migrations under [`supabase/migrations/`](./supabase/migrations). Apply them with the Supabase CLI:
 
-1. Open the **SQL Editor** in your Supabase dashboard
-2. Click **New query**
-3. Paste the contents of `supabase_schema.sql` and click **Run**
+```bash
+supabase link --project-ref <your-project-ref>
+supabase db push                # apply migrations
+supabase functions deploy anikoto metrics-ingest fetch-ann-news
+```
 
-This creates the `user_anime` table and a Row Level Security policy that ensures each user can only access their own data.
+Core tables: `profiles`, `user_anime`, `animes`, `site_metrics_events`, `notifications`, `system_announcements`, `hero_entries`, `hero_settings`, `anime_comments`, plus community/feedback tables. Row Level Security restricts each user to their own rows; admin policies are defined in the migrations.
+
+### Edge Functions
+
+| Function | Purpose |
+|---|---|
+| `anikoto` | Admin anime search (Jikan proxy) + MAL→AniList id/episode lookup. Premium/admin gated. |
+| `metrics-ingest` | Ingests analytics events into `site_metrics_events`. |
+| `fetch-ann-news` | Fetches Anime News Network headlines. |
+
+> If `anikoto` is not deployed, admin anime search falls back to a direct Jikan search client-side.
 
 ### Start the dev server
 
 ```bash
-npm run dev
+npm run dev          # http://localhost:5173
 ```
-
-Open [http://localhost:5173](http://localhost:5173) in your browser.
 
 ---
 
@@ -107,46 +121,43 @@ Open [http://localhost:5173](http://localhost:5173) in your browser.
 
 ```
 src/
-├── App.jsx                  # Root component — global state, routing, data fetching
+├── App.jsx                  # Root: state, hash routing, lazy-loaded pages, hero carousel
 ├── main.jsx                 # Entry point
-├── index.css                # Global styles and theme variables
+├── index.css                # Global styles, theme tokens, animations
+├── i18n/                    # i18next setup + en.json
 │
 ├── pages/
-│   ├── SeasonalPage.jsx     # Currently airing anime + hero banner
-│   ├── TopPage.jsx          # Top-ranked anime list
+│   ├── SeasonalPage.jsx     # Hero + discovery shelves + season grid
+│   ├── AnimePage.jsx        # Anime detail (characters, relations, trailer, streaming)
+│   ├── TopPage.jsx          # Top-ranked list
 │   ├── CalendarPage.jsx     # Weekly airing schedule
+│   ├── CategoriesPage.jsx   # Genre browsing
 │   ├── SearchPage.jsx       # Global search
-│   ├── ProfilePage.jsx      # User stats and profile
+│   ├── NewsPage.jsx         # Trailers & Releases (auto-refresh feed)
+│   ├── ProfilePage.jsx      # Stats, taste profile
+│   ├── CommunityPage.jsx    # Community feed
+│   ├── FriendProfilePage.jsx
+│   ├── AdminPage.jsx        # Admin suite (see components/admin/)
 │   └── AuthPage.jsx         # Sign up / log in modal
 │
-├── components/
-│   ├── Nav.jsx              # Top/bottom navigation bar
-│   ├── MediaCard.jsx        # Anime/series/film card grid item
-│   ├── Modal.jsx            # Detail modal (status, score, episodes, notes, recommendations)
-│   ├── StatusBtn.jsx        # Inline status change button
-│   ├── ShelfRow.jsx         # Horizontal scrollable shelf
-│   ├── StatBox.jsx          # Stat display box (used in profile)
-│   ├── LoadingGrid.jsx      # Shimmer skeleton grid
-│   ├── Toast.jsx            # Temporary notification banner
-│   └── MALImport.jsx        # MyAnimeList XML import dialog
+├── components/              # MediaCard, ShelfRow, Nav, WatchPanel, NotificationBell,
+│   │                        # BackToTop, Toast, MALImport, admin/*, profile/*, ui/* …
 │
-├── context/
-│   ├── AuthContext.jsx      # Supabase auth state (user, sign in/out)
-│   └── ThemeContext.jsx     # Dark/light theme + colour tokens
+├── context/                 # AuthContext, ThemeContext
 │
-├── services/
-│   ├── jikan.js             # Jikan API v4 client (seasonal, top, search, recommendations)
-│   ├── supabase.js          # Supabase client initialisation
-│   └── userAnime.js         # CRUD operations for user_anime table
+├── services/                # jikan, anilist, kitsu, aniskip, ann, supabase, userAnime,
+│   │                        # friends, community, notifications, premium, metrics,
+│   │                        # metricsAnalytics, heroAdmin, animeLookup, announcements …
 │
-├── hooks/
-│   └── useClickOutside.js   # Close modals/menus on outside click
+├── hooks/                   # useLibrary, useIsMobile, useOnScreen, useClickOutside, admin/*, profile/*
 │
-├── constants/
-│   └── index.js             # Status map, streaming service colours and URLs, demo catalogue
+├── constants/               # status map, streaming colours/URLs, genre browse config
 │
-└── utils/
-    └── index.js             # localStorage helpers, number/time formatters
+└── utils/                   # apiCache, streaming, formatters, tasteProfile, playerSecurity …
+
+supabase/
+├── functions/               # anikoto, metrics-ingest, fetch-ann-news (Deno edge functions)
+└── migrations/              # SQL schema migrations
 ```
 
 ---
@@ -158,20 +169,22 @@ src/
 | `npm run dev` | Start the Vite dev server at `localhost:5173` |
 | `npm run build` | Build for production into `dist/` |
 | `npm run preview` | Preview the production build locally |
+| `node --test src/` | Run the unit test suite (Node's built-in test runner) |
 
 ---
 
-## Offline Mode
+## Performance Notes
 
-Watchout works fully without a Supabase account. When you are not logged in (or when `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY` are not set), all library changes are persisted to `localStorage` under the key `watchout_v2`. Logging in later will merge the Supabase library with any locally saved data.
+- **Code splitting** — heavy/rare routes (Admin, Profile, Community, News, …) are `React.lazy`-loaded behind `Suspense`, keeping the initial bundle small.
+- **Stable callbacks** — library mutators and page handlers are memoized so the rotating hero doesn't re-render the shelf tree.
+- **Off-screen culling** — cards use `content-visibility: auto`; discovery shelves hydrate just before entering the viewport with reserved height to avoid scroll jumps.
+- **Caching** — API responses are cached in-memory (TTL) with a `forceRefresh` bypass for manual shelf refreshes; the background hero trailer pauses when scrolled out of view.
 
 ---
 
-## Database Schema
+## Data & Sync
 
-The single table `user_anime` stores both cached anime metadata and user-specific data (status, score, episode progress, notes). A unique constraint on `(user_id, anime_id)` ensures there are no duplicates, and upserts are used for all write operations.
-
-See [`supabase_schema.sql`](./supabase_schema.sql) for the full DDL, RLS policy, and the `updated_at` trigger.
+The personal library lives in Supabase (`user_anime` joined with cached `animes` metadata); a unique `(user_id, anime_id)` constraint plus upserts prevent duplicates. There is **no anonymous offline library** — auth is required to track titles (legacy `localStorage` data is cleared on load).
 
 ---
 

@@ -1,5 +1,33 @@
 # Changelog
 
+## [2026-06-04] - Auto-refreshing Trailers, Trending Shelf, Crunchyroll Cards & Scroll Performance
+
+**Files:** `src/services/anilist.js`, `src/services/jikan.js`, `src/services/metrics.js`, `src/services/metricsAnalytics.js`, `src/services/animeLookup.js`, `src/pages/NewsPage.jsx`, `src/pages/newsPageState.js`, `src/pages/SeasonalPage.jsx`, `src/pages/AnimePage.jsx`, `src/components/MediaCard.jsx`, `src/components/ShelfRow.jsx`, `src/components/BackToTop.jsx`, `src/components/Nav.jsx`, `src/hooks/useLibrary.js`, `src/hooks/useIsMobile.js`, `src/utils/apiCache.js`, `src/utils/streaming.js`, `src/App.jsx`, `src/index.css`, `src/i18n/en.json`, `.gitignore`
+
+### What Changed
+- **News › Trailers**: auto-refreshing feed from AniList (30 min + on focus) with a Jikan seasonal fallback, NEW badges (48h window, tracked in `localStorage`), genre/new filters, and a manual refresh button.
+- **Seasonal › Trending Now**: new shelf ranked from real `site_metrics_events` engagement via a pure `aggregateTrendingEventIds` helper; degrades to hidden when RLS blocks the table.
+- **Manual shelf refresh**: per-shelf refresh that bypasses the API cache (`forceRefresh`) for genuinely fresh items.
+- **Cinematic hero**: muted autoplay background trailer (desktop, reduced-motion aware) with mute toggle, animated progress dots, and 8s rotation that only runs while the seasonal hero is on screen.
+- **Crunchyroll-style cards**: larger 2:3 posters (250px desktop / 170px mobile) with an info-only hover panel (title, rating, episodes, synopsis).
+- **Anime detail**: streaming providers persisted as JSON strings are normalized to clean names; the trailer is restored (re-enriched from Jikan when missing) and shown via a discreet collapsible player.
+
+### Performance
+- Code-split heavy/rare routes with `React.lazy` + `Suspense` (initial JS ~318 KB → ~146 KB).
+- Stabilized `useLibrary` mutators and `App` handlers with `useCallback`/refs so the rotating hero no longer re-renders the shelf tree; memoized enriched shelf arrays.
+- Shared a single `matchMedia` listener across `useIsMobile` consumers.
+- Removed global `scroll-behavior: smooth`, halved the fixed-nav blur, dropped per-card badge `backdrop-filter`, and added `content-visibility: auto` to card wrappers; reserved realistic lazy-shelf height to avoid scroll jumps.
+
+### Supabase
+- Deployed the missing `anikoto` edge function (anime search + AniList lookup); verified preflight/CORS live. Added a client-side Jikan fallback in `animeLookup` for when it is unreachable.
+- Stopped tracking `supabase/.temp/` (added to `.gitignore`).
+
+### Validation
+- `node --test src/` (40 tests passing)
+- `npm run build`
+
+---
+
 ## [2026-05-18] - Admin Metrics, Search UX, Notifications, and Supabase Access Repair
 
 **Files:** `src/pages/AdminPage.jsx`, `src/components/admin/AdminMetricsPanel.jsx`, `src/services/metrics.js`, `src/services/metricsAnalytics.js`, `src/pages/SearchPage.jsx`, `src/pages/searchState.js`, `src/components/NotificationBell.jsx`, `src/components/WatchPanel.jsx`, `src/hooks/useLibrary.js`, `supabase/migrations/20260518_repair_admin_access_policies.sql`
