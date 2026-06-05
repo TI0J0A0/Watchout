@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="320dp"
+    android:height="180dp"
+    android:viewportWidth="320"
+    android:viewportHeight="180">
+    <!-- Dark background -->
+    <path
+        android:fillColor="#121212"
+        android:pathData="M0,0h320v180h-320z" />
+    <!-- Placeholder text-like shape for Funnyroll -->
+    <path
+        android:fillColor="#FFD700"
+        android:pathData="M40,70h240v40h-240z" />
+    <path
+        android:fillColor="#000000"
+        android:pathData="M50,80h10v20h20v-20h10v30h-10v-5h-20v5h-10z" /> <!-- Simplified 'F' shape -->
+</vector>
