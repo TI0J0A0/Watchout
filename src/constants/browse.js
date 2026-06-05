@@ -1,4 +1,6 @@
 export const GENRES = [
+  // Special curated category — Isekai is MAL/Jikan theme id 62.
+  { id: 62, name: 'Isekai Lovers', icon: '🌀', special: true },
   { id: 1, name: 'Action', icon: '⚔️' },
   { id: 2, name: 'Adventure', icon: '🗺️' },
   { id: 4, name: 'Comedy', icon: '😂' },

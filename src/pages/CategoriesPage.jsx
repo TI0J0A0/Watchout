@@ -3,30 +3,7 @@ import { useTheme } from '../context/ThemeContext'
 import { fetchByGenre } from '../services/jikan'
 import { MediaCard } from '../components/MediaCard'
 import { LoadingGrid } from '../components/LoadingGrid'
-import { getGenreById } from '../constants/browse'
-
-const GENRES = [
-  { id: 1,  name: 'Action',         icon: '⚔️' },
-  { id: 2,  name: 'Adventure',      icon: '🗺️' },
-  { id: 4,  name: 'Comedy',         icon: '😂' },
-  { id: 8,  name: 'Drama',          icon: '🎭' },
-  { id: 10, name: 'Fantasy',        icon: '🔮' },
-  { id: 14, name: 'Horror',         icon: '👻' },
-  { id: 7,  name: 'Mystery',        icon: '🔍' },
-  { id: 22, name: 'Romance',        icon: '💕' },
-  { id: 24, name: 'Sci-Fi',         icon: '🚀' },
-  { id: 36, name: 'Slice of Life',  icon: '🌸' },
-  { id: 30, name: 'Sports',         icon: '⚽' },
-  { id: 37, name: 'Supernatural',   icon: '👁️' },
-  { id: 40, name: 'Psychological',  icon: '🧠' },
-  { id: 18, name: 'Mecha',          icon: '🤖' },
-  { id: 13, name: 'Historical',     icon: '📜' },
-  { id: 23, name: 'School',         icon: '📚' },
-  { id: 17, name: 'Martial Arts',   icon: '🥋' },
-  { id: 38, name: 'Military',       icon: '🎖️' },
-  { id: 41, name: 'Thriller',       icon: '😰' },
-  { id: 19, name: 'Music',          icon: '🎵' },
-]
+import { GENRES, getGenreById } from '../constants/browse'
 
 const GENRE_NAME_TO_ID = Object.fromEntries(GENRES.map(g => [g.name, g.id]))
 
@@ -142,6 +119,20 @@ export function CategoriesPage({ library, onOpen, onStatus, initialGenreId }) {
 
         {GENRES.map(g => {
           const active = mode === 'genre' && selectedId === g.id
+          if (g.special) {
+            return (
+              <button key={g.id} onClick={() => handleGenreClick(g.id)} style={{
+                ...chipBase,
+                fontWeight: 700,
+                background: 'linear-gradient(135deg,#7C3AED,#06B6D4)',
+                color: '#fff',
+                border: 'none',
+                boxShadow: active ? '0 0 0 2px rgba(255,255,255,.55), 0 6px 18px rgba(124,58,237,.45)' : '0 4px 14px rgba(124,58,237,.35)',
+              }}>
+                {g.icon} {g.name}
+              </button>
+            )
+          }
           return (
             <button key={g.id} onClick={() => handleGenreClick(g.id)} style={{
               ...chipBase,
@@ -247,9 +238,14 @@ export function CategoriesPage({ library, onOpen, onStatus, initialGenreId }) {
       {/* ── Modo Género ── */}
       {mode === 'genre' && (
         <div>
-          <h2 style={{ fontSize: 20, fontWeight: 800, color: T.txt, margin: '0 0 20px' }}>
+          <h2 style={{ fontSize: 20, fontWeight: 800, color: T.txt, margin: activeGenre?.special ? '0 0 4px' : '0 0 20px' }}>
             {activeGenre?.icon} {activeGenre?.name}
           </h2>
+          {activeGenre?.special && (
+            <p style={{ fontSize: 13, color: T.sub, margin: '0 0 20px' }}>
+              Trapped in another world — the best isekai, ranked.
+            </p>
+          )}
 
           {loading
             ? <LoadingGrid />
