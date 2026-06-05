@@ -52,14 +52,6 @@ export function SeasonalPage({
   const { user } = useAuth()
   const isMobile = useIsMobile()
 
-  // Hero background trailer (muted autoplay), desktop only & reduced-motion aware.
-  const [heroTrailerOn, setHeroTrailerOn] = useState(false)
-  const [heroMuted, setHeroMuted] = useState(true)
-  const prefersReducedMotion = useMemo(
-    () => typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches,
-    []
-  )
-
   const tasteProfile = useMemo(() => computeTasteProfile(data), [data])
   const personality = useMemo(() => personalityText(tasteProfile), [tasteProfile])
 
@@ -153,28 +145,6 @@ export function SeasonalPage({
       })
 
     return () => { cancelled = true }
-  }, [hero?.id])
-
-  const heroRef = useRef(null)
-  const [heroInView, setHeroInView] = useState(true)
-
-  // Fade the background trailer in shortly after the poster settles.
-  useEffect(() => {
-    setHeroTrailerOn(false)
-    if (isMobile || prefersReducedMotion) return
-    const ytId = hero?.trailer?.match(/embed\/([^?]+)/)?.[1]
-    if (!ytId) return
-    const timer = setTimeout(() => setHeroTrailerOn(true), 1400)
-    return () => clearTimeout(timer)
-  }, [hero?.id, isMobile, prefersReducedMotion])
-
-  // Stop loading/decoding the background trailer once the hero scrolls away.
-  useEffect(() => {
-    const el = heroRef.current
-    if (!el || typeof IntersectionObserver === 'undefined') return
-    const io = new IntersectionObserver(([entry]) => setHeroInView(entry.isIntersecting), { threshold: 0.1 })
-    io.observe(el)
-    return () => io.disconnect()
   }, [hero?.id])
 
   // Map lookup keeps enrichment O(n) instead of O(n²) across many shelves.
@@ -331,7 +301,7 @@ export function SeasonalPage({
 
       {/* ── Hero (hidden in archive mode) ── */}
       {!isArchive && (
-        <section key={hero.id} ref={heroRef} className="card hf hero hero-h" onClick={() => onHeroOpen(hero)}
+        <section key={hero.id} className="card hf hero hero-h" onClick={() => onHeroOpen(hero)}
           role="button"
           tabIndex={0}
           onKeyDown={e => {
@@ -356,40 +326,6 @@ export function SeasonalPage({
             }} />
           )}
 
-          {/* Muted autoplay trailer — fades over the poster on desktop */}
-          {heroTrailerOn && heroInView && ytId && (
-            <div aria-hidden="true" style={{
-              position: 'absolute', left: 0, right: 0, top: 0, bottom: -58,
-              overflow: 'hidden', pointerEvents: 'none',
-              opacity: heroTrailerOn ? 1 : 0, transition: 'opacity .8s ease',
-            }}>
-              <iframe
-                title={`${hero.title} trailer`}
-                src={`https://www.youtube-nocookie.com/embed/${ytId}?autoplay=1&mute=${heroMuted ? 1 : 0}&controls=0&loop=1&playlist=${ytId}&playsinline=1&modestbranding=1&rel=0&disablekb=1&iv_load_policy=3`}
-                allow="autoplay; encrypted-media"
-                style={{
-                  position: 'absolute', top: '50%', left: '50%',
-                  width: '177.78vh', minWidth: '100%', height: '56.25vw', minHeight: '100%',
-                  transform: 'translate(-50%, -50%)', border: 'none',
-                }}
-              />
-            </div>
-          )}
-
-          {/* Mute / unmute toggle */}
-          {heroTrailerOn && heroInView && ytId && (
-            <button className="t" onClick={e => { e.stopPropagation(); setHeroMuted(m => !m) }}
-              aria-label={heroMuted ? 'Unmute trailer' : 'Mute trailer'}
-              style={{
-                position: 'absolute', bottom: 24, right: 24, zIndex: 4,
-                width: 42, height: 42, borderRadius: '50%',
-                border: '1px solid rgba(255,255,255,.22)', background: 'rgba(0,0,0,.42)',
-                color: '#fff', fontSize: 17, backdropFilter: 'blur(12px)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-              }}>
-              {heroMuted ? '🔇' : '🔊'}
-            </button>
-          )}
 
           <div className="heroOverlay" style={{
             position: 'absolute', left: 0, right: 0, top: 0, bottom: -58,

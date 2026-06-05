@@ -17,7 +17,7 @@ Watchout (deployed as **funnyroll.com**) is a media tracker and discovery app fo
 
 ## Features
 
-- **Seasonal browser** — cinematic hero carousel with a muted autoplay trailer (desktop), animated progress dots, and horizontally-scrolling shelves (Continue Watching, Trending Now, For You, genre rows).
+- **Seasonal browser** — cinematic hero carousel with static artwork, animated progress dots, and horizontally-scrolling shelves (Continue Watching, Trending Now, For You, genre rows).
 - **Trending Now** — a shelf ranked from **real engagement metrics** (views, plays, watchlist adds, banner clicks) aggregated from `site_metrics_events`.
 - **Trailers & Releases (News)** — an **auto-refreshing** trailer feed (AniList, with a Jikan fallback) that flags newly-dropped trailers with a **NEW** badge, plus genre filters, On-Air, and Upcoming tabs.
 - **Crunchyroll-style cards** — large 2:3 posters with a rich hover panel (title, rating, episodes, synopsis).
