@@ -15,6 +15,8 @@ import { hasStreamingProviderLinks } from './utils/streaming'
 import { AnnouncementBanner } from './components/AnnouncementBanner'
 import { BackToTop } from './components/BackToTop'
 import { getGenreById } from './constants/browse'
+import { useTVNavigation } from './hooks/useTVNavigation'
+import { isAndroidTV } from './utils/platform'
 
 // Code-split rarely-used / heavy routes so they stay out of the initial bundle.
 const named = (loader, key) => lazy(() => loader().then(m => ({ default: m[key] })))
@@ -74,6 +76,16 @@ function AppInner() {
   const [selectedArchiveYear, setSelectedArchiveYear] = useState(null)
   const [adminHeroItems, setAdminHeroItems] = useState([])
   const [heroMaxItems, setHeroMaxItems] = useState(5)
+
+  // Android TV: enable D-Pad spatial navigation. Detected via UA at first
+  // render; the wrapper also fires `funnyroll:platform` once its JS flags land.
+  const [isTV, setIsTV] = useState(() => isAndroidTV())
+  useEffect(() => {
+    const update = () => setIsTV(isAndroidTV())
+    window.addEventListener('funnyroll:platform', update)
+    return () => window.removeEventListener('funnyroll:platform', update)
+  }, [])
+  useTVNavigation(isTV)
 
   const notify = useCallback(msg => { setToast(msg); setTimeout(() => setToast(null), 2400) }, [])
   const dataById = useMemo(() => new Map(data.map(item => [item.id, item])), [data])

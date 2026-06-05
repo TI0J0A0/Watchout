@@ -11,6 +11,8 @@ import { StatBox } from '../components/StatBox'
 import { fmt, fmtTime } from '../utils'
 import { getStreamingProviderName, getStreamingProviderUrl } from '../utils/streaming'
 import { getSafeExternalLinkProps } from '../utils/externalLinks'
+import { useFocusScope } from '../hooks/useTVNavigation'
+import { isAndroidTV } from '../utils/platform'
 import { fetchRecommendations, fetchRelations, fetchAnimeById } from '../services/jikan'
 import { fetchAnilistBanner } from '../services/anilist'
 import { fetchAnimeComments, createAnimeComment, deleteAnimeComment } from '../services/community'
@@ -178,8 +180,11 @@ export function AnimePage({ item, onClose, onStatus, onScore, onEp, onNotes, onO
   const [showTrailer, setShowTrailer] = useState(false)
   const menuRef      = useRef(null)
   const noteSaveTimer = useRef(null)
+  const scopeRef     = useRef(null)
   useClickOutside(menuRef, () => setMenu(false))
   const isMobile = useIsMobile()
+  // On Android TV, trap D-Pad focus inside this overlay and restore it on close.
+  useFocusScope(scopeRef, isAndroidTV())
 
   const sm = SM[item?.userStatus]
 
@@ -457,7 +462,7 @@ export function AnimePage({ item, onClose, onStatus, onScore, onEp, onNotes, onO
   )
 
   return (
-    <div className="main-content" style={{ paddingLeft: 0, paddingRight: 0 }}>
+    <div ref={scopeRef} className="main-content" style={{ paddingLeft: 0, paddingRight: 0 }}>
 
       {banner ? (
         <>

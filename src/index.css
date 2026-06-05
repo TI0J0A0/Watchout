@@ -55,6 +55,23 @@ button:focus-visible, a:focus-visible {
 button:focus:not(:focus-visible),
 a:focus:not(:focus-visible) { outline: none; }
 
+/* ── Android TV / D-Pad focus highlight ──────────────────────────────
+   Active only inside the native TV wrapper (html.tv-mode). Programmatic
+   .focus() from the spatial-nav hook always shows a strong, TV-legible ring
+   + scale, regardless of :focus-visible heuristics. */
+html.tv-mode :focus {
+  outline: 3px solid var(--primary-soft) !important;
+  outline-offset: 3px;
+  border-radius: 12px;
+  transform: scale(1.06);
+  box-shadow: 0 0 0 3px rgba(167, 92, 246, .55), 0 16px 48px rgba(0, 0, 0, .6);
+  z-index: 6;
+  position: relative;
+  transition: transform .12s ease, box-shadow .12s ease, outline-color .12s ease;
+}
+/* Cards already animate transform on hover — keep the TV focus lift consistent */
+html.tv-mode .media-card-wrap:focus-within { z-index: 6; }
+
 @keyframes fadeUp {
   from { opacity: 0; transform: translateY(12px); }
   to   { opacity: 1; transform: translateY(0); }
