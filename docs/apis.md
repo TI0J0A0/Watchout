@@ -17,12 +17,15 @@ Unofficial MyAnimeList REST API. Primary source for all anime metadata in the ap
 | `GET /seasons/upcoming?limit=15` | `fetchUpcoming()` | Announced but not yet airing |
 | `GET /seasons/{year}/{season}?limit=24` | `fetchSeasonArchive(year, season)` | Historical season archives |
 | `GET /anime?q={query}&limit=20&sfw=true` | `searchAnime(query)` | Title search |
-| `GET /anime?status=airing&order_by=members&sort=desc&limit=15&sfw=true` | `fetchPopular()` | Trending currently-airing titles |
-| `GET /anime?genres={id}&order_by=score&sort=desc&limit={n}&sfw=true&type=tv` | `fetchByGenre(genreId, limit)` | Browse by genre (used in CategoriesPage) |
-| `GET /anime/{id}` | `fetchAnimeById(id)` | Full details for a single anime |
+| `GET /anime?status=airing&order_by=members&sort=desc&limit=15&sfw=true` | `fetchPopular(opts)` | Trending currently-airing titles |
+| `GET /anime?genres={id}&order_by=score&sort=desc&limit={n}&sfw=true&type=tv` | `fetchByGenre(genreId, limit, opts)` | Browse by genre (used in CategoriesPage) |
+| `GET /seasons/now` + `GET /seasons/upcoming` | `fetchSeasonalTrailers()` | Current + upcoming titles that ship a trailer (News fallback) |
+| `GET /anime/{id}/full` | `fetchAnimeById(id)` | Full details for a single anime |
 | `GET /anime/{id}/recommendations` | `fetchRecommendations(id)` | Similar titles |
 | `GET /anime/{id}/relations` | `fetchRelations(id)` | Sequels and prequels |
 | `GET /anime/{id}/characters` | `fetchCharacters(id)` | Cast and voice actors |
+
+> **`fresh` option** — `fetchPopular`, `fetchUpcoming` and `fetchByGenre` accept `{ fresh: true }`, which sets `forceRefresh` on the cached fetcher (see [`utils/apiCache.js`](../src/utils/apiCache.js)) to bypass the in-memory TTL cache. Used by the per-shelf manual refresh on the Seasonal page.
 
 ### `fetchRelations(id)` — return shape
 
@@ -138,6 +141,32 @@ Called by `SeasonalPage` (hero section) and `ProfilePage` (pinned anime banner).
 query($malId: Int) { Media(idMal: $malId, type: ANIME) { bannerImage } }
 ```
 
+### `fetchAnilistHeroImages(malId)` — hero artwork
+
+Called by `SeasonalPage` for the hero background. Returns `{ bannerImage, coverImage }` (falls back to Kitsu cover when AniList has no banner).
+
+### `fetchLatestTrailers({ perPage })` — News trailer feed
+
+Called by `NewsPage`. Returns currently-releasing + upcoming anime that have a YouTube/Dailymotion trailer, ordered by trending so freshly-dropped PVs surface first.
+
+```graphql
+query($perPage: Int) {
+  Page(page: 1, perPage: $perPage) {
+    media(type: ANIME, sort: [TRENDING_DESC], status_in: [RELEASING, NOT_YET_RELEASED]) {
+      id idMal status
+      title { english romaji }
+      startDate { year }
+      genres averageScore
+      studios(isMain: true) { nodes { name } }
+      coverImage { extraLarge large }
+      trailer { id site thumbnail }
+    }
+  }
+}
+```
+
+**Returns** an array of `{ id, anilistId, title, studio, year, genres, score, status, img, color, colorB, trailer }`, where `trailer` is a ready-to-embed URL. Items without a usable trailer are dropped. `NewsPage` falls back to `fetchSeasonalTrailers()` (Jikan) if this returns nothing.
+
 ### `searchAnilistCharacters(search)` — avatar picker
 
 Called by `ProfilePage` avatar selector. Pass `null` or empty string to get the 16 most-favorited characters globally.
@@ -160,7 +189,17 @@ query($search: String) {
 
 ---
 
-## 3. MegaPlay (Streaming Player)
+## 3. Kitsu API
+
+**Base URL:** `https://kitsu.io/api/edge`
+**Authentication:** None (public)
+**File:** `src/services/kitsu.js`
+
+Fallback artwork source. `fetchKitsuCoverByMalId(malId)` resolves a MAL ID to a Kitsu entry (via the MAL→Kitsu mapping) and returns its `coverImage` URL. Used by the Seasonal hero when AniList has no `bannerImage`.
+
+---
+
+## 4. MegaPlay (Streaming Player)
 
 **Base URL:** `https://megaplay.buzz`
 **Authentication:** None
@@ -219,7 +258,7 @@ https://megaplay.buzz/stream/mal/{malId}/{episode}/{language}
 
 ---
 
-## 4. AniSkip API
+## 5. AniSkip API
 
 **Base URL:** `https://api.aniskip.com/v2`
 **Authentication:** None (public)
@@ -245,7 +284,7 @@ Returns `{ op: null, ed: null }` on 404 (no data for that episode) or network er
 
 ---
 
-## 5. Anime News Network (ANN) RSS
+## 6. Anime News Network (ANN) RSS
 
 **URL:** `https://www.animenewsnetwork.com/all/rss.xml`
 **Authentication:** None (public)
@@ -261,7 +300,7 @@ RSS feed for anime news. ANN blocks CORS, so the app uses a cascading proxy chai
 
 ---
 
-## 6. Supabase
+## 7. Supabase
 
 **Base URL:** `VITE_SUPABASE_URL` (env var)
 **Authentication:** JWT via `VITE_SUPABASE_ANON_KEY`
@@ -337,11 +376,24 @@ $$ LANGUAGE sql STABLE SECURITY DEFINER;
 | `createAnnouncement({ content, type })` | Inserts a new announcement (`type`: `info`, `warning`, or `maintenance`) |
 | `deleteAnnouncement(id)` | Deletes an announcement by ID |
 
-### Edge Function: `anikoto` (legacy)
+### Analytics: `site_metrics_events`
 
-Server-side Deno function on Supabase. Receives a MAL ID, queries AniList, and caches the result for 24h in `anikoto_cache`. Requires JWT auth and checks for premium status.
+Engagement events (`anime_open`, `episode_play`, `watchlist_add`, `banner_view/click`, `search`, `page_load`, player health, …) are ingested via the `metrics-ingest` edge function and read back for the admin metrics suite and the public **Trending Now** shelf.
 
-> **Status:** Legacy. `WatchPanel` now calls AniList directly via `fetchAnilistData()`. The edge function (`getAnilistData()` in `premium.js`) is no longer the primary path.
+| Function | Description |
+|----------|-------------|
+| `fetchTrendingAnimeIds({ days, limit })` (`metrics.js`) | Reads recent `site_metrics_events`, ranks anime via `aggregateTrendingEventIds` (pure, weighted by event type), returns ranked MAL IDs. Returns `[]` if RLS blocks the table. |
+| `fetchAdminMetrics()` (`metrics.js`) | Full analytics aggregation for the admin dashboard. |
+
+### Edge Functions (Deno, Supabase)
+
+| Function | Status | Purpose |
+|----------|--------|---------|
+| `anikoto` | **Active** | Two routes: `animeSearch` (Jikan proxy for the admin hero search, admin-gated) and `anilist` (MAL→AniList id/episodes, cached 24h in `anikoto_cache`). Requires JWT + premium/admin. |
+| `metrics-ingest` | Active | Validates and inserts analytics events into `site_metrics_events`. |
+| `fetch-ann-news` | Active | Server-side fetch of Anime News Network headlines (avoids client CORS). |
+
+> **Resilience:** if `anikoto` is unreachable (e.g. not deployed), `animeLookup.searchAnimeByName()` falls back to a direct client-side Jikan search. `WatchPanel` calls AniList directly via `fetchAnilistData()`, so it does not depend on the `anilist` route.
 
 ---
 
@@ -359,9 +411,10 @@ SUPABASE_SERVICE_ROLE_KEY  # Service role key — Edge Functions only, never exp
 
 | API | Type | Auth | Primary Use |
 |-----|------|------|-------------|
-| Jikan (MAL) | REST | None | Anime metadata, search, seasons, relations |
-| AniList | GraphQL | None | Episode data, banners, characters, schedules |
+| Jikan (MAL) | REST | None | Anime metadata, search, seasons, relations, trailer fallback |
+| AniList | GraphQL | None | Episode data, banners, characters, schedules, trailer feed |
+| Kitsu | REST | None | Fallback cover artwork for the hero |
 | MegaPlay | iframe embed | None | Streaming player with postMessage comms |
 | AniSkip | REST | None | OP/ED skip timestamps |
 | ANN | RSS (via proxy) | None | Anime news feed |
-| Supabase | REST + WebSocket | JWT | Database, auth, admin operations |
+| Supabase | REST + WebSocket + Edge | JWT | Database, auth, analytics, edge functions |

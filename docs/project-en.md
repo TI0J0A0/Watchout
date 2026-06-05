@@ -33,10 +33,12 @@
 
 **Watchout** is an anime and series discovery and tracking platform. Users can:
 
-- Discover current season anime, the most popular titles, and browse by genre
+- Discover current season anime via a cinematic hero carousel (muted autoplay trailer on desktop, animated progress dots) and horizontally-scrolling shelves
+- See a **Trending Now** shelf ranked from real engagement metrics, plus **For You** / **Because you watched** taste-based rows, and per-shelf manual refresh
+- Browse an auto-refreshing **Trailers & Releases** feed (News) with NEW badges and genre filters
 - Manage a personal library with status (watching, plan to watch, completed, dropped), score, and episode progress
 - Watch episodes directly on the site (premium feature via MegaPlay embed)
-- View a weekly airing calendar
+- View a weekly airing calendar and browse by genre/category
 - Read anime news (Anime News Network)
 - Interact with the community via forum and feedback system
 - Add friends and view other users' profiles and libraries
@@ -271,10 +273,13 @@ setStatus(id, status) → useLibrary.js
 | `searchAnime(q)` | `GET /anime?q=...&limit=20&sfw=true` | Search by title |
 | `fetchPopular()` | `GET /anime?status=airing&order_by=members&sort=desc&limit=15` | Most watched airing |
 | `fetchUpcoming()` | `GET /seasons/upcoming?limit=15` | Next season |
-| `fetchByGenre(id, limit)` | `GET /anime?genres=ID&order_by=score&sort=desc&limit=N` | By MAL genre ID |
+| `fetchByGenre(id, limit, opts)` | `GET /anime?genres=ID&order_by=score&sort=desc&limit=N` | By MAL genre ID |
+| `fetchSeasonalTrailers()` | `GET /seasons/now` + `/seasons/upcoming` | Titles with a trailer (News fallback) |
 | `fetchSeasonArchive(y, s)` | `GET /seasons/YEAR/SEASON?limit=24` | Past seasons |
-| `fetchAnimeById(id)` | `GET /anime/ID` | Single anime metadata |
+| `fetchAnimeById(id)` | `GET /anime/ID/full` | Single anime metadata |
 | `fetchRecommendations(id)` | `GET /anime/ID/recommendations` | Related anime |
+
+> `fetchPopular`, `fetchUpcoming`, and `fetchByGenre` accept `{ fresh: true }` to bypass the in-memory TTL cache (`utils/apiCache.js`'s `forceRefresh`), used by the per-shelf manual refresh.
 
 **Data mapping via `mapAnime(a)`:**
 ```javascript
@@ -369,8 +374,11 @@ Returns:
 }
 ```
 
-#### `fetchAnilistBannerOnly(malId)`
-Lightweight version — only `bannerImage`. Used in `SeasonalPage` (hero) and `ProfilePage` (pinned anime banner).
+#### `fetchAnilistBannerOnly(malId)` / `fetchAnilistHeroImages(malId)`
+Lightweight hero artwork — `bannerImage` (+ `coverImage`). Used in `SeasonalPage` (hero, with a Kitsu cover fallback) and `ProfilePage` (pinned anime banner).
+
+#### `fetchLatestTrailers({ perPage })`
+Used by `NewsPage`. Returns currently-releasing + upcoming anime with a YouTube/Dailymotion trailer, sorted `TRENDING_DESC` so fresh PVs surface first. Each item carries a ready-to-embed `trailer` URL plus `{ id, title, studio, year, genres, score, status, img, color }`. `NewsPage` falls back to `fetchSeasonalTrailers()` (Jikan) if this is empty.
 
 #### `searchAnilistCharacters(search)`
 Used in the profile avatar picker.
@@ -834,8 +842,10 @@ useClickOutside(ref, () => setOpen(false))
 ### `useIsMobile()`
 
 ```javascript
-const isMobile = useIsMobile()  // true if window.innerWidth <= 640
+const isMobile = useIsMobile()  // true if (max-width: 640px) matches
 ```
+
+Backed by a **single shared `matchMedia` listener** at module scope — every consumer (50+ `MediaCard`s on a page) subscribes to one source instead of registering its own listener.
 
 ---
 
@@ -930,8 +940,13 @@ const [friendId, setFriendId] = useState(null)        // friend profile ID
 ```
 friendId !== null → FriendProfilePage
 detailId !== null → AnimePage
-default           → <SeasonalPage | TopPage | CalendarPage | SearchPage | ProfilePage | NewsPage | CommunityPage>
+default           → <SeasonalPage | TopPage | CalendarPage | CategoriesPage |
+                     SearchPage | ProfilePage | NewsPage | CommunityPage | AdminPage>
 ```
+
+**Code splitting:** Only `SeasonalPage` and `AnimePage` (the primary flow) are imported eagerly. All other routes and the `AuthPage`/`MALImport` modals are `React.lazy`-loaded behind a single `<Suspense>` boundary, so they ship as separate chunks (initial JS ~146 KB instead of ~318 KB).
+
+**Stable handlers:** `openDetailFromSource`, `handleStatus`, `notify` and the seasonal `onOpen` are wrapped in `useCallback` (reading `page`/`user` from refs). Combined with the memoized `useLibrary` mutators, this stops the rotating hero from re-rendering the whole shelf tree. The hero rotation interval only runs while `page === 'seasonal'` and no detail is open.
 
 ---
 
@@ -941,25 +956,29 @@ default           → <SeasonalPage | TopPage | CalendarPage | SearchPage | Prof
 
 **Local state:**
 ```javascript
-sections    // { popular: [], upcoming: [], romance: [], ... }
-loadingSet  // Set of sections still loading
-archYear, archSeason, archData  // Season archive
-heroBanner  // AniList bannerImage for the hero anime
+sections, loadingSet, refreshingSet  // discovery shelves + per-shelf refresh state
+trendingItems, trendingLoading       // Trending Now (real metrics)
+archYear, archSeason, archData       // Season archive
+heroBanner, heroKitsuCover           // hero artwork (AniList banner → Kitsu fallback)
+heroTrailerOn, heroMuted, heroInView // muted autoplay hero trailer
 ```
 
 **Sections displayed (in order):**
-1. Hero anime carousel (AniList banner + 5s auto-rotate)
+1. Hero anime carousel — AniList banner (Kitsu fallback) + 8s auto-rotate + muted autoplay YouTube trailer (desktop, reduced-motion aware, paused when scrolled out of view via IntersectionObserver) + animated progress dots
 2. "Continue Watching" shelf
-3. "For You" (taste profile-based recommendations)
-4. "Because you watched X" (based on currently watching)
-5. Main grid (seasonal or archive)
-6. Lazy-loaded discovery shelves (popular, upcoming, romance, etc.)
+3. "Trending Now" — from `fetchTrendingAnimeIds()` (real `site_metrics_events`)
+4. "For You" (taste profile) and "Because you watched X"
+5. Lazy-loaded discovery shelves (popular, upcoming, romance, …) with per-shelf manual refresh
+6. Main grid (seasonal or archive)
+
+**Perf:** enriched shelf arrays, `continueWatching`, and the per-section refresh handlers are memoized so `ShelfRow` (a `memo`) stays stable across hero ticks. Off-screen shelves hydrate ~400px early with reserved height to avoid scroll jumps.
 
 **How to add a new discovery section:**
 ```javascript
-// In DISCOVER_KEYS (around line 22), add:
-{ key: 'horror', emoji: '👻', fn: () => fetchByGenre(14) }
-// The section will be automatically loaded and displayed as a ShelfRow
+// In DISCOVER_KEYS (top of file), add:
+{ key: 'horror', emoji: '👻', fn: (opts) => fetchByGenre(14, 15, opts) }
+// `opts` carries { fresh: true } for the manual refresh (cache bypass).
+// The section is loaded and displayed as a ShelfRow automatically.
 ```
 
 ---
@@ -980,9 +999,9 @@ comments  // community comments
 **Sections displayed:**
 1. Banner (AniList) or color gradient
 2. Poster + info + user actions (status, score, progress, notes)
-3. Streaming service links
+3. Streaming service links ("Where to Watch") — providers normalized via `normalizeStreamingProvider` (handles records persisted as JSON strings)
 4. WatchPanel (if isPremium)
-5. YouTube trailer (embed)
+5. YouTube trailer — discreet collapsible player ("Watch Trailer" → expands with autoplay); the detail view re-enriches from Jikan when a library item has no `trailer`
 6. Characters (AniList)
 7. Community comments
 8. Recommendations (ShelfRow)
@@ -1074,6 +1093,18 @@ MegaPlay iframe
 
 ---
 
+### `NewsPage.jsx`
+
+**Responsibility:** Trailers & Releases hub. Three tabs: **Trailers**, **On Air**, **Upcoming**.
+
+**Trailers tab:**
+- Auto-refreshing feed via `fetchLatestTrailers()` (AniList), with a `fetchSeasonalTrailers()` (Jikan) fallback when AniList returns nothing.
+- Refreshes every 30 min (`TRAILERS_REFRESH_MS`) and whenever the tab regains focus; plus a manual refresh button with "Updated HH:MM".
+- **NEW** badge on trailers first seen within 48h — tracked in `localStorage` via `readSeenTrailers` / `annotateNewTrailers` / `persistSeenTrailers` (in `newsPageState.js`, unit-tested).
+- Filters: "New only" toggle + genre chips. Cards play the trailer inline (tilt effect on hover-capable pointers).
+
+---
+
 ## 12. Components (src/components/)
 
 ### `MediaCard.jsx`
@@ -1089,11 +1120,13 @@ MegaPlay iframe
 />
 ```
 
-Displays poster, score, status dot, airing badge. In `variant="shelf"` mode it is smaller and horizontal.
+Large 2:3 poster card (Crunchyroll-style): 250px wide on desktop / 170px on mobile (shelf), `minmax(250px, …)` in the grid. Shows poster, score, status dot, airing/type badges. On hover (desktop only, disabled on touch) a rich info panel fades in over the poster with title, rating + member count, episodes/year, and synopsis. The wrapper uses `content-visibility: auto` so off-screen cards aren't painted while scrolling. Badges use opaque backgrounds (no per-card `backdrop-filter`) to keep scrolling smooth.
 
 ---
 
 ### `ShelfRow.jsx`
+
+A `React.memo` component — keep its props stable (memoized arrays/handlers) so it isn't re-rendered by unrelated parent state.
 
 ```javascript
 <ShelfRow
@@ -1106,6 +1139,7 @@ Displays poster, score, status dot, airing badge. In `variant="shelf"` mode it i
   onStatus={fn}
   headerRight={<button>...</button>}  // optional
   matchScores={{ [id]: 87 }}          // optional
+  onRefresh={fn} refreshing={false}   // optional manual-refresh button
 />
 ```
 
@@ -1307,34 +1341,38 @@ t('anime.episodes')       // "Episodes"
 
 ## 16. Edge Functions (Supabase)
 
+Three Deno functions are deployed to the project. Verify deployment with
+`curl -X OPTIONS https://<ref>.supabase.co/functions/v1/<name>` (204 = deployed, 404 = not).
+
+| Function | Endpoint | Purpose |
+|---|---|---|
+| `anikoto` | `POST /functions/v1/anikoto` | Anime metadata helper (admin search + AniList lookup) |
+| `metrics-ingest` | `POST /functions/v1/metrics-ingest` | Ingest analytics events into `site_metrics_events` |
+| `fetch-ann-news` | `POST /functions/v1/fetch-ann-news` | Server-side Anime News Network fetch (avoids client CORS) |
+
 ### `supabase/functions/anikoto/index.ts`
 
-**Runtime:** Deno  
-**Endpoint:** `POST /functions/v1/anikoto`  
-**Auth:** Requires a valid JWT in the `Authorization: Bearer <token>` header
+**Runtime:** Deno · **Auth:** valid JWT in `Authorization: Bearer <token>` · **CORS:** origin allowlist (includes `funnyroll.com` and `localhost`).
 
-**Request body:**
+Two routes:
+
 ```json
-{ "route": "anilist", "malId": 21 }
+{ "route": "animeSearch", "query": "naruto" }   // admin-gated Jikan search (hero admin UI)
+{ "route": "anilist", "malId": 21 }              // MAL → AniList id/episodes, cached 24h in anikoto_cache
 ```
 
-**Flow:**
-```
-1. Validate user JWT
-2. Check if user is premium OR admin
-3. Look up anikoto_cache (24h TTL)
-4. If not cached: call AniList GraphQL
-5. Save result to cache
-6. Return { anilistId, episodes }
-```
+**Flow:** validate JWT → require premium **or** admin (`animeSearch` requires admin) → serve from `anikoto_cache` when fresh → otherwise call the upstream (Jikan / AniList) → cache → return.
 
-**Response status codes:**
-- `401` — Invalid or missing JWT
-- `403` — User is not premium
-- `400` — Missing malId or unknown route
-- `200` — Success
+**Response codes:** `401` invalid/missing JWT · `403` not premium/admin · `400` bad route/params · `200` success.
 
-> **Note:** This Edge Function is legacy. `WatchPanel` now calls AniList directly via `fetchAnilistData()`. The function still exists and is called via `getAnilistData()` in `premium.js` as a fallback.
+> **Resilience:** `animeLookup.searchAnimeByName()` falls back to a direct client-side Jikan search if `anikoto` is unreachable. `WatchPanel` calls AniList directly via `fetchAnilistData()`, so it does not depend on the `anilist` route.
+
+### Deploying
+
+```bash
+supabase functions deploy anikoto metrics-ingest fetch-ann-news --project-ref <ref>
+# --use-api avoids needing Docker locally
+```
 
 ---
 
@@ -1604,13 +1642,31 @@ NotificationBell polling: fetchNotifications() every 60s
 
 ---
 
+## Performance Playbook
+
+Patterns used to keep the app fast — follow these when extending it:
+
+- **Code splitting:** lazy-load heavy/rare routes with `React.lazy` + a shared `<Suspense>` (see `App.jsx`). Keep only the primary flow eager.
+- **Stable callbacks:** memoize handlers passed to `memo` components. `useLibrary` mutators read `data`/`user` from refs so their identity never changes; `App` handlers use `useCallback`. This prevents the 8s hero rotation from re-rendering the shelf tree.
+- **Memoize shared data:** enrich shelf items through a `Map` and `useMemo` them; pass stable arrays/handlers to `ShelfRow` (a `memo`).
+- **Off-screen work:** `content-visibility: auto` (+ cached `contain-intrinsic-size`) on card wrappers; `LazyShelf` hydrates ~400px early and reserves realistic height to avoid scroll jumps; the hero trailer unmounts when scrolled out of view (IntersectionObserver).
+- **Paint cost:** avoid `backdrop-filter` on many/large or fixed elements during scroll (the fixed nav uses a small blur + opaque bg; per-card badges use opaque backgrounds). No global `scroll-behavior: smooth` — it makes wheel scrolling feel floaty; opt in per-call instead.
+- **Caching:** `utils/apiCache.js` memoizes JSON responses with a TTL and a `forceRefresh` bypass for manual refreshes.
+
+Validate changes with `node --test src/` and `npm run build`.
+
+---
+
 ## Developer Tips
 
 ### Adding a new page
 
-1. Create `src/pages/MyPage.jsx`
-2. Import it in `App.jsx`
-3. Add it to `Nav.jsx` (tabs array)
+1. Create `src/pages/MyPage.jsx` (named export)
+2. Lazy-import it in `App.jsx` (it renders inside the shared `<Suspense>`):
+   ```jsx
+   const MyPage = named(() => import('./pages/MyPage'), 'MyPage')
+   ```
+3. Add it to `Nav.jsx` (tabs array) and to `VALID_PAGES` in `App.jsx`
 4. Add a render case in `App.jsx`:
    ```jsx
    {page === 'mypage' && <MyPage ... />}
