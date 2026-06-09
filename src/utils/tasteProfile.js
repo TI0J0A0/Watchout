@@ -1,5 +1,7 @@
 export function computeTasteProfile(library, { minItems = 3 } = {}) {
-  const active = library.filter(a => a.userStatus && a.userStatus !== 'plan_to_watch')
+  // Only watched/watching titles build positive taste — dropped ones are a
+  // negative signal (handled below), and plan_to_watch hasn't been judged yet.
+  const active = library.filter(a => a.userStatus === 'watching' || a.userStatus === 'completed')
   if (active.length < minItems) return null
 
   const genreCounts = {}, studioCounts = {}, genreMinutes = {}, genreScores = {}
@@ -28,21 +30,53 @@ export function computeTasteProfile(library, { minItems = 3 } = {}) {
     avgScoreByGenre[g] = +(sum / count).toFixed(1)
   })
 
+  const topGenres = Object.entries(weights).sort((a, b) => b[1] - a[1]).slice(0, 6).map(([g]) => g)
+
+  // Genres the user repeatedly drops (≥2 times) and doesn't otherwise love
+  // become a dislike signal that penalizes candidates in matchScore.
+  const droppedGenreCounts = {}
+  library
+    .filter(a => a.userStatus === 'dropped')
+    .forEach(a => (a.genres || []).forEach(g => {
+      droppedGenreCounts[g] = (droppedGenreCounts[g] || 0) + 1
+    }))
+  const dislikedGenres = Object.entries(droppedGenreCounts)
+    .filter(([g, c]) => c >= 2 && !topGenres.includes(g))
+    .map(([g]) => g)
+
   return {
     weights,
-    topGenres:  Object.entries(weights).sort((a, b) => b[1] - a[1]).slice(0, 6).map(([g]) => g),
+    topGenres,
     topStudios: Object.entries(studioCounts).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([s]) => s),
     genreMinutes,
     avgScoreByGenre,
     genreCounts,
+    dislikedGenres,
     totalActive: active.length,
   }
 }
 
 export function matchScore(anime, profile) {
   if (!profile || !anime.genres?.length) return null
-  const raw = anime.genres.reduce((sum, g) => sum + (profile.weights[g] || 0), 0)
-  return Math.min(99, Math.round(raw * 200))
+  // Base affinity: how much of the anime's genres overlap the user's weights,
+  // boosted for genres they rate highly and dampened for ones they rate low.
+  const raw = anime.genres.reduce((sum, g) => {
+    const avg = profile.avgScoreByGenre[g]
+    const quality = avg ? (avg >= 8 ? 1.25 : avg <= 5 ? 0.8 : 1) : 1
+    return sum + (profile.weights[g] || 0) * quality
+  }, 0)
+  let score = raw * 200
+
+  // Favourite-studio bonus.
+  if (anime.studio && anime.studio !== '—' && profile.topStudios?.includes(anime.studio)) {
+    score += 12
+  }
+
+  // Penalize genres the user has repeatedly dropped.
+  const dislikedHits = anime.genres.filter(g => profile.dislikedGenres?.includes(g)).length
+  score -= dislikedHits * 15
+
+  return Math.max(0, Math.min(99, Math.round(score)))
 }
 
 const PERSONAS = [

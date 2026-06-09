@@ -6,7 +6,7 @@ import { useAuth } from '../context/AuthContext'
 import { MediaCard } from '../components/MediaCard'
 import { LoadingGrid } from '../components/LoadingGrid'
 import { ShelfRow } from '../components/ShelfRow'
-import { fetchPopular, fetchUpcoming, fetchByGenre, fetchSeasonArchive, fetchRecommendations, fetchAnimeById } from '../services/jikan'
+import { fetchPopular, fetchUpcoming, fetchByGenre, fetchSeasonArchive, fetchRecommendations, fetchAnimeById, fetchCandidatesByGenres } from '../services/jikan'
 import { fetchTrendingAnimeIds } from '../services/metrics'
 import { fetchAnilistHeroImages } from '../services/anilist'
 import { fetchKitsuCoverByMalId } from '../services/kitsu'
@@ -55,15 +55,34 @@ export function SeasonalPage({
   const tasteProfile = useMemo(() => computeTasteProfile(data), [data])
   const personality = useMemo(() => personalityText(tasteProfile), [tasteProfile])
 
+  // Personalized candidate pool fetched from the user's favourite genres, so
+  // "For You" ranks against a real catalogue instead of only the ~24 current
+  // season titles.
+  const [forYouPool, setForYouPool] = useState([])
+  const topGenresKey = tasteProfile?.topGenres?.slice(0, 3).join(',') ?? ''
+  useEffect(() => {
+    if (!topGenresKey) { setForYouPool([]); return }
+    let cancelled = false
+    fetchCandidatesByGenres(topGenresKey.split(','), { perGenre: 25 })
+      .then(items => { if (!cancelled) setForYouPool(items) })
+      .catch(() => { })
+    return () => { cancelled = true }
+  }, [topGenresKey])
+
   const forYouItems = useMemo(() => {
     if (!tasteProfile) return []
-    return seasonal
-      .filter(a => !a.userStatus)
+    // Exclude anything already in the user's library (any status), then rank the
+    // combined seasonal + genre candidate pool.
+    const libraryIds = new Set(data.filter(d => d.userStatus).map(d => d.id))
+    const seen = new Set()
+    return [...seasonal, ...forYouPool]
+      .filter(a => !a.userStatus && !libraryIds.has(a.id))
+      .filter(a => { if (seen.has(a.id)) return false; seen.add(a.id); return true })
       .map(a => ({ ...a, _match: matchScore(a, tasteProfile) }))
       .filter(a => a._match > 0)
       .sort((a, b) => b._match - a._match)
-      .slice(0, 10)
-  }, [seasonal, tasteProfile])
+      .slice(0, 12)
+  }, [seasonal, forYouPool, tasteProfile, data])
 
   const [becauseRecs, setBecauseRecs] = useState([])
   const [becauseAnime, setBecauseAnime] = useState(null)
