@@ -1,4 +1,5 @@
 import { createCachedJsonFetcher } from '../utils/apiCache.js'
+import { GENRES } from '../constants/browse.js'
 
 const BASE = "https://api.jikan.moe/v4";
 const cachedGet = createCachedJsonFetcher({ ttlMs: 5 * 60 * 1000 })
@@ -179,6 +180,39 @@ export async function fetchRelations(id) {
     }
   }
   return related
+}
+
+// Map a display genre name (English or the Portuguese aliases from GENRE_PT)
+// back to a Jikan genre id so we can pull candidates for that genre.
+const GENRE_ID_BY_EN = Object.fromEntries(GENRES.map(g => [g.name, g.id]))
+const EN_BY_PT = Object.fromEntries(Object.entries(GENRE_PT).map(([en, pt]) => [pt, en]))
+
+export function genreIdFromName(name) {
+  if (!name) return null
+  const en = EN_BY_PT[name] || name
+  return GENRE_ID_BY_EN[en] ?? null
+}
+
+// Build a personalized candidate pool from the user's favourite genres so the
+// "For You" shelf can rank against a real catalogue instead of only the ~24
+// current-season titles. Returns top-scored TV anime, de-duplicated.
+export async function fetchCandidatesByGenres(genreNames = [], { perGenre = 25, fresh = false } = {}) {
+  const ids = [...new Set(genreNames.map(genreIdFromName).filter(Boolean))]
+  if (!ids.length) return []
+  const results = await Promise.allSettled(
+    ids.map(id => fetchByGenre(id, perGenre, { fresh }))
+  )
+  const seen = new Set()
+  const out = []
+  for (const r of results) {
+    if (r.status !== 'fulfilled') continue
+    for (const a of r.value) {
+      if (seen.has(a.id)) continue
+      seen.add(a.id)
+      out.push(a)
+    }
+  }
+  return out
 }
 
 export async function fetchRecommendations(id) {
