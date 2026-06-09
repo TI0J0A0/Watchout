@@ -170,6 +170,18 @@ export async function fetchAnimeById(id) {
   return mapAnime(data)
 }
 
+// Episode list (number, title, airdate). Used as a fallback source for the
+// watch panel when AniList is unavailable. Jikan only lists already-aired
+// episodes and provides no thumbnails.
+export async function fetchAnimeEpisodes(id) {
+  const { data } = await get(`/anime/${id}/episodes`)
+  return (data ?? []).map(ep => ({
+    number:  ep.mal_id,
+    title:   ep.title ?? null,
+    airdate: ep.aired ? ep.aired.split('T')[0] : null,
+  }))
+}
+
 export async function fetchRelations(id) {
   const { data } = await get(`/anime/${id}/relations`)
   const related = []

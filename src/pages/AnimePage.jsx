@@ -13,7 +13,7 @@ import { getStreamingProviderName, getStreamingProviderUrl } from '../utils/stre
 import { getSafeExternalLinkProps } from '../utils/externalLinks'
 import { useFocusScope } from '../hooks/useTVNavigation'
 import { isAndroidTV } from '../utils/platform'
-import { fetchRecommendations, fetchRelations, fetchAnimeById } from '../services/jikan'
+import { fetchRecommendations, fetchRelations, fetchAnimeById, fetchCharacters } from '../services/jikan'
 import { fetchAnilistBanner } from '../services/anilist'
 import { fetchAnimeComments, createAnimeComment, deleteAnimeComment } from '../services/community'
 
@@ -198,12 +198,17 @@ export function AnimePage({ item, onClose, onStatus, onScore, onEp, onNotes, onO
     setShowTrailer(false)
     fetchRecommendations(item.id).then(setRecs).catch(() => {})
     fetchRelations(item.id).then(setRelations).catch(() => {})
+    setChars([])
     fetchAnilistBanner(item.id)
       .then(({ bannerImage, characters }) => {
         setBanner(bannerImage)
         if (characters.length) setChars(characters)
+        // AniList down/empty → fall back to Jikan so characters still render.
+        else fetchCharacters(item.id).then(setChars).catch(() => {})
       })
-      .catch(() => {})
+      .catch(() => {
+        fetchCharacters(item.id).then(setChars).catch(() => {})
+      })
   }, [item?.id])
 
   function handleNote(val) {
