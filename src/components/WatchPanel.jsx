@@ -2,17 +2,12 @@ import { useState, useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useTheme } from '../context/ThemeContext'
 import { useIsMobile } from '../hooks/useIsMobile'
-import { fetchAnilistData } from '../services/anilist'
+import { fetchWatchEpisodes } from '../services/watchEpisodes'
 import { fetchSkipTimes } from '../services/aniskip'
 import { trackMetricEvent } from '../services/metrics'
 import { useAuth } from '../context/AuthContext'
 import { getNextAiredEpisode, shouldShowNextEpisodeButton } from '../utils/playerNavigation'
 import { buildMegaplayEmbedUrl, getTrustedPlayerMessage } from '../utils/playerSecurity'
-
-function parseEpNum(title) {
-  const m = title?.match(/Episode\s+(\d+)/i)
-  return m ? parseInt(m[1]) : null
-}
 
 function IconCheck() {
   return (
@@ -122,28 +117,12 @@ export function WatchPanel({ item, onEp, onStatus }) {
     setActiveEp(null)
 
     ;(async () => {
-      const anilist = await fetchAnilistData(item.id)
+      const result = await fetchWatchEpisodes(item)
       if (cancelled) return
-      if (!anilist) { setState('notFound'); return }
-      setEpCount(anilist.episodes)
-      setEpDuration(anilist.duration)
-
-      // Build episode map from AniList streamingEpisodes (thumbnails + titles)
-      const epMap = {}
-      anilist.streamingEpisodes.forEach(ep => {
-        const num = parseEpNum(ep.title)
-        if (num) epMap[num] = { thumbnail: ep.thumbnail ?? null, title: ep.title ?? null, airdate: null }
-      })
-      // Add airdates from airingSchedule (Unix timestamp → date string)
-      anilist.airingSchedule.forEach(({ episode, airingAt }) => {
-        const airdate = new Date(airingAt * 1000).toISOString().split('T')[0]
-        if (epMap[episode]) {
-          epMap[episode].airdate = airdate
-        } else {
-          epMap[episode] = { thumbnail: null, title: null, airdate }
-        }
-      })
-      setStreamEps(epMap)
+      if (!result) { setState('notFound'); return }
+      setEpCount(result.episodes)
+      setEpDuration(result.duration)
+      setStreamEps(result.epMap)
       setState('ready')
     })()
 
