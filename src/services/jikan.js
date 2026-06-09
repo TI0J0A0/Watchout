@@ -63,20 +63,33 @@ function mapStreaming(streaming = []) {
     .filter(Boolean)
 }
 
+function findOfficialSite(external = []) {
+  const site = (external || []).find(e => /official\s*site/i.test(e?.name || ''))
+  return typeof site?.url === 'string' ? site.url : null
+}
+
 export function mapAnime(a) {
   const [color, colorB] = PALETTES[a.mal_id % PALETTES.length];
   return {
     id:       a.mal_id,
     title:    a.title_english || a.title,
+    titleJp:  a.title_japanese || null,
     score:    a.score || 0,
     eps:      a.episodes || null,
     type:     a.type === "Movie" ? "film" : "anime",
+    format:   a.type || null,          // raw: TV / Movie / OVA / ONA / Special
     studio:   a.studios?.[0]?.name || "—",
     year:     a.year || new Date().getFullYear(),
+    season:   a.season ? a.season.charAt(0).toUpperCase() + a.season.slice(1) : null,
+    rating:   a.rating || null,
+    source:   a.source || null,
     genres:   (a.genres || []).map(g => GENRE_PT[g.name] || g.name),
     airing:      a.status === "Currently Airing",
     comingSoon:  a.status === "Not yet aired",
+    status:   a.status || null,        // raw status string
     airDay:   DAY_KEY[a.broadcast?.day] || null,
+    startDate: a.aired?.from || null,
+    endDate:   a.aired?.to || null,
     duration: parseDuration(a.duration),
     color, colorB,
     img:      a.images?.jpg?.large_image_url || a.images?.jpg?.image_url || "",
@@ -84,6 +97,7 @@ export function mapAnime(a) {
     streaming: mapStreaming(a.streaming),
     members:  a.members || 0,
     trailer:  a.trailer?.embed_url ?? null,
+    officialSite: findOfficialSite(a.external),
     userStatus: null, userScore: null, userEp: 0, userNotes: "",
   };
 }
