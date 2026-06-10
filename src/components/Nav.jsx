@@ -7,7 +7,7 @@ import { AvatarPic } from './AvatarPic'
 import { NotificationBell } from './NotificationBell'
 import { isAdmin } from '../services/premium'
 import funnyrollLogo from "../../img/Logo sem fundo.png";
-import { ARCHIVE_YEARS, GENRES } from '../constants/browse'
+import { GENRES } from '../constants/browse'
 
 const PAGE_ICONS = {
   seasonal: (
@@ -52,9 +52,17 @@ const PAGE_ICONS = {
       <rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>
     </svg>
   ),
+  seasons: (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="4"/><line x1="12" y1="2" x2="12" y2="5"/><line x1="12" y1="19" x2="12" y2="22"/>
+      <line x1="2" y1="12" x2="5" y2="12"/><line x1="19" y1="12" x2="22" y2="12"/>
+      <line x1="4.9" y1="4.9" x2="7" y2="7"/><line x1="17" y1="17" x2="19.1" y2="19.1"/>
+      <line x1="4.9" y1="19.1" x2="7" y2="17"/><line x1="17" y1="7" x2="19.1" y2="4.9"/>
+    </svg>
+  ),
 }
 
-export function Nav({ page, setPage, userProfile, onLogin, onShowMAL, onSelectCategory, onSelectArchiveYear, onOpenNotificationAnime }) {
+export function Nav({ page, setPage, userProfile, onLogin, onShowMAL, onSelectCategory, onOpenNotificationAnime }) {
   const { T, dark, setDark } = useTheme()
   const { user, signOut }    = useAuth()
   const { t }                = useTranslation()
@@ -74,6 +82,7 @@ export function Nav({ page, setPage, userProfile, onLogin, onShowMAL, onSelectCa
   const PAGES = [
     ["seasonal",   t('nav.discover')],
     ["top",        t('nav.top')],
+    ["seasons",    "Seasons"],
     ["calendar",   t('nav.calendar')],
     ["categories", "Categories"],
     ["search",     t('nav.search')],
@@ -84,6 +93,7 @@ export function Nav({ page, setPage, userProfile, onLogin, onShowMAL, onSelectCa
   const MOBILE_LABELS = {
     seasonal:   t('nav.discover'),
     top:        'Top',
+    seasons:    'Seasons',
     calendar:   t('nav.calendar').slice(0, 6),
     categories: 'Categ.',
     search:     t('nav.search'),
@@ -155,25 +165,6 @@ export function Nav({ page, setPage, userProfile, onLogin, onShowMAL, onSelectCa
                     setBrowseMenu(null)
                   }} style={dropdownItemStyle}>
                     <span style={{width:20,textAlign:"center"}}>{g.icon}</span> {g.name}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-
-          <div style={{position:"relative",flexShrink:0}}>
-            <button className="navbtn t" onClick={()=>setBrowseMenu(browseMenu === 'years' ? null : 'years')}
-              style={navButtonStyle(false)}>
-              Years ▾
-            </button>
-            {browseMenu === 'years' && (
-              <div className="sc" style={{...dropdownPanelStyle, minWidth:150}}>
-                {ARCHIVE_YEARS.map(year => (
-                  <button key={year} className="t rbtn" onClick={() => {
-                    onSelectArchiveYear?.(year)
-                    setBrowseMenu(null)
-                  }} style={dropdownItemStyle}>
-                    {year}
                   </button>
                 ))}
               </div>

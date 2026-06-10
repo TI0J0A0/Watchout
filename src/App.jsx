@@ -28,11 +28,12 @@ const NewsPage = named(() => import('./pages/NewsPage'), 'NewsPage')
 const FriendProfilePage = named(() => import('./pages/FriendProfilePage'), 'FriendProfilePage')
 const CommunityPage = named(() => import('./pages/CommunityPage'), 'CommunityPage')
 const CategoriesPage = named(() => import('./pages/CategoriesPage'), 'CategoriesPage')
+const SeasonsPage = named(() => import('./components/SeasonsPage'), 'SeasonsPage')
 const AdminPage = named(() => import('./pages/AdminPage'), 'AdminPage')
 const AuthPage = named(() => import('./pages/AuthPage'), 'AuthPage')
 const MALImport = named(() => import('./components/MALImport'), 'MALImport')
 
-const VALID_PAGES = new Set(['seasonal', 'top', 'calendar', 'categories', 'search', 'profile', 'news', 'community', 'admin'])
+const VALID_PAGES = new Set(['seasonal', 'top', 'seasons', 'calendar', 'categories', 'search', 'profile', 'news', 'community', 'admin'])
 
 function parseHash(hash) {
   const h = (hash || '').replace(/^#/, '')
@@ -73,7 +74,6 @@ function AppInner() {
   const [isPremium, setIsPremium] = useState(false)
   const [userProfile, setUserProfile] = useState(null)
   const [selectedGenreId, setSelectedGenreId] = useState(null)
-  const [selectedArchiveYear, setSelectedArchiveYear] = useState(null)
   const [adminHeroItems, setAdminHeroItems] = useState([])
   const [heroMaxItems, setHeroMaxItems] = useState(5)
 
@@ -272,11 +272,6 @@ function AppInner() {
     navigate('categories')
   }
 
-  const openArchiveYear = (year) => {
-    setSelectedArchiveYear(year)
-    navigate('seasonal')
-  }
-
   const openDetail = (item) => {
     openDetailFromSource(item, page)
   }
@@ -344,7 +339,6 @@ function AppInner() {
       <Nav page={page} setPage={navigate}
         userProfile={userProfile}
         onSelectCategory={openCategory}
-        onSelectArchiveYear={openArchiveYear}
         onOpenNotificationAnime={(animeId) => openAnimeById(animeId, 'notification')}
         onLogin={() => setShowAuth(true)} onShowMAL={() => setShowMAL(true)} />
 
@@ -393,8 +387,7 @@ function AppInner() {
                 })
                 openDetailFromSource(item, 'hero')
               }} onStatus={handleStatus}
-              onViewMore={() => navigate('profile')}
-              initialArchiveYear={selectedArchiveYear} />
+              onViewMore={() => navigate('profile')} />
           )}
 
           {page === 'categories' && (
@@ -407,6 +400,9 @@ function AppInner() {
           )}
           {page === 'top' && (
             <TopPage topData={topData} loading={!topLoaded} onOpen={(item) => openDetailFromSource(item, 'top')} />
+          )}
+          {page === 'seasons' && (
+            <SeasonsPage onOpen={(item) => openDetailFromSource(item, 'seasons')} />
           )}
           {page === 'calendar' && (
             <CalendarPage data={data} onOpen={(item) => openDetailFromSource(item, 'calendar')} />
