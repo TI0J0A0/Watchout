@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { useTheme } from '../context/ThemeContext'
 import { useIsMobile } from '../hooks/useIsMobile'
 import { fetchWatchEpisodes } from '../services/watchEpisodes'
+import { fetchTmdbEpisodeStill } from '../services/tmdb'
 
 const DISMISS_KEY = 'watchout_cw_dismissed'
 const PROGRESS = '#FF3B30'
@@ -54,11 +55,15 @@ export const ContinueWatchingRow = memo(function ContinueWatchingRow({
       if (dismissed.has(it.id) || thumbs[it.id] !== undefined) continue
       const resume = readResume(it.id)
       const ep = resume?.ep ?? it.userEp ?? 1
-      fetchWatchEpisodes(it)
-        .then(r => {
+      // TMDB still first; fall back to the AniList episode thumbnail.
+      fetchTmdbEpisodeStill(it, ep)
+        .then(tmdbStill => {
           if (cancelled) return
-          const thumb = r?.epMap?.[ep]?.thumbnail ?? null
-          setThumbs(prev => ({ ...prev, [it.id]: thumb }))
+          if (tmdbStill) { setThumbs(prev => ({ ...prev, [it.id]: tmdbStill })); return }
+          return fetchWatchEpisodes(it).then(r => {
+            if (cancelled) return
+            setThumbs(prev => ({ ...prev, [it.id]: r?.epMap?.[ep]?.thumbnail ?? null }))
+          })
         })
         .catch(() => { if (!cancelled) setThumbs(prev => ({ ...prev, [it.id]: null })) })
     }

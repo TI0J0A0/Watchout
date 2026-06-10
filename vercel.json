@@ -32,7 +32,7 @@
         },
         {
           "key": "Content-Security-Policy",
-          "value": "default-src 'self'; script-src 'self' 'unsafe-inline' https://theanimecommunity.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://graphql.anilist.co https://api.jikan.moe https://anikotoapi.site https://api.codetabs.com https://api.allorigins.win https://corsproxy.io https://theanimecommunity.com; frame-src https://megaplay.buzz https://www.youtube.com https://www.youtube-nocookie.com https://theanimecommunity.com; font-src 'self'; media-src blob:; object-src 'none'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
+          "value": "default-src 'self'; script-src 'self' 'unsafe-inline' https://theanimecommunity.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://graphql.anilist.co https://api.jikan.moe https://anikotoapi.site https://api.codetabs.com https://api.allorigins.win https://corsproxy.io https://theanimecommunity.com https://YOUR-VPS-DOMAIN; frame-src https://megaplay.buzz https://www.youtube.com https://www.youtube-nocookie.com https://theanimecommunity.com; font-src 'self'; media-src blob:; object-src 'none'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
         }
       ]
     },

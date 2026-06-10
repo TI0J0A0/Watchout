@@ -12,6 +12,7 @@ import { useFocusScope } from '../hooks/useTVNavigation'
 import { isAndroidTV } from '../utils/platform'
 import { fetchRecommendations, fetchRelations, fetchAnimeById, fetchCharacters, fetchAnimePictures } from '../services/jikan'
 import { fetchAnilistBanner } from '../services/anilist'
+import { fetchTmdbImages, tmdbImg } from '../services/tmdb'
 
 function fmtDate(iso) {
   if (!iso) return null
@@ -125,6 +126,7 @@ export function AnimePage({ item, onClose, onStatus, onScore, onEp, onNotes, onO
   const [relations, setRelations] = useState([])
   const [showTrailer, setShowTrailer] = useState(false)
   const [pictures,  setPictures]  = useState([])
+  const [tmdb,      setTmdb]      = useState(null)
   const [tab,       setTab]       = useState('overview')
   const menuRef      = useRef(null)
   const noteSaveTimer = useRef(null)
@@ -144,11 +146,13 @@ export function AnimePage({ item, onClose, onStatus, onScore, onEp, onNotes, onO
     setRelations([])
     setShowTrailer(false)
     setPictures([])
+    setTmdb(null)
     setTab('overview')
     fetchRecommendations(item.id).then(setRecs).catch(() => {})
     fetchRelations(item.id).then(setRelations).catch(() => {})
     fetchAnimeById(item.id).then(setDetail).catch(() => {})
     fetchAnimePictures(item.id).then(setPictures).catch(() => {})
+    fetchTmdbImages(item).then(setTmdb).catch(() => {})
     setChars([])
     fetchAnilistBanner(item.id)
       .then(({ bannerImage, characters }) => {
@@ -182,6 +186,10 @@ export function AnimePage({ item, onClose, onStatus, onScore, onEp, onNotes, onO
 
   const sm = SM[a.userStatus]
   const st = statusInfo(a, T)
+
+  // TMDB first for hero backdrop + poster, falling back to AniList/Jikan.
+  const heroBanner = tmdbImg(tmdb?.backdrops?.[0], 'backdrop') || banner
+  const posterUrl  = tmdbImg(tmdb?.posters?.[0], 'posterXl') || a.img
 
   const mainChars = chars.filter(c => c.role === 'Main')
   const supChars  = chars.filter(c => c.role !== 'Main')
@@ -370,9 +378,9 @@ export function AnimePage({ item, onClose, onStatus, onScore, onEp, onNotes, onO
 
       {/* ── Hero banner ── */}
       <div style={{ position: 'relative', height: isMobile ? 200 : 360, overflow: 'hidden', flexShrink: 0,
-        background: banner ? '#000' : `linear-gradient(135deg, ${a.color}55, ${a.colorB || a.color}22)` }}>
-        {banner && (
-          <img src={banner} alt=""
+        background: heroBanner ? '#000' : `linear-gradient(135deg, ${a.color}55, ${a.colorB || a.color}22)` }}>
+        {heroBanner && (
+          <img src={heroBanner} alt=""
             style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center 25%' }}/>
         )}
         <div style={{
@@ -411,7 +419,7 @@ export function AnimePage({ item, onClose, onStatus, onScore, onEp, onNotes, onO
             border: `1px solid ${T.bord}`,
             boxShadow: dark ? '0 12px 48px rgba(0,0,0,.6)' : '0 12px 36px rgba(0,0,0,.18)',
           }}>
-            <img src={a.img} alt={a.title} loading="lazy"
+            <img src={posterUrl} alt={a.title} loading="lazy"
               style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}/>
           </div>
           <div style={{ flex: 1, minWidth: 0, paddingBottom: 6 }}>
@@ -649,18 +657,27 @@ export function AnimePage({ item, onClose, onStatus, onScore, onEp, onNotes, onO
             )}
 
             {tab === 'artwork' && (() => {
-              // Banner first (wide), then de-duplicated poster gallery.
-              const posters = [...new Set([a.img, ...pictures].filter(Boolean))]
-              if (!banner && posters.length === 0) {
+              // TMDB first (backdrops as wide art, posters in the grid), then the
+              // AniList banner and Jikan pictures — all de-duplicated.
+              const wide = [
+                ...(tmdb?.backdrops ?? []).map(p => tmdbImg(p, 'backdrop')),
+                banner,
+              ].filter(Boolean)
+              const posters = [...new Set([
+                ...(tmdb?.posters ?? []).map(p => tmdbImg(p, 'posterXl')),
+                a.img,
+                ...pictures,
+              ].filter(Boolean))]
+              if (wide.length === 0 && posters.length === 0) {
                 return <p style={{ fontSize: 13, color: T.sub, fontStyle: 'italic' }}>No artwork available.</p>
               }
               return (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                  {banner && (
-                    <img src={banner} alt="" loading="lazy"
+                  {wide.map((src, i) => (
+                    <img key={`w${i}`} src={src} alt="" loading="lazy"
                       style={{ width: '100%', borderRadius: 14, border: `1px solid ${T.bord}`,
                         objectFit: 'cover', display: 'block' }}/>
-                  )}
+                  ))}
                   {posters.length > 0 && (
                     <div style={{
                       display: 'grid',

@@ -6,6 +6,7 @@ import { useIsMobile } from '../hooks/useIsMobile'
 import { shouldTreatPointerAsTap } from '../utils/mobileInteraction'
 import { fmt } from '../utils'
 import { StatusBtn } from './StatusBtn'
+import { useTmdbImage } from '../hooks/useTmdbImage'
 
 export const MediaCard = memo(function MediaCard({ item, delay, onOpen, onStatus, variant = 'grid', matchPct }) {
   const { T } = useTheme();
@@ -14,6 +15,7 @@ export const MediaCard = memo(function MediaCard({ item, delay, onOpen, onStatus
   const isMobile = useIsMobile()
   const pointerStartRef = useRef(null)
   const sm = SM[item.userStatus];
+  const poster = useTmdbImage(item, 'poster')
 
   const typeLabel = item.type === 'anime' ? t('anime.typeAnime')
                   : item.type === 'series' ? t('anime.typeSeries')
@@ -54,8 +56,8 @@ export const MediaCard = memo(function MediaCard({ item, delay, onOpen, onStatus
         WebkitTapHighlightColor: 'transparent',
       }}>
         <div style={{position:"relative",paddingTop:"150%",overflow:"hidden"}}>
-          {item.img ? (
-            <img className="cimg t" src={item.img} alt="" loading="lazy" decoding="async"
+          {poster ? (
+            <img className="cimg t" src={poster} alt="" loading="lazy" decoding="async"
               style={{position:"absolute",inset:0,width:"100%",height:"100%",objectFit:"cover"}}/>
           ) : (
             <div className="cimg t" style={{position:"absolute",inset:0,

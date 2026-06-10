@@ -16,6 +16,7 @@ import { useIsMobile } from '../hooks/useIsMobile'
 import { computeTasteProfile, matchScore, personalityText } from '../utils/tasteProfile'
 import { getHeroCta, getHeroFocalPoint, getHeroImage, getHeroMeta } from '../utils/heroCarousel'
 import { getStreamingProviderName } from '../utils/streaming'
+import { fetchTmdbImages, tmdbImg } from '../services/tmdb'
 
 function LazyShelf({ children }) {
   const [ref, visible] = useOnScreen('400px')
@@ -69,6 +70,19 @@ export function SeasonalPage({
       .catch(() => { })
     return () => { cancelled = true }
   }, [topGenresKey])
+
+  // TMDB backdrop for the current hero (one lookup per hero), used ahead of the
+  // AniList/Kitsu hero image but behind any admin override.
+  const [heroTmdb, setHeroTmdb] = useState(null)
+  useEffect(() => {
+    setHeroTmdb(null)
+    if (!hero?.id) return
+    let cancelled = false
+    fetchTmdbImages(hero)
+      .then(r => { if (!cancelled) setHeroTmdb(tmdbImg(r?.backdrops?.[0], 'backdrop')) })
+      .catch(() => {})
+    return () => { cancelled = true }
+  }, [hero?.id])
 
   const forYouItems = useMemo(() => {
     if (!tasteProfile) return []
@@ -261,7 +275,7 @@ export function SeasonalPage({
   const isArchive = archYear !== null && archSeason !== null
   const ytId = hero?.trailer?.match(/embed\/([^?]+)/)?.[1]
   const ytThumb = ytId ? `https://img.youtube.com/vi/${ytId}/maxresdefault.jpg` : null
-  const heroBackground = hero?.heroImageUrl || getHeroImage(hero, heroBanner, heroKitsuCover, ytThumb)
+  const heroBackground = hero?.heroImageUrl || heroTmdb || getHeroImage(hero, heroBanner, heroKitsuCover, ytThumb)
   const heroFocalPoint = getHeroFocalPoint(hero)
   const heroMeta = getHeroMeta(hero)
   const heroCta = getHeroCta(hero, status => t(`status.${status}`))

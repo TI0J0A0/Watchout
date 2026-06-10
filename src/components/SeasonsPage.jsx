@@ -5,6 +5,7 @@ import { fetchSeasonPage } from '../services/jikan'
 import { getSafeExternalLinkProps } from '../utils/externalLinks'
 import { LoadingGrid } from './LoadingGrid'
 import { fmt } from '../utils'
+import { useTmdbImage } from '../hooks/useTmdbImage'
 
 const SEASONS = [
   { id: 'winter', label: 'Winter' },
@@ -26,6 +27,7 @@ function currentSeason() {
 
 function SeasonCard({ item, onOpen }) {
   const { T, dark } = useTheme()
+  const poster = useTmdbImage(item, 'poster')
   const malUrl = `https://myanimelist.net/anime/${item.id}`
   const alUrl  = `https://anilist.co/search/anime?search=${encodeURIComponent(item.title)}`
   const subtitle = item.titleRomaji && item.titleRomaji !== item.title ? item.titleRomaji : null
@@ -53,7 +55,7 @@ function SeasonCard({ item, onOpen }) {
       }}>
       <div style={{ width: 104, flexShrink: 0, aspectRatio: '2/3', borderRadius: 10,
         overflow: 'hidden', border: `1px solid ${T.bord}`, background: T.surf2 }}>
-        <img src={item.img} alt={item.title} loading="lazy"
+        <img src={poster} alt={item.title} loading="lazy"
           style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
       </div>
 
