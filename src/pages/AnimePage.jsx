@@ -10,7 +10,7 @@ import { getStreamingProviderName, getStreamingProviderUrl } from '../utils/stre
 import { getSafeExternalLinkProps } from '../utils/externalLinks'
 import { useFocusScope } from '../hooks/useTVNavigation'
 import { isAndroidTV } from '../utils/platform'
-import { fetchRecommendations, fetchRelations, fetchAnimeById, fetchCharacters } from '../services/jikan'
+import { fetchRecommendations, fetchRelations, fetchAnimeById, fetchCharacters, fetchAnimePictures } from '../services/jikan'
 import { fetchAnilistBanner } from '../services/anilist'
 
 function fmtDate(iso) {
@@ -124,6 +124,7 @@ export function AnimePage({ item, onClose, onStatus, onScore, onEp, onNotes, onO
   const [noteSaved, setNoteSaved] = useState(false)
   const [relations, setRelations] = useState([])
   const [showTrailer, setShowTrailer] = useState(false)
+  const [pictures,  setPictures]  = useState([])
   const [tab,       setTab]       = useState('overview')
   const menuRef      = useRef(null)
   const noteSaveTimer = useRef(null)
@@ -142,10 +143,12 @@ export function AnimePage({ item, onClose, onStatus, onScore, onEp, onNotes, onO
     setNoteSaved(false)
     setRelations([])
     setShowTrailer(false)
+    setPictures([])
     setTab('overview')
     fetchRecommendations(item.id).then(setRecs).catch(() => {})
     fetchRelations(item.id).then(setRelations).catch(() => {})
     fetchAnimeById(item.id).then(setDetail).catch(() => {})
+    fetchAnimePictures(item.id).then(setPictures).catch(() => {})
     setChars([])
     fetchAnilistBanner(item.id)
       .then(({ bannerImage, characters }) => {
@@ -645,26 +648,35 @@ export function AnimePage({ item, onClose, onStatus, onScore, onEp, onNotes, onO
               )
             )}
 
-            {tab === 'artwork' && (
-              <div style={{
-                display: 'grid',
-                gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fill, minmax(220px, 1fr))',
-                gap: 16,
-              }}>
-                {a.img && (
-                  <img src={a.img} alt="" loading="lazy"
-                    style={{ width: '100%', borderRadius: 14, border: `1px solid ${T.bord}`, display: 'block' }}/>
-                )}
-                {banner && (
-                  <img src={banner} alt="" loading="lazy"
-                    style={{ width: '100%', gridColumn: isMobile ? 'auto' : 'span 2',
-                      borderRadius: 14, border: `1px solid ${T.bord}`, objectFit: 'cover', display: 'block' }}/>
-                )}
-                {!a.img && !banner && (
-                  <p style={{ fontSize: 13, color: T.sub, fontStyle: 'italic' }}>No artwork available.</p>
-                )}
-              </div>
-            )}
+            {tab === 'artwork' && (() => {
+              // Banner first (wide), then de-duplicated poster gallery.
+              const posters = [...new Set([a.img, ...pictures].filter(Boolean))]
+              if (!banner && posters.length === 0) {
+                return <p style={{ fontSize: 13, color: T.sub, fontStyle: 'italic' }}>No artwork available.</p>
+              }
+              return (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                  {banner && (
+                    <img src={banner} alt="" loading="lazy"
+                      style={{ width: '100%', borderRadius: 14, border: `1px solid ${T.bord}`,
+                        objectFit: 'cover', display: 'block' }}/>
+                  )}
+                  {posters.length > 0 && (
+                    <div style={{
+                      display: 'grid',
+                      gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(auto-fill, minmax(180px, 1fr))',
+                      gap: 16,
+                    }}>
+                      {posters.map((src, i) => (
+                        <img key={i} src={src} alt="" loading="lazy"
+                          style={{ width: '100%', aspectRatio: '2/3', objectFit: 'cover',
+                            borderRadius: 14, border: `1px solid ${T.bord}`, display: 'block' }}/>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )
+            })()}
 
             {tab === 'episodes' && (
               a.comingSoon ? (

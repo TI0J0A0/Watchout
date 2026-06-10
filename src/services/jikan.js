@@ -196,6 +196,14 @@ export async function fetchAnimeEpisodes(id) {
   }))
 }
 
+// Gallery of official poster/promotional images for the Artwork tab.
+export async function fetchAnimePictures(id) {
+  const { data } = await get(`/anime/${id}/pictures`)
+  return (data ?? [])
+    .map(p => p.jpg?.large_image_url || p.jpg?.image_url || p.webp?.large_image_url || null)
+    .filter(Boolean)
+}
+
 export async function fetchRelations(id) {
   const { data } = await get(`/anime/${id}/relations`)
   const related = []
