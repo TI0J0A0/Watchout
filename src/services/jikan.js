@@ -73,6 +73,7 @@ export function mapAnime(a) {
   return {
     id:       a.mal_id,
     title:    a.title_english || a.title,
+    titleRomaji: a.title || null,
     titleJp:  a.title_japanese || null,
     score:    a.score || 0,
     eps:      a.episodes || null,
@@ -165,6 +166,21 @@ export async function fetchSeasonalTrailers() {
 export async function fetchSeasonArchive(year, season) {
   const { data } = await get(`/seasons/${year}/${season}?limit=24`)
   return data.map(mapAnime)
+}
+
+// Paginated season browse for the Seasons page. Returns the mapped items plus
+// pagination flags so the UI can render page controls.
+export async function fetchSeasonPage(year, season, page = 1) {
+  const res = await get(`/seasons/${year}/${season}?limit=24&page=${page}`)
+  const seen = new Set()
+  const items = (res.data ?? [])
+    .map(mapAnime)
+    .filter(a => { if (seen.has(a.id)) return false; seen.add(a.id); return true })
+  return {
+    items,
+    hasNext:  res.pagination?.has_next_page ?? false,
+    lastPage: res.pagination?.last_visible_page ?? page,
+  }
 }
 
 
