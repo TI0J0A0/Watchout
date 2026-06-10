@@ -2,6 +2,7 @@ import { memo, useRef, useState, useEffect, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useTheme } from '../context/ThemeContext'
 import { useIsMobile } from '../hooks/useIsMobile'
+import { fetchWatchEpisodes } from '../services/watchEpisodes'
 
 const DISMISS_KEY = 'watchout_cw_dismissed'
 const PROGRESS = '#FF3B30'
@@ -43,6 +44,28 @@ export const ContinueWatchingRow = memo(function ContinueWatchingRow({
   const [dismissed, setDismissed] = useState(() => {
     try { return new Set(JSON.parse(localStorage.getItem(DISMISS_KEY) || '[]')) } catch { return new Set() }
   })
+  // Episode stills, keyed by anime id. Fetched lazily from AniList (the same
+  // per-episode thumbnails the player uses); falls back to the poster.
+  const [thumbs, setThumbs] = useState({})
+
+  useEffect(() => {
+    let cancelled = false
+    for (const it of items) {
+      if (dismissed.has(it.id) || thumbs[it.id] !== undefined) continue
+      const resume = readResume(it.id)
+      const ep = resume?.ep ?? it.userEp ?? 1
+      fetchWatchEpisodes(it)
+        .then(r => {
+          if (cancelled) return
+          const thumb = r?.epMap?.[ep]?.thumbnail ?? null
+          setThumbs(prev => ({ ...prev, [it.id]: thumb }))
+        })
+        .catch(() => { if (!cancelled) setThumbs(prev => ({ ...prev, [it.id]: null })) })
+    }
+    return () => { cancelled = true }
+    // thumbs intentionally omitted: the per-id guard prevents refetch and
+    // keeps this from re-running on every resolved thumbnail.
+  }, [items, dismissed])
 
   const checkScroll = useCallback(() => {
     const el = scrollRef.current
@@ -144,8 +167,9 @@ export const ContinueWatchingRow = memo(function ContinueWatchingRow({
                     overflow: 'hidden', background: T.surf2, border: `1px solid ${T.bord}`,
                     boxShadow: dark ? '0 6px 24px rgba(0,0,0,.4)' : '0 6px 20px rgba(0,0,0,.12)',
                   }}>
-                  <img src={it.img} alt={it.title} loading="lazy"
-                    style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center 22%', display: 'block' }} />
+                  <img src={thumbs[it.id] || it.img} alt={it.title} loading="lazy"
+                    style={{ width: '100%', height: '100%', objectFit: 'cover',
+                      objectPosition: thumbs[it.id] ? 'center' : 'center 22%', display: 'block' }} />
                   {/* legibility gradient */}
                   <div style={{ position: 'absolute', inset: 0,
                     background: 'linear-gradient(to top, rgba(0,0,0,.78) 0%, rgba(0,0,0,.05) 46%, transparent 70%)' }} />
