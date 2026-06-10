@@ -393,6 +393,7 @@ function AppInner() {
                 })
                 openDetailFromSource(item, 'hero')
               }} onStatus={handleStatus}
+              onViewMore={() => navigate('profile')}
               initialArchiveYear={selectedArchiveYear} />
           )}
 

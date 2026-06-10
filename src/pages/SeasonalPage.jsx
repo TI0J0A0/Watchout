@@ -6,6 +6,7 @@ import { useAuth } from '../context/AuthContext'
 import { MediaCard } from '../components/MediaCard'
 import { LoadingGrid } from '../components/LoadingGrid'
 import { ShelfRow } from '../components/ShelfRow'
+import { ContinueWatchingRow } from '../components/ContinueWatchingRow'
 import { fetchPopular, fetchUpcoming, fetchByGenre, fetchSeasonArchive, fetchRecommendations, fetchAnimeById, fetchCandidatesByGenres } from '../services/jikan'
 import { fetchTrendingAnimeIds } from '../services/metrics'
 import { fetchAnilistHeroImages } from '../services/anilist'
@@ -44,7 +45,7 @@ const EMPTY_SECTIONS = Object.fromEntries(DISCOVER_KEYS.map(s => [s.key, []]))
 export function SeasonalPage({
   seasonal, data, hero, heroIdx, setHeroIdx, airingItems,
   heroItems = airingItems, typeF, setTypeF, loading,
-  onOpen, onHeroOpen = onOpen, onStatus, initialArchiveYear,
+  onOpen, onHeroOpen = onOpen, onStatus, onViewMore, initialArchiveYear,
   heroRotateMs = 8000,
 }) {
   const { T } = useTheme()
@@ -533,12 +534,12 @@ export function SeasonalPage({
 
           {continueWatching.length > 0 && (
             <div style={firstShelfOverlapStyle}>
-            <ShelfRow
-              emoji="▶"
+            <ContinueWatchingRow
               title={t('seasonal.continueWatching')}
               subtitle={t('seasonal.continueWatchingSubtitle')}
-              items={continueWatching} loading={false}
-              onOpen={onOpen} onStatus={onStatus} />
+              items={continueWatching}
+              onOpen={onOpen}
+              onViewMore={onViewMore} />
             </div>
           )}
 
