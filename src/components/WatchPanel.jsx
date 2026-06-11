@@ -8,6 +8,7 @@ import { trackMetricEvent } from '../services/metrics'
 import { useAuth } from '../context/AuthContext'
 import { getNextAiredEpisode, shouldShowNextEpisodeButton } from '../utils/playerNavigation'
 import { buildMegaplayEmbedUrl, getTrustedPlayerMessage } from '../utils/playerSecurity'
+import { fetchTmdbEpisodeStill } from '../services/tmdb'
 
 function IconCheck() {
   return (
@@ -68,6 +69,7 @@ export function WatchPanel({ item, onEp, onStatus }) {
   const [progressRatio, setProgressRatio] = useState(0)
   const [skipTimes,     setSkipTimes]     = useState({ op: null, ed: null })
   const [skipDismissed, setSkipDismissed] = useState(false)
+  const [tmdbStills,    setTmdbStills]    = useState({})
 
   const markedRef    = useRef(false)
   const durationRef  = useRef(0)
@@ -128,6 +130,23 @@ export function WatchPanel({ item, onEp, onStatus }) {
 
     return () => { cancelled = true }
   }, [item.id])
+
+  // Fetch TMDB episode stills for all aired episodes
+  useEffect(() => {
+    if (!item?.id || epCount === null) return
+    let cancelled = false
+    const fetchStills = async () => {
+      const stills = {}
+      for (let ep = 1; ep <= epCount; ep++) {
+        if (cancelled) return
+        const still = await fetchTmdbEpisodeStill(item, ep).catch(() => null)
+        if (still) stills[ep] = still
+      }
+      if (!cancelled) setTmdbStills(stills)
+    }
+    fetchStills()
+    return () => { cancelled = true }
+  }, [item, epCount])
 
   useEffect(() => {
     if (activeEp === null || !item.id) return
@@ -412,7 +431,7 @@ export function WatchPanel({ item, onEp, onStatus }) {
           }}>
             {airedEps.map((ep) => {
               const streamEp  = streamEps[ep]
-              const thumbnail = streamEp?.thumbnail ?? null
+              const thumbnail = tmdbStills[ep] ?? streamEp?.thumbnail ?? null
               const rawTitle  = streamEp?.title ?? ''
               const epTitle   = rawTitle.replace(/^Episode\s+\d+\s*[-–]\s*/i, '').trim()
               const active    = activeEp === ep
