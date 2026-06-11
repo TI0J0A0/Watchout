@@ -136,18 +136,19 @@ export const ContinueWatchingRow = memo(function ContinueWatchingRow({
       </div>
 
       <div style={{ position: 'relative' }}>
-        {!isMobile && canLeft && (
+        {/* Scroll indicators - desktop with arrows, mobile with fade */}
+        {canLeft && (
           <>
-            <div style={{ position: 'absolute', left: 0, top: 0, bottom: 8, width: 80,
-              background: `linear-gradient(to right,${T.bg} 20%,transparent)`, pointerEvents: 'none', zIndex: 9 }} />
-            {arrowBtn(-1)}
+            {!isMobile && arrowBtn(-1)}
+            <div style={{ position: 'absolute', left: 0, top: 0, bottom: 8, width: isMobile ? 40 : 80,
+              background: `linear-gradient(to right,${T.bg} ${isMobile ? 60 : 20}%,transparent)`, pointerEvents: 'none', zIndex: 9 }} />
           </>
         )}
-        {!isMobile && canRight && (
+        {canRight && (
           <>
-            <div style={{ position: 'absolute', right: 0, top: 0, bottom: 8, width: 80,
-              background: `linear-gradient(to left,${T.bg} 20%,transparent)`, pointerEvents: 'none', zIndex: 9 }} />
-            {arrowBtn(1)}
+            {!isMobile && arrowBtn(1)}
+            <div style={{ position: 'absolute', right: 0, top: 0, bottom: 8, width: isMobile ? 40 : 80,
+              background: `linear-gradient(to left,${T.bg} ${isMobile ? 60 : 20}%,transparent)`, pointerEvents: 'none', zIndex: 9 }} />
           </>
         )}
 

@@ -1,5 +1,6 @@
 import { useTranslation } from 'react-i18next'
 import { useTheme } from '../context/ThemeContext'
+import { useIsMobile } from '../hooks/useIsMobile'
 import { useTmdbPosterBatch } from '../hooks/useTmdbPosterBatch'
 import { LoadingGrid } from '../components/LoadingGrid'
 import { ClickableCard, EmptyState } from '../components/ui'
@@ -13,6 +14,7 @@ const HERO_COLORS = [
 export function TopPage({ topData, loading, onOpen }) {
   const { T } = useTheme();
   const { t } = useTranslation();
+  const isMobile = useIsMobile();
 
   if (loading) return (
     <div style={{paddingTop:32,paddingBottom:48}}>
@@ -53,7 +55,7 @@ export function TopPage({ topData, loading, onOpen }) {
             <div style={{position:"absolute",bottom:0,left:0,right:0,padding:"0 16px 16px"}}>
               <p style={{fontSize:14,fontWeight:700,color:"#fff",marginBottom:4,
                 overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{it.title}</p>
-              <div style={{display:"flex",alignItems:"center",gap:6}}>
+              <div style={{display:"flex",alignItems:"center",gap:isMobile?8:6}}>
                 <span style={{color:"#FFD60A",fontSize:12}}>★</span>
                 <span style={{fontSize:14,fontWeight:700,color:"#fff"}}>{it.score}</span>
                 {it.eps&&<span style={{fontSize:11,color:"rgba(255,255,255,.6)"}}>· {it.eps} {t('anime.eps')}</span>}
@@ -83,7 +85,7 @@ export function TopPage({ topData, loading, onOpen }) {
                 overflow:"hidden",textOverflow:"ellipsis"}}>{it.title}</p>
               <p style={{fontSize:12,color:T.sub,marginTop:2}}>{it.year}{it.eps?` · ${it.eps} ${t('anime.eps')}`:""}</p>
             </div>
-            <div style={{display:"flex",alignItems:"center",gap:4,flexShrink:0}}>
+            <div style={{display:"flex",alignItems:"center",gap:isMobile?8:4,flexShrink:0}}>
               <span style={{color:"#FF9F0A",fontSize:13}}>★</span>
               <span style={{fontSize:16,fontWeight:700,color:T.txt}}>{it.score}</span>
             </div>

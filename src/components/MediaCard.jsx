@@ -72,7 +72,7 @@ export const MediaCard = memo(function MediaCard({ item, delay, onOpen, onStatus
           {/* Score */}
           <div style={{position:"absolute",top:isShelf?8:9,right:isShelf?8:9,padding:"3px 7px",
             borderRadius:8,background:"rgba(0,0,0,.66)",
-            display:"flex",alignItems:"center",gap:3}}>
+            display:"flex",alignItems:"center",gap:isMobile?4:3}}>
             <span style={{color:"#FFD60A",fontSize:10}}>★</span>
             <span style={{fontSize:12,fontWeight:700,color:"#fff"}}>{item.score}</span>
           </div>
@@ -88,7 +88,7 @@ export const MediaCard = memo(function MediaCard({ item, delay, onOpen, onStatus
               <div style={{position:"absolute",bottom:8,right:8,width:7,height:7,borderRadius:"50%",
                 background:"#34C759",boxShadow:"0 0 5px #34C759"}}/>
             ) : (
-              <div style={{position:"absolute",bottom:9,right:9,display:"flex",alignItems:"center",gap:4,
+              <div style={{position:"absolute",bottom:9,right:9,display:"flex",alignItems:"center",gap:isMobile?6:4,
                 padding:"3px 7px",borderRadius:8,
                 background:"rgba(52,199,89,.2)",border:"1px solid rgba(52,199,89,.4)"}}>
                 <span style={{width:5,height:5,borderRadius:"50%",background:"#34C759",display:"block"}}/>
@@ -137,7 +137,7 @@ export const MediaCard = memo(function MediaCard({ item, delay, onOpen, onStatus
           <p style={{fontSize:isShelf?13:13.5,fontWeight:600,color:T.txt,lineHeight:1.3,
             marginBottom:isShelf?3:2,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}
             title={item.title}>{item.title}</p>
-          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:4}}>
+          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:isMobile?8:4}}>
             <p style={{fontSize:isShelf?11:11.5,color:T.sub,overflow:"hidden",
               textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
               {isShelf ? item.studio : `${item.studio} · ${item.year}`}
