@@ -68,6 +68,14 @@ function findOfficialSite(external = []) {
   return typeof site?.url === 'string' ? site.url : null
 }
 
+// Jikan list endpoints (e.g. /seasons/now, /anime?...) can return the same
+// entry more than once, which breaks React keys downstream — always
+// de-duplicate by id, keeping the first occurrence.
+function dedupeById(items) {
+  const seen = new Set()
+  return items.filter(i => { if (seen.has(i.id)) return false; seen.add(i.id); return true })
+}
+
 export function mapAnime(a) {
   const [color, colorB] = PALETTES[a.mal_id % PALETTES.length];
   return {
@@ -109,27 +117,27 @@ async function get(path, { fresh = false } = {}) {
 
 export async function fetchSeasonal() {
   const { data } = await get("/seasons/now?limit=24");
-  return data.map(mapAnime);
+  return dedupeById(data.map(mapAnime));
 }
 
 export async function fetchTop() {
   const { data } = await get("/top/anime?limit=25");
-  return data.map((a, i) => ({ ...mapAnime(a), rank: i + 1 }));
+  return dedupeById(data.map(mapAnime)).map((a, i) => ({ ...a, rank: i + 1 }));
 }
 
 export async function searchAnime(query) {
   const { data } = await get(`/anime?q=${encodeURIComponent(query)}&limit=20&sfw=true`);
-  return data.map(mapAnime);
+  return dedupeById(data.map(mapAnime));
 }
 
 export async function fetchPopular({ fresh = false } = {}) {
   const { data } = await get('/anime?status=airing&order_by=members&sort=desc&limit=15&sfw=true', { fresh });
-  return data.map(mapAnime);
+  return dedupeById(data.map(mapAnime));
 }
 
 export async function fetchUpcoming({ fresh = false } = {}) {
   const { data } = await get('/seasons/upcoming?limit=15', { fresh });
-  return data.map(mapAnime);
+  return dedupeById(data.map(mapAnime));
 }
 
 export async function fetchByGenre(genreId, limit = 15, { fresh = false } = {}) {
@@ -137,7 +145,7 @@ export async function fetchByGenre(genreId, limit = 15, { fresh = false } = {}) 
     `/anime?genres=${genreId}&order_by=score&sort=desc&limit=${limit}&sfw=true&type=tv`,
     { fresh }
   );
-  return data.map(mapAnime);
+  return dedupeById(data.map(mapAnime));
 }
 
 // Fallback trailer feed (used when AniList is unavailable): current + upcoming
@@ -150,32 +158,24 @@ export async function fetchSeasonalTrailers() {
   const raw = []
   if (nowRes.status === 'fulfilled') raw.push(...(nowRes.value.data ?? []))
   if (soonRes.status === 'fulfilled') raw.push(...(soonRes.value.data ?? []))
-  const seen = new Set()
-  return raw
-    .map(a => ({
+  return dedupeById(
+    raw.map(a => ({
       ...mapAnime(a),
       status: a.status === 'Not yet aired' ? 'NOT_YET_RELEASED' : 'RELEASING',
     }))
-    .filter(a => {
-      if (!a.trailer || seen.has(a.id)) return false
-      seen.add(a.id)
-      return true
-    })
+  ).filter(a => a.trailer)
 }
 
 export async function fetchSeasonArchive(year, season) {
   const { data } = await get(`/seasons/${year}/${season}?limit=24`)
-  return data.map(mapAnime)
+  return dedupeById(data.map(mapAnime))
 }
 
 // Paginated season browse for the Seasons page. Returns the mapped items plus
 // pagination flags so the UI can render page controls.
 export async function fetchSeasonPage(year, season, page = 1) {
   const res = await get(`/seasons/${year}/${season}?limit=24&page=${page}`)
-  const seen = new Set()
-  const items = (res.data ?? [])
-    .map(mapAnime)
-    .filter(a => { if (seen.has(a.id)) return false; seen.add(a.id); return true })
+  const items = dedupeById((res.data ?? []).map(mapAnime))
   return {
     items,
     hasNext:  res.pagination?.has_next_page ?? false,
@@ -267,7 +267,7 @@ export async function fetchCandidatesByGenres(genreNames = [], { perGenre = 25, 
 
 export async function fetchRecommendations(id) {
   const { data } = await get(`/anime/${id}/recommendations`);
-  return data.slice(0, 10).map(r => {
+  return dedupeById(data.map(r => {
     const a = r.entry;
     const [color, colorB] = PALETTES[a.mal_id % PALETTES.length];
     return {
@@ -279,5 +279,5 @@ export async function fetchRecommendations(id) {
       color, colorB, synopsis: "", streaming: [], members: 0, trailer: null,
       userStatus: null, userScore: null, userEp: 0, userNotes: "",
     };
-  });
+  })).slice(0, 10);
 }
