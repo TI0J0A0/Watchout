@@ -1,5 +1,6 @@
 import { useTranslation } from 'react-i18next'
 import { useTheme } from '../context/ThemeContext'
+import { useTmdbPosterBatch } from '../hooks/useTmdbPosterBatch'
 import { LoadingGrid } from '../components/LoadingGrid'
 import { ClickableCard, EmptyState } from '../components/ui'
 
@@ -24,6 +25,12 @@ export function TopPage({ topData, loading, onOpen }) {
   const top3 = topData.slice(0,3);
   const rest = topData.slice(3);
 
+  // Fetch TMDB posters for all items
+  const tmdbPosterBatch = useTmdbPosterBatch(topData)
+
+  // Helper to get TMDB poster with fallback
+  const getPosterUrl = (item) => tmdbPosterBatch[item?.id] ?? item?.img ?? null
+
   return (
     <div className="fu" style={{paddingTop:32,paddingBottom:48}}>
       <p style={{fontSize:13,color:T.sub,marginBottom:3}}>{t('top.subtitle')}</p>
@@ -34,7 +41,7 @@ export function TopPage({ topData, loading, onOpen }) {
           <ClickableCard key={it.id} className="sc" onClick={()=>onOpen(it)} ariaLabel={`Open ${it.title}`} style={{borderRadius:20,overflow:"hidden",
             position:"relative",height:260,cursor:"pointer",animationDelay:`${i*70}ms`,
             background:`linear-gradient(135deg,${HERO_COLORS[i][0]},${HERO_COLORS[i][1]})`}}>
-            {it.img && <img src={it.img} alt="" style={{position:"absolute",inset:0,width:"100%",height:"100%",
+            {getPosterUrl(it) && <img src={getPosterUrl(it)} alt="" style={{position:"absolute",inset:0,width:"100%",height:"100%",
               objectFit:"cover",opacity:.45}}/>}
             <div style={{position:"absolute",inset:0,
               background:"linear-gradient(to top,rgba(0,0,0,.7) 0%,transparent 55%)"}}/>
@@ -66,8 +73,8 @@ export function TopPage({ topData, loading, onOpen }) {
             animationDelay:`${(i+3)*60}ms`,
             borderBottom:i<rest.length-1?`1px solid ${T.bord}`:"none"}}>
             <span style={{width:28,textAlign:"center",fontSize:14,fontWeight:700,color:T.sub,flexShrink:0}}>{it.rank}</span>
-            {it.img ? (
-              <img src={it.img} alt="" style={{width:40,height:56,objectFit:"cover",borderRadius:7,flexShrink:0}}/>
+            {getPosterUrl(it) ? (
+              <img src={getPosterUrl(it)} alt="" style={{width:40,height:56,objectFit:"cover",borderRadius:7,flexShrink:0}}/>
             ) : (
               <div style={{width:40,height:56,borderRadius:7,flexShrink:0,background:`linear-gradient(135deg,${it.color},${it.colorB})`}}/>
             )}

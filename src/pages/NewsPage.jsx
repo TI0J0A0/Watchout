@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useTheme } from '../context/ThemeContext'
+import { useTmdbPosterBatch } from '../hooks/useTmdbPosterBatch'
 import { fetchUpcoming, fetchSeasonalTrailers } from '../services/jikan'
 import { fetchLatestTrailers } from '../services/anilist'
 import {
@@ -91,7 +92,7 @@ function TrailerCard({ item, isPlaying, onToggle, T }) {
       )}
 
       <div style={{ position: 'relative', paddingBottom: '56.25%', background: item.color }}>
-        <img src={item.img} alt={item.title} loading="lazy"
+        <img src={getPosterUrl(item)} alt={item.title} loading="lazy"
           style={{ position: 'absolute', inset: 0, width: '100%', height: '100%',
             objectFit: 'cover', objectPosition: 'top' }} />
         <div style={{ position: 'absolute', inset: 0,
@@ -142,7 +143,7 @@ function NewsCard({ item, onOpen, badge, badgeColor, T }) {
       )}
 
       <div style={{ position: 'relative', paddingBottom: '140%' }}>
-        <img src={item.img} alt={item.title}
+        <img src={getPosterUrl(item)} alt={item.title}
           style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
         <div style={{ position: 'absolute', inset: 0,
           background: 'linear-gradient(to bottom, transparent 55%, rgba(0,0,0,.55) 100%)' }} />
@@ -272,6 +273,13 @@ export function NewsPage({ data, loading, onOpen }) {
 
   const tabCounts = { trailers: trailers.length, onair: releases.length, upcoming: upcoming.length }
   const tabs = NEWS_PAGE_TABS.map(item => ({ ...item, label: t(item.labelKey), count: tabCounts[item.id] ?? 0 }))
+
+  // Fetch TMDB posters for all items
+  const allItems = [...trailers, ...releases, ...upcoming]
+  const tmdbPosterBatch = useTmdbPosterBatch(allItems)
+
+  // Helper to get TMDB poster with fallback
+  const getPosterUrl = (item) => tmdbPosterBatch[item?.id] ?? item?.img ?? null
 
   return (
     <div className="fu" style={{ paddingTop: 32, paddingBottom: 48 }}>

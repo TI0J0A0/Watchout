@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useTheme } from '../context/ThemeContext'
+import { useTmdbPosterBatch } from '../hooks/useTmdbPosterBatch'
 import { fetchByGenre } from '../services/jikan'
 import { MediaCard } from '../components/MediaCard'
 import { LoadingGrid } from '../components/LoadingGrid'
@@ -97,6 +98,13 @@ export function CategoriesPage({ library, onOpen, onStatus, initialGenreId }) {
     border: 'none',
   }
 
+  // Fetch TMDB posters for displayed items
+  const itemsToShow = [...(animes || []), surprise?.anime].filter(Boolean)
+  const tmdbPosterBatch = useTmdbPosterBatch(itemsToShow)
+
+  // Helper to get TMDB poster with fallback
+  const getPosterUrl = (item) => tmdbPosterBatch[item?.id] ?? item?.img ?? null
+
   return (
     <div style={{ padding: '24px 0 80px' }}>
 
@@ -186,8 +194,8 @@ export function CategoriesPage({ library, onOpen, onStatus, initialGenreId }) {
               }}>
                 {/* Banner */}
                 <div style={{ position: 'relative', paddingTop: '44%', overflow: 'hidden' }}>
-                  {surprise.anime.img
-                    ? <img src={surprise.anime.img} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', filter: 'brightness(.65)' }} />
+                  {getPosterUrl(surprise.anime)
+                    ? <img src={getPosterUrl(surprise.anime)} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', filter: 'brightness(.65)' }} />
                     : <div style={{ position: 'absolute', inset: 0, background: `linear-gradient(135deg,${surprise.anime.color},${surprise.anime.colorB})` }} />
                   }
                   <div style={{

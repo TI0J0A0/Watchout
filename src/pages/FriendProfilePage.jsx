@@ -4,6 +4,7 @@ import { useTheme } from '../context/ThemeContext'
 import { SM } from '../constants'
 import { AvatarPic } from '../components/AvatarPic'
 import { StatBox } from '../components/StatBox'
+import { useTmdbPosterBatch } from '../hooks/useTmdbPosterBatch'
 import { fmtTime } from '../utils'
 import { getProfile, deleteFriendship } from '../services/friends'
 import { loadFriendLibrary } from '../services/userAnime'
@@ -86,6 +87,12 @@ export function FriendProfilePage({ userId, friendshipId, onClose, onOpen, onNav
     return [...animeScoredItems].sort((a, b) => b.userScore - a.userScore)[0]
   }, [animeLib, animeScoredItems])
 
+  // Fetch TMDB posters for displayed items + autoBannerAnime
+  const tmdbPosterBatch = useTmdbPosterBatch([...(library || []), autoBannerAnime].filter(Boolean))
+
+  // Helper to get TMDB poster with fallback
+  const getPosterUrl = (item) => tmdbPosterBatch[item?.id] ?? item?.img ?? null
+
   const autoBannerColor = useMemo(() => {
     if (!animeLib.length) return { a:'#0A84FF', b:'#BF5AF2' }
     const cc = {}
@@ -133,7 +140,7 @@ export function FriendProfilePage({ userId, friendshipId, onClose, onOpen, onNav
               <div style={{ borderRadius:24, overflow:'hidden', height:220, position:'relative',
                 background:`linear-gradient(135deg,${autoBannerColor.a},${autoBannerColor.b})`,
                 boxShadow:`0 12px 48px ${autoBannerColor.a}44` }}>
-                {autoBannerAnime?.img && (
+                {getPosterUrl(autoBannerAnime) && (
                   <img src={autoBannerAnime.img} alt="" style={{ position:'absolute', inset:0,
                     width:'100%', height:'100%', objectFit:'cover',
                     filter:'blur(28px)', transform:'scale(1.15)',
@@ -199,7 +206,7 @@ export function FriendProfilePage({ userId, friendshipId, onClose, onOpen, onNav
                         <div style={{ borderRadius:14, overflow:'hidden', marginBottom:7,
                           boxShadow:`0 4px 18px rgba(0,0,0,${dark?.22:.10})`,
                           position:'relative' }}>
-                          <img src={item.img} alt=""
+                          <img src={getPosterUrl(item)} alt=""
                             style={{ width:'100%', height:155, objectFit:'cover', display:'block' }}/>
                           <div style={{ position:'absolute', top:7, left:7,
                             width:8, height:8, borderRadius:'50%',
@@ -275,7 +282,7 @@ export function FriendProfilePage({ userId, friendshipId, onClose, onOpen, onNav
                       <div style={{ borderRadius:14, overflow:'hidden', marginBottom:7,
                         boxShadow:`0 4px 18px rgba(0,0,0,${dark?.22:.10})`,
                         position:'relative' }}>
-                        <img src={item.img} alt=""
+                        <img src={getPosterUrl(item)} alt=""
                           style={{ width:'100%', height:168, objectFit:'cover', display:'block' }}/>
                         <div style={{ position:'absolute', inset:0,
                           background:'linear-gradient(to top,rgba(0,0,0,.45) 0%,transparent 55%)' }}/>
