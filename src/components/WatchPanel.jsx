@@ -9,6 +9,7 @@ import { useAuth } from '../context/AuthContext'
 import { getNextAiredEpisode, shouldShowNextEpisodeButton } from '../utils/playerNavigation'
 import { buildMegaplayEmbedUrl, getTrustedPlayerMessage } from '../utils/playerSecurity'
 import { fetchTmdbEpisodeStill } from '../services/tmdb'
+import { useCastSession } from '../hooks/useCastSession'
 
 function IconCheck() {
   return (
@@ -25,6 +26,16 @@ function IconWatchAgain() {
       stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
       <polyline points="1 4 1 10 7 10"/>
       <path d="M3.51 15a9 9 0 1 0 .49-4.5"/>
+    </svg>
+  )
+}
+
+function IconCast() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" stroke="none">
+      <path d="M3 6h2v2H3zm4 2h2v2H7zm4 2h2v2h-2z"/>
+      <path d="M3 15h18V3H3v12zm2-10h14v8H5V5z" opacity="0.3"/>
+      <rect x="3" y="19" width="18" height="2" rx="1"/>
     </svg>
   )
 }
@@ -56,6 +67,7 @@ export function WatchPanel({ item, onEp, onStatus }) {
   const { user } = useAuth()
   const { t } = useTranslation()
   const isMobile = useIsMobile()
+  const { castAvailable, castConnected, requestSession, stopCasting } = useCastSession()
 
   const [state,     setState]     = useState('loading')
   const [epCount,   setEpCount]   = useState(null)
@@ -321,6 +333,19 @@ export function WatchPanel({ item, onEp, onStatus }) {
                 </button>
               ))}
             </div>
+            {castAvailable && (
+              <div style={{ width: 1, height: 16, background: dark ? 'rgba(255,255,255,.15)' : 'rgba(0,0,0,.12)' }}/>
+            )}
+            {castAvailable && (
+              <button className="t" onClick={castConnected ? stopCasting : requestSession}
+                style={{ padding: '4px 10px', borderRadius: 10, border: 'none', cursor: 'pointer',
+                  fontSize: 11, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4,
+                  background: castConnected ? '#FF3B30' : (dark ? 'rgba(255,255,255,.1)' : 'rgba(0,0,0,.07)'),
+                  color: castConnected ? '#fff' : T.sub }}>
+                <IconCast />
+                Cast
+              </button>
+            )}
           </div>
         )}
       </div>
