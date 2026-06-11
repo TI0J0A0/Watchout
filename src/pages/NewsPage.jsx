@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useTheme } from '../context/ThemeContext'
+import { useIsMobile } from '../hooks/useIsMobile'
 import { useTmdbPosterBatch } from '../hooks/useTmdbPosterBatch'
 import { fetchUpcoming, fetchSeasonalTrailers } from '../services/jikan'
 import { fetchLatestTrailers } from '../services/anilist'
@@ -74,7 +75,7 @@ function TrailerCard({ item, isPlaying, onToggle, T }) {
         </div>
         <div className="t" onClick={onToggle} style={{ padding: '12px 14px', cursor: 'pointer' }}>
           <p style={{ fontSize: 14, fontWeight: 600, color: T.txt, marginBottom: 2 }}>{item.title}</p>
-          <p style={{ fontSize: 12, color: T.sub }}>{item.studio} · {item.year}</p>
+          <p style={{ fontSize: isMobile ? 13 : 12, color: T.sub }}>{item.studio} · {item.year}</p>
         </div>
       </div>
     )
@@ -105,7 +106,7 @@ function TrailerCard({ item, isPlaying, onToggle, T }) {
         )}
         {item.status === 'NOT_YET_RELEASED' && (
           <span style={{ position: 'absolute', top: 8, right: 8, zIndex: 3,
-            fontSize: 10, fontWeight: 700, padding: '3px 7px', borderRadius: 6,
+            fontSize: isMobile ? 12 : 10, fontWeight: 700, padding: '3px 7px', borderRadius: 6,
             background: 'rgba(0,0,0,.6)', color: '#FFD60A', letterSpacing: '.04em',
             backdropFilter: 'blur(6px)' }}>SOON</span>
         )}
@@ -122,7 +123,7 @@ function TrailerCard({ item, isPlaying, onToggle, T }) {
       <div style={{ padding: '12px 14px' }}>
         <p style={{ fontSize: 14, fontWeight: 600, color: T.txt, marginBottom: 2,
           overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.title}</p>
-        <p style={{ fontSize: 12, color: T.sub }}>{item.studio} · {item.year}</p>
+        <p style={{ fontSize: isMobile ? 13 : 12, color: T.sub }}>{item.studio} · {item.year}</p>
       </div>
     </div>
   )
@@ -149,14 +150,14 @@ function NewsCard({ item, onOpen, badge, badgeColor, T }) {
           background: 'linear-gradient(to bottom, transparent 55%, rgba(0,0,0,.55) 100%)' }} />
         {badge && (
           <span style={{ position: 'absolute', top: 8, left: 8,
-            fontSize: 10, fontWeight: 700, padding: '3px 7px', borderRadius: 6,
+            fontSize: isMobile ? 12 : 10, fontWeight: 700, padding: '3px 7px', borderRadius: 6,
             background: badgeColor, color: '#fff', letterSpacing: '.04em' }}>{badge}</span>
         )}
       </div>
       <div style={{ padding: '10px 12px' }}>
         <p style={{ fontSize: 13, fontWeight: 600, color: T.txt, marginBottom: 2,
           overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.title}</p>
-        <p style={{ fontSize: 11, color: T.sub }}>{item.studio}</p>
+        <p style={{ fontSize: isMobile ? 12 : 11, color: T.sub }}>{item.studio}</p>
       </div>
     </div>
   )
@@ -185,6 +186,7 @@ function formatClock(ts) {
 export function NewsPage({ data, loading, onOpen }) {
   const { T, dark } = useTheme()
   const { t }       = useTranslation()
+  const isMobile    = useIsMobile()
 
   const [tab, setTab]                         = useState(NEWS_PAGE_DEFAULT_TAB)
   const [upcoming, setUpcoming]               = useState([])
@@ -352,7 +354,7 @@ export function NewsPage({ data, loading, onOpen }) {
 
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginLeft: 'auto' }}>
               {lastUpdated && (
-                <span style={{ fontSize: 11, color: T.sub, whiteSpace: 'nowrap' }}>
+                <span style={{ fontSize: isMobile ? 12 : 11, color: T.sub, whiteSpace: 'nowrap' }}>
                   {t('news.updatedAt', { time: formatClock(lastUpdated) })}
                 </span>
               )}

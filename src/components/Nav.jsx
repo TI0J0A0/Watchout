@@ -2,6 +2,7 @@ import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useTheme } from '../context/ThemeContext'
 import { useAuth } from '../context/AuthContext'
+import { useIsMobile } from '../hooks/useIsMobile'
 import { useClickOutside } from '../hooks/useClickOutside'
 import { AvatarPic } from './AvatarPic'
 import { NotificationBell } from './NotificationBell'
@@ -66,12 +67,17 @@ export function Nav({ page, setPage, userProfile, onLogin, onShowMAL, onSelectCa
   const { T, dark, setDark } = useTheme()
   const { user, signOut }    = useAuth()
   const { t }                = useTranslation()
+  const isMobile             = useIsMobile()
   const [menu, setMenu]      = useState(false)
   const [browseMenu, setBrowseMenu] = useState(null)
   const menuRef              = useRef(null)
   const browseRef            = useRef(null)
   useClickOutside(menuRef, () => setMenu(false))
   useClickOutside(browseRef, () => setBrowseMenu(null))
+
+  // Mobile-friendly touch target sizes
+  const buttonSize = isMobile ? 44 : 34
+  const navGap = 8 // FIX: was gap:2 (too small)
 
   const navigate = (nextPage) => {
     setPage(nextPage)
@@ -144,7 +150,7 @@ export function Nav({ page, setPage, userProfile, onLogin, onShowMAL, onSelectCa
         </button>
 
         {/* Links */}
-        <div ref={browseRef} className="hide-sm" style={{display:"flex",gap:2,flex:1,overflowX:"visible",scrollbarWidth:"none"}}>
+        <div ref={browseRef} className="hide-sm" style={{display:"flex",gap:navGap,flex:1,overflowX:"visible",scrollbarWidth:"none"}}>
           {PAGES.filter(([id])=>id!=="search" && id!=="categories").map(([id,l])=>(
             <button key={id} className="navbtn t" onClick={()=>navigate(id)}
               style={navButtonStyle(page===id)}>
@@ -176,7 +182,7 @@ export function Nav({ page, setPage, userProfile, onLogin, onShowMAL, onSelectCa
         <div style={{display:"flex",gap:8,alignItems:"center",marginLeft:8}}>
           {/* Search icon — desktop only */}
           <button className="t hbtn hide-sm" onClick={()=>navigate("search")}
-            style={{width:34,height:34,borderRadius:"50%",border:`1px solid ${page==="search"?"#8B5CF6":T.bord}`,
+            style={{width:buttonSize,height:buttonSize,borderRadius:"50%",border:`1px solid ${page==="search"?"#8B5CF6":T.bord}`,
               background:page==="search"?"rgba(139,92,246,.16)":T.surf,
               display:"flex",alignItems:"center",justifyContent:"center",
               flexShrink:0,color:page==="search"?"#A78BFA":T.sub}}>
@@ -243,9 +249,9 @@ export function Nav({ page, setPage, userProfile, onLogin, onShowMAL, onSelectCa
                 {t('nav.signIn')}
               </button>
               <button className="t show-sm" onClick={onLogin}
-                style={{width:32,height:32,borderRadius:"50%",border:"none",flexShrink:0,
+                style={{width:buttonSize,height:buttonSize,borderRadius:"50%",border:"none",flexShrink:0,
                   background:"#8B5CF6",color:"#fff",fontSize:15,cursor:"pointer",
-                  alignItems:"center",justifyContent:"center"}}>
+                  display:"flex",alignItems:"center",justifyContent:"center"}}>
                 ↗
               </button>
             </>

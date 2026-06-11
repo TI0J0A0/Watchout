@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useTheme } from '../context/ThemeContext'
+import { useIsMobile } from '../hooks/useIsMobile'
 import { useTmdbPosterBatch } from '../hooks/useTmdbPosterBatch'
 import { fetchByGenre } from '../services/jikan'
 import { MediaCard } from '../components/MediaCard'
@@ -30,6 +31,7 @@ function getMostWatchedGenre(library) {
 
 export function CategoriesPage({ library, onOpen, onStatus, initialGenreId }) {
   const { T, dark } = useTheme()
+  const isMobile = useIsMobile()
   const [mode, setMode]             = useState('genre')
   const [selectedId, setSelectedId] = useState(() => getGenreById(initialGenreId).id)
   const [animes, setAnimes]         = useState([])
