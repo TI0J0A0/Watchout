@@ -1128,7 +1128,7 @@ export function ProfilePage({ library, onOpen, onStatus, onLogin, onViewFriend =
           onClick={e => { if (e.target === e.currentTarget) closeFriendModal() }}>
           <div style={{ width:'100%', maxWidth:400, borderRadius:20,
             background:T.surf, border:`1px solid ${T.bord}`,
-            padding:24, boxShadow:'0 20px 60px rgba(0,0,0,.4)', maxHeight:'80vh',
+            padding:24, boxShadow:'0 20px 60px rgba(0,0,0,.4)', maxHeight:'min(80vh, 80dvh)',
             display:'flex', flexDirection:'column' }}>
 
             <div style={{ display:'flex', alignItems:'center',

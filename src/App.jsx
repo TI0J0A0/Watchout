@@ -332,7 +332,7 @@ function AppInner() {
 
   return (
     <div style={{
-      minHeight: '100vh', background: T.bg, color: T.txt,
+      minHeight: 'min(100vh, 100dvh)', background: T.bg, color: T.txt,
       fontFamily: "-apple-system,'SF Pro Display','Helvetica Neue',sans-serif",
       transition: 'background .3s,color .3s',
     }}>

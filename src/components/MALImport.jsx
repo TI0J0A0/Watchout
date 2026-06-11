@@ -92,6 +92,7 @@ export function MALImport({ onImport, onClose }) {
       onClick={onClose}>
       <div className="sc" style={{background:T.surf,borderRadius:20,padding:28,
         width:'100%',maxWidth:440,margin:'0 16px',
+        maxHeight:'min(86vh, 86dvh)',overflowY:'auto',
         border:`1px solid ${T.bord}`,
         boxShadow:`0 24px 80px rgba(0,0,0,${dark?.5:.2})`}}
         onClick={e => e.stopPropagation()}>

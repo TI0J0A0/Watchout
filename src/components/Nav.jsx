@@ -134,9 +134,11 @@ export function Nav({ page, setPage, userProfile, onLogin, onShowMAL, onSelectCa
       backdropFilter:"blur(10px)", WebkitBackdropFilter:"blur(10px)",
       transform:"translateZ(0)", willChange:"transform",
       borderBottom:`1px solid ${dark ? 'rgba(255,255,255,.08)' : T.bord}`,
-      boxShadow: dark ? "0 14px 40px rgba(0,0,0,.22)" : "none"}}>
+      boxShadow: dark ? "0 14px 40px rgba(0,0,0,.22)" : "none",
+      paddingTop:"env(safe-area-inset-top, 0px)"}}>
       <div style={{display:"flex",alignItems:"center",
-        padding:"0 28px",height:56}}>
+        padding:"0 max(28px, env(safe-area-inset-right, 0px)) 0 max(28px, env(safe-area-inset-left, 0px))",
+        height:56}}>
 
         {/* Logo */}
         <button type="button" aria-label="Go to Discover" onClick={() => navigate("seasonal")}

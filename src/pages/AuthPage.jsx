@@ -64,6 +64,7 @@ export function AuthPage({ onClose }) {
       <div ref={boxRef} className="sc" style={{
         position:'relative',
         width:'100%',maxWidth:400,
+        maxHeight:'min(90vh, 90dvh)',overflowY:'auto',
         background:T.surf,borderRadius:24,
         padding:'32px 28px',
         boxShadow:`0 32px 80px rgba(0,0,0,${dark ? .6 : .22})`}}>
