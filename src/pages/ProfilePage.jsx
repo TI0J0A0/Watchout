@@ -5,6 +5,8 @@ import { useIsMobile } from '../hooks/useIsMobile'
 import { useAuth } from '../context/AuthContext'
 import { SM, AVATAR_GRADS, BANNER_THEMES } from '../constants'
 import { fetchAnilistBannerOnly, searchAnilistCharacters } from '../services/anilist'
+import { useTmdbImage } from '../hooks/useTmdbImage'
+import { useTmdbPosterBatch } from '../hooks/useTmdbPosterBatch'
 import { AvatarPic } from '../components/AvatarPic'
 import { MediaCard } from '../components/MediaCard'
 import { ProfileStatsGrid } from '../components/profile/ProfileStatsGrid'
@@ -54,6 +56,7 @@ export function ProfilePage({ library, onOpen, onStatus, onLogin, onViewFriend =
   const charTimer = useRef(null)
   const [pinnedBanner,  setPinnedBanner]  = useState(null)
   const [bannerLoading, setBannerLoading] = useState(null)
+  const [tmdbPosters,   setTmdbPosters]   = useState({})
   const [avatarBroken,  setAvatarBroken]  = useState(false)
   const [nameAvailable, setNameAvailable] = useState(null)
   const [nameChecking,  setNameChecking]  = useState(false)
@@ -203,6 +206,12 @@ export function ProfilePage({ library, onOpen, onStatus, onLogin, onViewFriend =
   const editBannerPreview = draft.bannerUrl || pinnedBanner || bannerBlurImg
   const editActionDisabled = saving || nameAvailable === false || nameChecking || !hasUnsavedChanges
   const visibleLibrary = displayed.slice(0, libraryLimit)
+
+  // Fetch TMDB posters for displayed items + pinnedAnime + autoBannerAnime
+  const tmdbPosterBatch = useTmdbPosterBatch([...(visibleLibrary || []), pinnedAnime, autoBannerAnime, draftPinnedAnime].filter(Boolean))
+
+  // Helper to get TMDB poster with fallback
+  const getPosterUrl = (item) => tmdbPosterBatch[item?.id] ?? item?.img ?? null
 
   useEffect(() => {
     setLibraryLimit(isMobile ? 24 : 36)
@@ -356,13 +365,13 @@ export function ProfilePage({ library, onOpen, onStatus, onLogin, onViewFriend =
           style={{ borderRadius:18, overflow:'hidden', cursor:'pointer', position:'relative', height:88,
             background:`linear-gradient(135deg,${pinnedAnime.color},${pinnedAnime.colorB})`,
             boxShadow:`0 8px 28px ${pinnedAnime.color}33`, marginBottom:24 }}>
-          <img src={pinnedAnime.img} alt="" style={{ position:'absolute', inset:0,
+          <img src={getPosterUrl(pinnedAnime)} alt="" style={{ position:'absolute', inset:0,
             width:'100%', height:'100%', objectFit:'cover', objectPosition:'center top', opacity:.28 }}/>
           <div style={{ position:'absolute', inset:0,
             background:'linear-gradient(90deg, rgba(0,0,0,.62) 55%, transparent)' }}/>
           <div style={{ position:'relative', display:'flex', alignItems:'center',
             gap:12, padding:'12px 16px', height:'100%', boxSizing:'border-box' }}>
-            <img src={pinnedAnime.img} alt="" style={{ width:46, height:62, objectFit:'cover',
+            <img src={getPosterUrl(pinnedAnime)} alt="" style={{ width:46, height:62, objectFit:'cover',
               borderRadius:10, flexShrink:0, boxShadow:'0 2px 12px rgba(0,0,0,.45)' }}/>
             <div style={{ minWidth:0 }}>
               <p style={{ fontSize:9, fontWeight:700, color:'rgba(255,255,255,.6)',
@@ -665,7 +674,7 @@ export function ProfilePage({ library, onOpen, onStatus, onLogin, onViewFriend =
                           border: selected ? '2.5px solid #0A84FF' : '2.5px solid transparent',
                           background: dark ? 'rgba(255,255,255,.06)' : 'rgba(0,0,0,.05)',
                         }}>
-                        <img src={item.img} alt={item.title}
+                        <img src={getPosterUrl(item)} alt={item.title}
                           style={{ width:'100%', height:'100%', objectFit:'cover', display:'block', opacity: loading ? .4 : 1 }} />
                         {loading && (
                           <div style={{ position:'absolute', inset:0, display:'flex', alignItems:'center', justifyContent:'center' }}>
@@ -701,7 +710,7 @@ export function ProfilePage({ library, onOpen, onStatus, onLogin, onViewFriend =
                 <div style={{ display:'flex', alignItems:'center', gap:10, padding:'8px 12px',
                   borderRadius:12, background:'rgba(10,132,255,.1)',
                   border:'1px solid rgba(10,132,255,.2)', marginBottom:10 }}>
-                  <img src={draftPinnedAnime.img} alt="" style={{ width:32, height:44, objectFit:'cover', borderRadius:6 }}/>
+                  <img src={getPosterUrl(draftPinnedAnime)} alt="" style={{ width:32, height:44, objectFit:'cover', borderRadius:6 }}/>
                   <p style={{ fontSize:13, fontWeight:600, color:'#0A84FF',
                     overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{draftPinnedAnime.title}</p>
                 </div>

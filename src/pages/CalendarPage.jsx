@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { DAYS, SC, SM } from '../constants'
 import { useTheme } from '../context/ThemeContext'
 import { useIsMobile } from '../hooks/useIsMobile'
+import { useTmdbPosterBatch } from '../hooks/useTmdbPosterBatch'
 import { Chip, ClickableCard } from '../components/ui'
 import { getStreamingProviderName } from '../utils/streaming'
 
@@ -26,6 +27,12 @@ export function CalendarPage({ data, onOpen }) {
 
   const scrollTo = day =>
     sectionRefs.current[day]?.scrollIntoView({ behavior:'smooth', block:'start' });
+
+  // Fetch TMDB posters for all items
+  const tmdbPosterBatch = useTmdbPosterBatch(data)
+
+  // Helper to get TMDB poster with fallback
+  const getPosterUrl = (item) => tmdbPosterBatch[item?.id] ?? item?.img ?? null
 
   return (
     <div className="fu" style={{paddingTop:32,paddingBottom:48}}>
@@ -112,8 +119,8 @@ export function CalendarPage({ data, onOpen }) {
                       <div style={{position:"absolute",left:0,top:0,bottom:0,width:3,borderRadius:"0 2px 2px 0",
                         background:`linear-gradient(to bottom,${item.color},${item.colorB})`}}/>
 
-                      {item.img ? (
-                        <img src={item.img} alt="" style={{width: isMobile ? 52 : 48,height: isMobile ? 74 : 68,objectFit:"cover",
+                      {getPosterUrl(item) ? (
+                        <img src={getPosterUrl(item)} alt="" style={{width: isMobile ? 52 : 48,height: isMobile ? 74 : 68,objectFit:"cover",
                           borderRadius:10,flexShrink:0}}/>
                       ) : (
                         <div style={{width: isMobile ? 52 : 48,height: isMobile ? 74 : 68,borderRadius:10,flexShrink:0,
