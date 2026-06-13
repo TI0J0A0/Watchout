@@ -14,6 +14,11 @@ export function TopPage({ topData, loading, onOpen }) {
   const { T } = useTheme();
   const { t } = useTranslation();
 
+  // Hooks must run on every render — keep them above any early return so the
+  // hook count stays stable when `loading` flips (React error #310 otherwise).
+  const tmdbPosterBatch = useTmdbPosterBatch(topData)
+  const getPosterUrl = (item) => tmdbPosterBatch[item?.id] ?? item?.img ?? null
+
   if (loading) return (
     <div style={{paddingTop:32,paddingBottom:48}}>
       <p style={{fontSize:13,color:T.sub,marginBottom:3}}>{t('top.subtitle')}</p>
@@ -24,12 +29,6 @@ export function TopPage({ topData, loading, onOpen }) {
 
   const top3 = topData.slice(0,3);
   const rest = topData.slice(3);
-
-  // Fetch TMDB posters for all items
-  const tmdbPosterBatch = useTmdbPosterBatch(topData)
-
-  // Helper to get TMDB poster with fallback
-  const getPosterUrl = (item) => tmdbPosterBatch[item?.id] ?? item?.img ?? null
 
   return (
     <div className="fu" style={{paddingTop:32,paddingBottom:48}}>
