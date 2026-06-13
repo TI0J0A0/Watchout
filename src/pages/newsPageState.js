@@ -4,6 +4,7 @@ export const NEWS_PAGE_TABS = [
   { id: 'trailers', labelKey: 'news.tabTrailers' },
   { id: 'onair', labelKey: 'news.tabOnAir' },
   { id: 'upcoming', labelKey: 'news.tabUpcoming' },
+  { id: 'foryou', labelKey: 'news.tabForYou' },
 ]
 
 // Auto-refresh interval for the trailers feed (30 min).

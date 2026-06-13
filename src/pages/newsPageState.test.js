@@ -8,7 +8,7 @@ import {
 
 test('news page defaults to trailers and has no news tab', () => {
   assert.equal(NEWS_PAGE_DEFAULT_TAB, 'trailers')
-  assert.deepEqual(NEWS_PAGE_TABS.map(tab => tab.id), ['trailers', 'onair', 'upcoming'])
+  assert.deepEqual(NEWS_PAGE_TABS.map(tab => tab.id), ['trailers', 'onair', 'upcoming', 'foryou'])
   assert.equal(NEWS_PAGE_TABS.some(tab => tab.id === 'news'), false)
 })
 
