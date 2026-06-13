@@ -2,7 +2,10 @@ import { useState, useEffect, useRef, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useTheme } from '../context/ThemeContext'
 import { useTmdbPosterBatch } from '../hooks/useTmdbPosterBatch'
-import { fetchUpcoming, fetchSeasonalTrailers } from '../services/jikan'
+import {
+  fetchUpcoming, fetchSeasonal, fetchSeasonalTrailers,
+  fetchRecommendations, fetchCandidatesByGenres,
+} from '../services/jikan'
 import { fetchLatestTrailers } from '../services/anilist'
 import {
   NEWS_PAGE_DEFAULT_TAB, NEWS_PAGE_TABS, TRAILERS_REFRESH_MS,
@@ -61,7 +64,7 @@ function useTilt(maxDeg = 10) {
   return { ref, tiltStyle, gx: t.gx, gy: t.gy, on: canTilt && t.on, move, leave }
 }
 
-function TrailerCard({ item, isPlaying, onToggle, T }) {
+function TrailerCard({ item, isPlaying, onToggle, T, getPosterUrl }) {
   const { ref, tiltStyle, gx, gy, on, move, leave } = useTilt(7)
 
   if (isPlaying) {
@@ -128,7 +131,7 @@ function TrailerCard({ item, isPlaying, onToggle, T }) {
   )
 }
 
-function NewsCard({ item, onOpen, badge, badgeColor, T }) {
+function NewsCard({ item, onOpen, badge, badgeColor, T, getPosterUrl }) {
   const { ref, tiltStyle, gx, gy, on, move, leave } = useTilt(12)
 
   return (
@@ -189,6 +192,8 @@ export function NewsPage({ data, loading, onOpen }) {
   const [tab, setTab]                         = useState(NEWS_PAGE_DEFAULT_TAB)
   const [upcoming, setUpcoming]               = useState([])
   const [upcomingLoading, setUpcomingLoading] = useState(true)
+  const [onAir, setOnAir]                     = useState([])
+  const [onAirLoading, setOnAirLoading]       = useState(true)
   const [playing, setPlaying]                 = useState(null)
 
   // ── Auto-refreshing trailer feed (AniList) merged with library trailers ──
@@ -199,6 +204,81 @@ export function NewsPage({ data, loading, onOpen }) {
   const [genreFilter, setGenreFilter]     = useState(null)
   const [newOnly, setNewOnly]             = useState(false)
   const seenRef = useRef(null)
+
+  // ── "For You" recommendations, driven by the user's watch history ──
+  const [becauseRows, setBecauseRows]   = useState([])
+  const [suggested, setSuggested]       = useState([])
+  const [forYouLoading, setForYouLoading] = useState(true)
+  const forYouKey = useRef(null)
+
+  const watched = useMemo(() =>
+    data.filter(item => item.userStatus === 'watching' || item.userStatus === 'completed'),
+  [data])
+
+  const libraryIds = useMemo(() =>
+    new Set(data.filter(item => item.userStatus != null).map(item => item.id)),
+  [data])
+
+  useEffect(() => {
+    // Seed recommendations from the user's best-rated watched titles.
+    const seeds = [...watched]
+      .sort((a, b) => (b.userScore ?? 0) - (a.userScore ?? 0) || (b.userEp ?? 0) - (a.userEp ?? 0))
+      .slice(0, 3)
+    const key = seeds.map(item => item.id).join(',')
+    if (forYouKey.current === key) return
+    forYouKey.current = key
+
+    if (!seeds.length) {
+      setBecauseRows([])
+      setSuggested([])
+      setForYouLoading(false)
+      return
+    }
+
+    let cancelled = false
+    setForYouLoading(true)
+    ;(async () => {
+      const results = await Promise.allSettled(seeds.map(seed => fetchRecommendations(seed.id)))
+      const rows = results
+        .map((res, i) => ({
+          source: seeds[i],
+          items: res.status === 'fulfilled'
+            ? res.value.filter(item => !libraryIds.has(item.id))
+            : [],
+        }))
+        .filter(row => row.items.length > 0)
+
+      // "You'll probably like" — top titles from the watcher's favourite genres,
+      // excluding anything already in the library or already recommended above.
+      const genres = [...new Set(watched.flatMap(item => item.genres ?? []))].slice(0, 4)
+      const pool = await fetchCandidatesByGenres(genres, { perGenre: 12 }).catch(() => [])
+      const recommendedIds = new Set(rows.flatMap(row => row.items.map(item => item.id)))
+      const probable = pool
+        .filter(item => !libraryIds.has(item.id) && !recommendedIds.has(item.id))
+        .slice(0, 12)
+
+      if (!cancelled) {
+        setBecauseRows(rows)
+        setSuggested(probable)
+        setForYouLoading(false)
+      }
+    })().catch(() => { if (!cancelled) setForYouLoading(false) })
+    return () => { cancelled = true }
+  }, [watched, libraryIds])
+
+  // Currently-airing season feed (Jikan /seasons/now) — loaded automatically
+  // and refreshed on the same cycle as the trailers, no manual reload needed.
+  const loadOnAir = useRef(async () => {})
+  loadOnAir.current = async () => {
+    try {
+      const fetched = await fetchSeasonal()
+      if (fetched.length) setOnAir(fetched)
+    } catch {
+      /* keep previous list on failure */
+    } finally {
+      setOnAirLoading(false)
+    }
+  }
 
   const loadTrailers = useRef(async (isManual = false) => {})
   loadTrailers.current = async (isManual = false) => {
@@ -224,9 +304,16 @@ export function NewsPage({ data, loading, onOpen }) {
   // Initial load + interval auto-refresh + refresh when tab regains focus.
   useEffect(() => {
     loadTrailers.current()
-    const interval = setInterval(() => loadTrailers.current(), TRAILERS_REFRESH_MS)
+    loadOnAir.current()
+    const interval = setInterval(() => {
+      loadTrailers.current()
+      loadOnAir.current()
+    }, TRAILERS_REFRESH_MS)
     const onVisible = () => {
-      if (document.visibilityState === 'visible') loadTrailers.current()
+      if (document.visibilityState === 'visible') {
+        loadTrailers.current()
+        loadOnAir.current()
+      }
     }
     document.addEventListener('visibilitychange', onVisible)
     return () => {
@@ -242,16 +329,9 @@ export function NewsPage({ data, loading, onOpen }) {
       .finally(() => setUpcomingLoading(false))
   }, [])
 
-  // Merge auto-fetched trailers with any trailers from the user's library,
-  // de-duplicating by id and keeping the fresh feed first.
-  const trailers = useMemo(() => {
-    const byId = new Map()
-    for (const item of feedTrailers) byId.set(item.id, item)
-    for (const item of data) {
-      if (item.trailer && !byId.has(item.id)) byId.set(item.id, item)
-    }
-    return [...byId.values()]
-  }, [feedTrailers, data])
+  // Trailers come exclusively from the auto-refreshed release feed — the
+  // user's library never leaks into this tab.
+  const trailers = feedTrailers
 
   const trailerGenres = useMemo(() => {
     const set = new Set()
@@ -269,13 +349,19 @@ export function NewsPage({ data, loading, onOpen }) {
 
   const newCount = useMemo(() => trailers.filter(item => item.isNew).length, [trailers])
 
-  const releases = data.filter(item => item.airing)
+  // "On Air" = auto-fetched current season feed only (release-based, not the
+  // user's library).
+  const releases = useMemo(() => onAir.filter(item => item.airing), [onAir])
 
-  const tabCounts = { trailers: trailers.length, onair: releases.length, upcoming: upcoming.length }
+  const forYouCount = suggested.length + becauseRows.reduce((n, row) => n + row.items.length, 0)
+  const tabCounts = {
+    trailers: trailers.length, onair: releases.length,
+    upcoming: upcoming.length, foryou: forYouCount,
+  }
   const tabs = NEWS_PAGE_TABS.map(item => ({ ...item, label: t(item.labelKey), count: tabCounts[item.id] ?? 0 }))
 
   // Fetch TMDB posters for all items
-  const allItems = [...trailers, ...releases, ...upcoming]
+  const allItems = [...trailers, ...releases, ...upcoming, ...suggested, ...becauseRows.flatMap(row => row.items)]
   const tmdbPosterBatch = useTmdbPosterBatch(allItems)
 
   // Helper to get TMDB poster with fallback
@@ -382,7 +468,7 @@ export function NewsPage({ data, loading, onOpen }) {
           ) : (
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 18 }}>
               {visibleTrailers.map(item => (
-                <TrailerCard key={item.id} item={item} T={T}
+                <TrailerCard key={item.id} item={item} T={T} getPosterUrl={getPosterUrl}
                   isPlaying={playing === item.id}
                   onToggle={() => setPlaying(playing === item.id ? null : item.id)} />
               ))}
@@ -393,7 +479,7 @@ export function NewsPage({ data, loading, onOpen }) {
 
       {/* On Air */}
       {tab === 'onair' && (
-        loading ? <Spinner T={T} /> :
+        (loading || onAirLoading) && releases.length === 0 ? <Spinner T={T} /> :
         releases.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '60px 0' }}>
             <p style={{ fontSize: 38, opacity: .14, marginBottom: 10 }}>📡</p>
@@ -402,7 +488,7 @@ export function NewsPage({ data, loading, onOpen }) {
         ) : (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: 18 }}>
             {releases.map(item => (
-              <NewsCard key={item.id} item={item} onOpen={onOpen} T={T}
+              <NewsCard key={item.id} item={item} onOpen={onOpen} T={T} getPosterUrl={getPosterUrl}
                 badge={t('seasonal.airingBadge')} badgeColor="#34C759" />
             ))}
           </div>
@@ -414,10 +500,53 @@ export function NewsPage({ data, loading, onOpen }) {
         upcomingLoading ? <Spinner T={T} /> : (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: 18 }}>
             {upcoming.map(item => (
-              <NewsCard key={item.id} item={item} onOpen={onOpen} T={T}
+              <NewsCard key={item.id} item={item} onOpen={onOpen} T={T} getPosterUrl={getPosterUrl}
                 badge="SOON" badgeColor="#FF9F0A" />
             ))}
           </div>
+        )
+      )}
+
+      {/* For You — recommendations based on the user's watch history */}
+      {tab === 'foryou' && (
+        forYouLoading ? <Spinner T={T} /> :
+        suggested.length === 0 && becauseRows.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: '60px 0' }}>
+            <p style={{ fontSize: 38, opacity: .14, marginBottom: 10 }}>✨</p>
+            <p style={{ fontSize: 14, color: T.sub }}>{t('news.forYouEmpty')}</p>
+          </div>
+        ) : (
+          <>
+            {suggested.length > 0 && (
+              <div style={{ marginBottom: 34 }}>
+                <h3 style={{ fontSize: 18, fontWeight: 700, color: T.txt, marginBottom: 2 }}>
+                  {t('news.probablyLike')}
+                </h3>
+                <p style={{ fontSize: 12.5, color: T.sub, marginBottom: 14 }}>
+                  {t('news.probablyLikeSubtitle')}
+                </p>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: 18 }}>
+                  {suggested.map(item => (
+                    <NewsCard key={item.id} item={item} onOpen={onOpen} T={T} getPosterUrl={getPosterUrl}
+                      badge="FOR YOU" badgeColor="#BF5AF2" />
+                  ))}
+                </div>
+              </div>
+            )}
+            {becauseRows.map(row => (
+              <div key={row.source.id} style={{ marginBottom: 34 }}>
+                <h3 style={{ fontSize: 18, fontWeight: 700, color: T.txt, marginBottom: 14 }}>
+                  {t('news.becauseYouWatched', { title: row.source.title })}
+                </h3>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: 18 }}>
+                  {row.items.map(item => (
+                    <NewsCard key={item.id} item={item} onOpen={onOpen} T={T} getPosterUrl={getPosterUrl}
+                      badge="FOR YOU" badgeColor="#BF5AF2" />
+                  ))}
+                </div>
+              </div>
+            ))}
+          </>
         )
       )}
     </div>
