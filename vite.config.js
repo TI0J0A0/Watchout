@@ -20,4 +20,7 @@ export default defineConfig({
     sourcemap: false,
     chunkSizeWarningLimit: 600,
   },
+  preview: {
+    allowedHosts: ['funnyroll.com', 'www.funnyroll.com'],
+  },
 })
