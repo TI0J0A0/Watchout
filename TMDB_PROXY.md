@@ -10,6 +10,13 @@ on your VPS that injects the key and forwards to `api.themoviedb.org`. The image
 files themselves come straight from TMDB's public CDN (`image.tmdb.org`), which
 needs no key — so only the metadata/search calls go through the proxy.
 
+**Request economy:** cards and grids resolve a title with a **single** search
+call — the poster/backdrop come straight from that search result, so there is
+**no** second `/images` request per item. Results (incl. the poster path) are
+cached in `localStorage` under `watchout_tmdb_map_v2`, so reloads make zero
+calls. The heavier `/images` (full gallery) and `/season/{n}` (episode stills)
+endpoints are only hit on the detail page and the player, respectively.
+
 ```
 browser ──> https://your-vps/tmdb/<path>  ──(adds key)──> https://api.themoviedb.org/3/<path>
 browser ──> https://image.tmdb.org/t/p/...  (public, direct)
@@ -22,11 +29,11 @@ The proxy must accept `GET /<anything><?query>` and forward it verbatim to
 returning the JSON unchanged. It must also allow CORS from the site origin.
 
 Paths the app calls:
-- `GET /search/tv?query=…&first_air_date_year=…&include_adult=false`
-- `GET /search/movie?query=…&year=…&include_adult=false`
-- `GET /tv/{id}/images?include_image_language=en,ja,null`
+- `GET /search/tv?query=…[&first_air_date_year=…]&include_adult=false` — resolves the title **and** yields the poster/backdrop used on cards (the year is dropped on a retry if the first search misses; a romaji-title retry follows)
+- `GET /search/movie?query=…[&year=…]&include_adult=false`
+- `GET /tv/{id}/images?include_image_language=en,ja,null` — full artwork gallery, **detail page only**
 - `GET /movie/{id}/images?include_image_language=en,ja,null`
-- `GET /tv/{id}/season/1/episode/{n}/images`
+- `GET /tv/{id}/season/{n}` — every episode still for a season in **one** request (player); defaults to season 1
 
 ## 2. Proxy — nginx (simplest)
 

@@ -136,11 +136,14 @@ Watchout/
 │   │   ├── useLibrary.js          # Global library state
 │   │   ├── useClickOutside.js     # Close on outside click
 │   │   ├── useIsMobile.js         # Mobile detection (≤640px)
-│   │   └── useOnScreen.js         # Intersection Observer
+│   │   ├── useOnScreen.js         # Intersection Observer
+│   │   ├── useTmdbPosterBatch.js  # Batch TMDB posters for grids/cards
+│   │   └── useTmdbImage.js        # Single TMDB poster/backdrop
 │   │
 │   ├── services/                  # Data access layer
 │   │   ├── anilist.js             # AniList GraphQL API
 │   │   ├── jikan.js               # Jikan API (MyAnimeList)
+│   │   ├── tmdb.js                # TMDB artwork layer (proxied) + id cache
 │   │   ├── userAnime.js           # User library CRUD (Supabase)
 │   │   ├── friends.js             # Profiles and friendships (Supabase)
 │   │   ├── community.js           # Forum and feedback (Supabase)
@@ -1095,13 +1098,20 @@ MegaPlay iframe
 
 ### `NewsPage.jsx`
 
-**Responsibility:** Trailers & Releases hub. Three tabs: **Trailers**, **On Air**, **Upcoming**.
+**Responsibility:** Trailers & Releases hub. Four tabs: **Trailers**, **On Air**, **Upcoming**, **For You**. The Trailers and On Air feeds are release-based and refresh on their own — they are **not** sourced from the user's library.
 
 **Trailers tab:**
 - Auto-refreshing feed via `fetchLatestTrailers()` (AniList), with a `fetchSeasonalTrailers()` (Jikan) fallback when AniList returns nothing.
 - Refreshes every 30 min (`TRAILERS_REFRESH_MS`) and whenever the tab regains focus; plus a manual refresh button with "Updated HH:MM".
 - **NEW** badge on trailers first seen within 48h — tracked in `localStorage` via `readSeenTrailers` / `annotateNewTrailers` / `persistSeenTrailers` (in `newsPageState.js`, unit-tested).
 - Filters: "New only" toggle + genre chips. Cards play the trailer inline (tilt effect on hover-capable pointers).
+
+**On Air / Upcoming tabs:** current-season (`fetchSeasonal()`) and upcoming (`fetchUpcoming()`) feeds, refreshed on the same cycle as the trailers.
+
+**For You tab:** taste-based recommendations from the user's watch history (Watching/Completed):
+- **"You'll probably like"** — top titles from the viewer's favorite genres (`fetchCandidatesByGenres`).
+- **"Because you watched X"** — `fetchRecommendations()` (MAL) for the 3 best-rated watched titles.
+- Titles already in the library and duplicates across rows are filtered out; empty state invites the user to watch/rate anime.
 
 ---
 

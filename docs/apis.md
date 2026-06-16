@@ -397,12 +397,49 @@ Engagement events (`anime_open`, `episode_play`, `watchlist_add`, `banner_view/c
 
 ---
 
+## 8. TMDB (image layer)
+
+**Base URL:** `VITE_TMDB_PROXY_URL` (a key-injecting proxy on the VPS) + `https://image.tmdb.org/t/p` (public CDN)
+**Authentication:** v4 Read Token, **server-side only** (never reaches the browser)
+**File:** `src/services/tmdb.js` · hooks `useTmdbPosterBatch`, `useTmdbImage`
+**Setup:** see [`TMDB_PROXY.md`](../TMDB_PROXY.md)
+
+The **first-choice** source for artwork (posters, backdrops, episode stills), with graceful fallback to the Jikan/AniList/Kitsu image already on the item. TMDB has no MAL/AniList id, so items are matched by **title + year** and the result is cached in `localStorage`. If `VITE_TMDB_PROXY_URL` is unset, the whole layer is disabled (`TMDB_ENABLED === false`) and the app keeps its existing images.
+
+### Resolution & caching
+
+`resolveTmdb(item)` maps an app item (MAL id) to a TMDB reference, cached by MAL id under **`watchout_tmdb_map_v2`** (incl. negative results). Matching is intentionally forgiving — Jikan's per-season year/English title often differ from TMDB's:
+
+1. `search/{tv|movie}?query={title}&{first_air_date_year|year}={year}` (precise)
+2. retry **without** the year (catches sequels/cours where the year diverges)
+3. retry with the **romaji** title
+
+The cached value is `{ id, mediaType, poster, backdrop } | null` — the poster/backdrop paths come straight from the search hit, so cards need **no** second request.
+
+### Functions
+
+| Function | Calls | Used by |
+|----------|-------|---------|
+| `fetchTmdbPoster(item, size)` | resolve only (cached) | `useTmdbPosterBatch` (grids/cards), `useTmdbImage` |
+| `fetchTmdbBackdrop(item, size)` | resolve only (cached) | `useTmdbImage('backdrop')` |
+| `fetchTmdbImages(item)` | resolve + `GET /{type}/{id}/images?include_image_language=en,ja,null` | `AnimePage` gallery, `SeasonalPage` hero — always seeded with the search poster/backdrop so the list is never empty when TMDB has art |
+| `fetchTmdbSeasonStills(item, n=1)` | resolve + `GET /tv/{id}/season/{n}` | `WatchPanel` — returns `{ [ep]: stillUrl }` for the **whole season in one request** |
+| `fetchTmdbEpisodeStill(item, ep)` | derives from `fetchTmdbSeasonStills` (shared cache) | `ContinueWatchingRow` |
+| `tmdbImg(path, kind)` | none (URL builder) | everywhere; `kind` ∈ `poster`/`posterXl`/`backdrop`/`still`/`logo` |
+
+> **Why no `/images` per card:** the search response already carries `poster_path`/`backdrop_path`, so the grids resolve a title in a single call. The language-filtered `/images` list can come back empty for titles whose art is tagged in other languages — that used to leave cards blank even though TMDB had a poster; the search poster avoids that filter.
+
+> **Episode-still limitation:** anime episode numbering rarely matches TMDB's season split, so `fetchTmdbSeasonStills` targets **season 1** by default. Sequels/cours may miss some stills; the player falls back to the AniList episode thumbnail, then the poster.
+
+---
+
 ## Environment Variables
 
 ```env
 VITE_SUPABASE_URL          # Supabase project URL (https://...)
 VITE_SUPABASE_ANON_KEY     # Public JWT key (starts with eyJ...)
 SUPABASE_SERVICE_ROLE_KEY  # Service role key — Edge Functions only, never expose client-side
+VITE_TMDB_PROXY_URL        # TMDB key-injecting proxy base URL (no trailing slash); empty = TMDB disabled
 ```
 
 ---
@@ -413,6 +450,7 @@ SUPABASE_SERVICE_ROLE_KEY  # Service role key — Edge Functions only, never exp
 |-----|------|------|-------------|
 | Jikan (MAL) | REST | None | Anime metadata, search, seasons, relations, trailer fallback |
 | AniList | GraphQL | None | Episode data, banners, characters, schedules, trailer feed |
+| TMDB | REST (via proxy) + CDN | v4 token (server-side) | First-choice artwork: posters, backdrops, episode stills |
 | Kitsu | REST | None | Fallback cover artwork for the hero |
 | MegaPlay | iframe embed | None | Streaming player with postMessage comms |
 | AniSkip | REST | None | OP/ED skip timestamps |
