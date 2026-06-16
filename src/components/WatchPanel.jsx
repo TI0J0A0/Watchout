@@ -8,7 +8,7 @@ import { trackMetricEvent } from '../services/metrics'
 import { useAuth } from '../context/AuthContext'
 import { getNextAiredEpisode, shouldShowNextEpisodeButton } from '../utils/playerNavigation'
 import { buildMegaplayEmbedUrl, getTrustedPlayerMessage } from '../utils/playerSecurity'
-import { fetchTmdbEpisodeStill } from '../services/tmdb'
+import { fetchTmdbSeasonStills } from '../services/tmdb'
 import { useCastSession } from '../hooks/useCastSession'
 
 function IconCheck() {
@@ -143,20 +143,13 @@ export function WatchPanel({ item, onEp, onStatus }) {
     return () => { cancelled = true }
   }, [item.id])
 
-  // Fetch TMDB episode stills for all aired episodes
+  // Fetch TMDB episode stills for the whole season in a single request.
   useEffect(() => {
     if (!item?.id || epCount === null) return
     let cancelled = false
-    const fetchStills = async () => {
-      const stills = {}
-      for (let ep = 1; ep <= epCount; ep++) {
-        if (cancelled) return
-        const still = await fetchTmdbEpisodeStill(item, ep).catch(() => null)
-        if (still) stills[ep] = still
-      }
-      if (!cancelled) setTmdbStills(stills)
-    }
-    fetchStills()
+    fetchTmdbSeasonStills(item)
+      .then(stills => { if (!cancelled) setTmdbStills(stills) })
+      .catch(() => {})
     return () => { cancelled = true }
   }, [item, epCount])
 

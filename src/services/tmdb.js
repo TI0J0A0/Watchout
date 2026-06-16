@@ -122,13 +122,28 @@ export async function fetchTmdbImages(item) {
   }
 }
 
-// Best-effort episode still. Anime episode numbering rarely matches TMDB's
-// season/episode split, so this is a best-effort lookup against season 1; the
-// caller should fall back (AniList still → poster) when it returns null.
-export async function fetchTmdbEpisodeStill(item, epNumber) {
+// All episode stills for a season in a SINGLE request, as { [epNumber]: url }.
+// The `/tv/{id}/season/{n}` endpoint already includes every episode's
+// still_path, so this replaces one-request-per-episode with one per season.
+// Anime numbering rarely matches TMDB's season split, so we target season 1 by
+// default; callers fall back (AniList still → poster) for whatever is missing.
+export async function fetchTmdbSeasonStills(item, seasonNumber = 1) {
   const ref = await resolveTmdb(item)
-  if (!ref || ref.mediaType !== 'tv' || !epNumber) return null
-  const data = await tget(`/tv/${ref.id}/season/1/episode/${epNumber}/images`)
-  const still = data?.stills?.[0]?.file_path
-  return still ? tmdbImg(still, 'still') : null
+  if (!ref || ref.mediaType !== 'tv') return {}
+  const data = await tget(`/tv/${ref.id}/season/${seasonNumber}`)
+  const out = {}
+  for (const ep of data?.episodes ?? []) {
+    if (ep?.episode_number != null && ep.still_path) {
+      out[ep.episode_number] = tmdbImg(ep.still_path, 'still')
+    }
+  }
+  return out
+}
+
+// Best-effort still for a single episode. Derives from the cached season fetch
+// so it shares the same request as fetchTmdbSeasonStills within a session.
+export async function fetchTmdbEpisodeStill(item, epNumber) {
+  if (!epNumber) return null
+  const stills = await fetchTmdbSeasonStills(item)
+  return stills[epNumber] ?? null
 }
