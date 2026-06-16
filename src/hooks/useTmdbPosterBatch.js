@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react'
-import { fetchTmdbImages, tmdbImg, TMDB_ENABLED } from '../services/tmdb'
+import { fetchTmdbPoster, TMDB_ENABLED } from '../services/tmdb'
 
 // Batch fetch TMDB posters for multiple items and cache them.
 // Returns object keyed by item.id with TMDB poster URLs or null.
+// Uses the cheap search-only path (no /images call) — one request per item,
+// and only the first time it's seen (results are cached in localStorage).
 export function useTmdbPosterBatch(items = []) {
   const [posters, setPosters] = useState({})
 
@@ -17,10 +19,8 @@ export function useTmdbPosterBatch(items = []) {
           result[item.id] = posters[item.id]
           continue
         }
-        const imgs = await fetchTmdbImages(item).catch(() => null)
-        if (imgs?.posters?.[0]) {
-          result[item.id] = tmdbImg(imgs.posters[0], 'posterXl')
-        }
+        const url = await fetchTmdbPoster(item, 'posterXl').catch(() => null)
+        if (url) result[item.id] = url
       }
       if (!cancelled) setPosters(prev => ({ ...prev, ...result }))
     }
