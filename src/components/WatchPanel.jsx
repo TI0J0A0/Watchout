@@ -370,7 +370,6 @@ export function WatchPanel({ item, onEp, onStatus }) {
                 src={embedUrl}
                 style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', border: 'none' }}
                 allow="autoplay; fullscreen; picture-in-picture"
-                sandbox="allow-scripts allow-same-origin allow-presentation allow-forms"
                 referrerPolicy="strict-origin-when-cross-origin"
                 allowFullScreen
                 onLoad={() => {
