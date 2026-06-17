@@ -1,5 +1,34 @@
 # Changelog
 
+## [2026-06-13] — News "For You", TMDB Optimization, and Production Fixes
+
+**Files:** `src/services/tmdb.js`, `src/hooks/useTmdbPosterBatch.js`, `src/hooks/useTmdbImage.js`, `src/components/WatchPanel.jsx`, `src/pages/NewsPage.jsx`, `src/pages/newsPageState.js`, `src/pages/TopPage.jsx`, `src/i18n/en.json`, `vite.config.js`, `README.md`, `TMDB_PROXY.md`, `docs/apis.md`
+
+### What Changed
+- **News › For You**: new tab with "You'll probably like" (top titles from your favorite genres) and "Because you watched X" (MAL recommendations from your best-rated watched titles). Items already in your library are filtered out.
+- **News › Trailers / On Air**: both feeds are now release-based (seasonal/trailer feeds) and refresh on their own (30 min + on focus) — no longer merged with the user's library.
+- **Top Anime crash fixed**: `useTmdbPosterBatch` ran after an `if (loading) return`, changing the hook count between renders (React error #310). Hooks moved above the early return.
+- **Video player**: removed the iframe `sandbox` attribute — the streaming provider refused to run inside a sandboxed frame ("Sandboxed our player is not allowed").
+
+### TMDB / Images
+- **~50% fewer calls**: posters/backdrops now come straight from the search result; the per-card `/images` request is gone. Resolved paths are cached in `localStorage` (`watchout_tmdb_map_v2`), so reloads make zero calls.
+- **Posters that were missing now load**: the language-filtered `/images` list returned empty for titles whose art is tagged in other languages; the search poster has no such filter.
+- **Forgiving matching**: title+year → title-only → romaji-title retries (covers sequels/cours where Jikan's year diverges from TMDB's).
+- **Episode stills**: `WatchPanel` fetched one request per episode (24 eps → 24 calls); now `fetchTmdbSeasonStills` pulls the whole season in **one** `/tv/{id}/season/{n}` request, shared with `ContinueWatchingRow`.
+
+### Deployment
+- Committed `preview.allowedHosts` for `funnyroll.com` to `vite.config.js` so the production `vite preview` no longer needs a local-only edit (was causing `git pull` conflicts on every deploy).
+- Documented the origin HTTPS setup (Cloudflare Origin Certificate + nginx `listen 443 ssl`, Full (strict)) used to resolve the Cloudflare 522.
+
+### Docs
+- Added a TMDB section to `docs/apis.md` (was missing) and updated `TMDB_PROXY.md` proxy paths to match the search-only card path and the season-stills endpoint.
+
+### Validation
+- `node --test src/pages/newsPageState.test.js`
+- `npm run build`
+
+---
+
 ## [2026-06-04] - Auto-refreshing Trailers, Trending Shelf, Crunchyroll Cards & Scroll Performance
 
 **Files:** `src/services/anilist.js`, `src/services/jikan.js`, `src/services/metrics.js`, `src/services/metricsAnalytics.js`, `src/services/animeLookup.js`, `src/pages/NewsPage.jsx`, `src/pages/newsPageState.js`, `src/pages/SeasonalPage.jsx`, `src/pages/AnimePage.jsx`, `src/components/MediaCard.jsx`, `src/components/ShelfRow.jsx`, `src/components/BackToTop.jsx`, `src/components/Nav.jsx`, `src/hooks/useLibrary.js`, `src/hooks/useIsMobile.js`, `src/utils/apiCache.js`, `src/utils/streaming.js`, `src/App.jsx`, `src/index.css`, `src/i18n/en.json`, `.gitignore`

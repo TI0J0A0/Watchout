@@ -11,7 +11,7 @@
 
 ## About
 
-Watchout (deployed as **funnyroll.com**) is a media tracker and discovery app for anime. It pulls live data from [Jikan API v4](https://jikan.moe/) (MyAnimeList) and the [AniList GraphQL API](https://anilist.gitbook.io/anilist-apiv2-docs/), enriches artwork from Kitsu, and surfaces trailers and news. Your library, profile, social graph, and analytics are stored in **Supabase** (PostgreSQL + Auth + Edge Functions). The UI is localized with i18next (English by default).
+Watchout (deployed as **funnyroll.com**) is a media tracker and discovery app for anime. It pulls live data from [Jikan API v4](https://jikan.moe/) (MyAnimeList) and the [AniList GraphQL API](https://anilist.gitbook.io/anilist-apiv2-docs/), uses **TMDB** as the first-choice source for artwork (with Kitsu as a fallback), and surfaces trailers and news. Your library, profile, social graph, and analytics are stored in **Supabase** (PostgreSQL + Auth + Edge Functions). The UI is localized with i18next (English by default).
 
 ---
 
@@ -19,7 +19,7 @@ Watchout (deployed as **funnyroll.com**) is a media tracker and discovery app fo
 
 - **Seasonal browser** — cinematic hero carousel with static artwork, animated progress dots, and horizontally-scrolling shelves (Continue Watching, Trending Now, For You, genre rows).
 - **Trending Now** — a shelf ranked from **real engagement metrics** (views, plays, watchlist adds, banner clicks) aggregated from `site_metrics_events`.
-- **Trailers & Releases (News)** — an **auto-refreshing** trailer feed (AniList, with a Jikan fallback) that flags newly-dropped trailers with a **NEW** badge, plus genre filters, On-Air, and Upcoming tabs.
+- **Trailers & Releases (News)** — an **auto-refreshing** trailer feed (AniList, with a Jikan fallback) that flags newly-dropped trailers with a **NEW** badge, plus genre filters, On-Air, Upcoming, and a **For You** tab ("You'll probably like" + "Because you watched X", driven by your watch history). The Trailers and On-Air feeds are release-based and refresh on their own — never tied to your library.
 - **Crunchyroll-style cards** — large 2:3 posters with a rich hover panel (title, rating, episodes, synopsis).
 - **Top rankings**, **weekly calendar**, and **categories/genre** browsing.
 - **Search** — debounced global search across MyAnimeList with recent-search history.
@@ -51,7 +51,8 @@ Watchout (deployed as **funnyroll.com**) is a media tracker and discovery app fo
 | Styling | Tailwind CSS v4 + inline styles (no component library) |
 | i18n | i18next + react-i18next |
 | Backend / Auth | Supabase (PostgreSQL, Auth, Edge Functions) |
-| Anime data | Jikan API v4 (MyAnimeList), AniList GraphQL, Kitsu (covers) |
+| Anime data | Jikan API v4 (MyAnimeList), AniList GraphQL |
+| Artwork | TMDB (first choice, via key-injecting proxy), Kitsu (fallback covers) |
 | News | Anime News Network (via the `fetch-ann-news` edge function) |
 
 ---
@@ -84,8 +85,9 @@ VITE_SUPABASE_ANON_KEY=eyJ...
 |---|---|
 | `VITE_SUPABASE_URL` | Supabase dashboard → Project Settings → API → Project URL |
 | `VITE_SUPABASE_ANON_KEY` | Supabase dashboard → Project Settings → API → `anon public` key |
+| `VITE_TMDB_PROXY_URL` *(optional)* | Base URL of your TMDB key-injecting proxy (no trailing slash). Empty = TMDB artwork disabled, falls back to Jikan/AniList/Kitsu. See [`TMDB_PROXY.md`](./TMDB_PROXY.md). |
 
-> Without these, the app still boots but auth, the personal library, and analytics are disabled.
+> Without the Supabase vars, the app still boots but auth, the personal library, and analytics are disabled.
 
 ### Database & Edge Functions
 
