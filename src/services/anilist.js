@@ -3,6 +3,9 @@ import { CARD_PALETTES as PALETTES } from '../constants/index.js'
 const GQL = 'https://graphql.anilist.co'
 const gqlCache = new Map()
 const GQL_TTL_MS = 10 * 60 * 1000
+const GQL_RETRIES = 2
+
+const sleep = ms => new Promise(r => setTimeout(r, ms))
 
 function getAnilistHeroImages(media) {
   return {
@@ -19,16 +22,32 @@ async function gql(query, variables = {}) {
 
   const promise = (async () => {
   try {
-    const res = await fetch(GQL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-      body: JSON.stringify({ query, variables }),
-    })
-    if (!res.ok) return null
-    const json = await res.json()
-    const value = json?.data ?? null
-    gqlCache.set(key, { value, expiresAt: Date.now() + GQL_TTL_MS })
-    return value
+    // AniList rate-limits aggressively (HTTP 429), especially during the burst
+    // of queries fired at app start. Retry transient 429/5xx with backoff so a
+    // single throttled request doesn't permanently blank a view (e.g. Calendar).
+    for (let attempt = 0; ; attempt++) {
+      let res
+      try {
+        res = await fetch(GQL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+          body: JSON.stringify({ query, variables }),
+        })
+      } catch (err) {
+        if (attempt < GQL_RETRIES) { await sleep(500 * 2 ** attempt); continue }
+        throw err
+      }
+      if ((res.status === 429 || res.status >= 500) && attempt < GQL_RETRIES) {
+        const retryAfter = Number(res.headers.get('Retry-After'))
+        await sleep(Number.isFinite(retryAfter) && retryAfter > 0 ? retryAfter * 1000 : 500 * 2 ** attempt)
+        continue
+      }
+      if (!res.ok) return null
+      const json = await res.json()
+      const value = json?.data ?? null
+      gqlCache.set(key, { value, expiresAt: Date.now() + GQL_TTL_MS })
+      return value
+    }
   } catch {
     return null
   } finally {
@@ -110,6 +129,63 @@ export async function fetchAnilistHeroImages(malId) {
     }
   `, { malId })
   return getAnilistHeroImages(data?.Media)
+}
+
+// ── Weekly airing schedule ───────────────────────────────────────────────────
+// Pulls the airing schedule for a window around "now" in a single paged query
+// and returns a map keyed by MAL id → { airingAt (unix seconds), episode }.
+// Per anime we keep the most relevant slot for the current week: the soonest
+// episode airing today or later; only if there is none do we fall back to the
+// most recent past one. This keeps an episode that already aired *today* on
+// today (so it can be dimmed) while pushing an episode that aired on a previous
+// day to its next upcoming weekday. Used by the Calendar for exact local times,
+// episode numbers and countdowns.
+function pickBetterSlot(candidate, prev, startOfTodaySec) {
+  if (!prev) return true
+  const cUpcoming = candidate.airingAt >= startOfTodaySec
+  const pUpcoming = prev.airingAt >= startOfTodaySec
+  if (cUpcoming !== pUpcoming) return cUpcoming
+  // both upcoming → keep the soonest; both past → keep the most recent
+  return cUpcoming ? candidate.airingAt < prev.airingAt : candidate.airingAt > prev.airingAt
+}
+
+export async function fetchAiringSchedule({ daysBack = 3, daysAhead = 8, maxPages = 6 } = {}) {
+  const nowSec = Math.floor(Date.now() / 1000)
+  const start  = nowSec - daysBack  * 24 * 3600
+  const end    = nowSec + daysAhead * 24 * 3600
+  const startOfTodaySec = Math.floor(new Date().setHours(0, 0, 0, 0) / 1000)
+
+  const byMalId = {}
+  let page = 1
+  let hasNext = true
+  while (hasNext && page <= maxPages) {
+    const data = await gql(`
+      query($start: Int, $end: Int, $page: Int) {
+        Page(page: $page, perPage: 50) {
+          pageInfo { hasNextPage }
+          airingSchedules(airingAt_greater: $start, airingAt_lesser: $end, sort: TIME) {
+            episode
+            airingAt
+            media { idMal }
+          }
+        }
+      }
+    `, { start, end, page })
+
+    const nodes = data?.Page?.airingSchedules ?? []
+    for (const s of nodes) {
+      const malId = s.media?.idMal
+      if (!malId || s.airingAt == null) continue
+      const candidate = { airingAt: s.airingAt, episode: s.episode ?? null }
+      if (pickBetterSlot(candidate, byMalId[malId], startOfTodaySec)) {
+        byMalId[malId] = candidate
+      }
+    }
+
+    hasNext = !!data?.Page?.pageInfo?.hasNextPage
+    page++
+  }
+  return byMalId
 }
 
 // ── Latest trailers ─────────────────────────────────────────────────────────
