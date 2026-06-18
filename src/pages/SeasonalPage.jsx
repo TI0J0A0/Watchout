@@ -573,7 +573,7 @@ export function SeasonalPage({
               title={t('seasonal.trendingNow')}
               subtitle={t('seasonal.trendingNowSubtitle')}
               items={enrichedTrending} loading={trendingLoading}
-              onOpen={onOpen} onStatus={onStatus}
+              onOpen={onOpen} onStatus={onStatus} showStatus={false}
               onRefresh={loadTrending} refreshing={trendingLoading} />
           )}
 
@@ -583,7 +583,7 @@ export function SeasonalPage({
             title={t('seasonal.airing')}
             subtitle={t('seasonal.airingSubtitle')}
             items={airingSeasonal} loading={false}
-            onOpen={onOpen} onStatus={onStatus}
+            onOpen={onOpen} onStatus={onStatus} showStatus={false}
             headerRight={
               <div style={{ display: 'flex', gap: 6 }}>
                 {typeFilters.map(([v, l]) => (
@@ -605,7 +605,7 @@ export function SeasonalPage({
               title={personality?.section ?? 'For You'}
               subtitle={`Based on: ${tasteProfile.topGenres.slice(0, 3).join(', ')}`}
               items={forYouItems} loading={false}
-              onOpen={onOpen} onStatus={onStatus}
+              onOpen={onOpen} onStatus={onStatus} showStatus={false}
               matchScores={Object.fromEntries(forYouItems.map(a => [a.id, a._match]))}
             />
           )}
@@ -617,7 +617,7 @@ export function SeasonalPage({
               title={`Because you watched ${becauseAnime?.title ?? ''}`}
               subtitle="You might also like these"
               items={becauseRecs} loading={false}
-              onOpen={onOpen} onStatus={onStatus}
+              onOpen={onOpen} onStatus={onStatus} showStatus={false}
             />
           )}
 
@@ -655,7 +655,7 @@ export function SeasonalPage({
                   title="Picked for You"
                   subtitle="Seasonal anime matching your picks"
                   items={coldItems} loading={false}
-                  onOpen={onOpen} onStatus={onStatus}
+                  onOpen={onOpen} onStatus={onStatus} showStatus={false}
                 />
               )}
             </>
@@ -668,7 +668,7 @@ export function SeasonalPage({
                 title={t(`seasonal.sections.${key}.title`)}
                 subtitle={t(`seasonal.sections.${key}.subtitle`)}
                 items={enrichedSections[key]} loading={loadingSet.has(key)}
-                onOpen={onOpen} onStatus={onStatus}
+                onOpen={onOpen} onStatus={onStatus} showStatus={false}
                 onRefresh={refreshHandlers[key]} refreshing={refreshingSet.has(key)} />
             </LazyShelf>
           ))}
@@ -704,7 +704,7 @@ export function SeasonalPage({
           }}>
             {gridItems.map((it, i) => (
               <MediaCard key={it.id} item={it} delay={i * 35}
-                onOpen={onOpen} onStatus={onStatus} />
+                onOpen={onOpen} onStatus={onStatus} showStatus={false} />
             ))}
           </div>
         )}
