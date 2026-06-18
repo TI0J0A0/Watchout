@@ -120,30 +120,3 @@ export async function deleteFeedback(id) {
   if (!supabase) return
   await supabase.from('feedback').delete().eq('id', id)
 }
-
-// ── Anime Comments ─────────────────────────────────────────────────────────────
-
-export async function fetchAnimeComments(animeId) {
-  if (!supabase) return []
-  const { data, error } = await supabase
-    .from('anime_comments')
-    .select('id, content, created_at, user_id, profiles(username, display_name, avatar_grad, avatar_url)')
-    .eq('anime_id', animeId)
-    .order('created_at', { ascending: false })
-    .limit(20)
-  if (error) throw error
-  return data ?? []
-}
-
-export async function createAnimeComment({ userId, animeId, content }) {
-  if (!supabase) throw new Error('Not configured')
-  const { error } = await supabase
-    .from('anime_comments')
-    .insert({ user_id: userId, anime_id: animeId, content })
-  if (error) throw error
-}
-
-export async function deleteAnimeComment(id) {
-  if (!supabase) return
-  await supabase.from('anime_comments').delete().eq('id', id)
-}

@@ -1,15 +1,9 @@
 import { createCachedJsonFetcher } from '../utils/apiCache.js'
 import { GENRES } from '../constants/browse.js'
+import { CARD_PALETTES as PALETTES } from '../constants/index.js'
 
 const BASE = "https://api.jikan.moe/v4";
 const cachedGet = createCachedJsonFetcher({ ttlMs: 5 * 60 * 1000 })
-
-const PALETTES = [
-  ["#FF6B35","#FF9A5C"], ["#5856D6","#AF52DE"], ["#34AADC","#5AC8FA"],
-  ["#30B0C7","#64D2FF"], ["#FF9F0A","#FFD60A"], ["#BF5AF2","#DA8FFF"],
-  ["#32ADE6","#5AC8FA"], ["#FF2D55","#FF6B81"], ["#34C759","#30D158"],
-  ["#636366","#98989D"],
-];
 
 const DAY_KEY = {
   Mondays:"Mon", Tuesdays:"Tue", Wednesdays:"Wed",
@@ -237,7 +231,7 @@ export async function fetchRelations(id) {
 const GENRE_ID_BY_EN = Object.fromEntries(GENRES.map(g => [g.name, g.id]))
 const EN_BY_PT = Object.fromEntries(Object.entries(GENRE_PT).map(([en, pt]) => [pt, en]))
 
-export function genreIdFromName(name) {
+function genreIdFromName(name) {
   if (!name) return null
   const en = EN_BY_PT[name] || name
   return GENRE_ID_BY_EN[en] ?? null

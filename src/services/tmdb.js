@@ -63,7 +63,7 @@ async function searchHit(kind, q, extra = '') {
 // Matching is forgiving on purpose: Jikan's per-season year and English title
 // often differ from TMDB's, so we try the precise (title+year) query first,
 // then fall back to title-only and finally the romaji title before giving up.
-export async function resolveTmdb(item) {
+async function resolveTmdb(item) {
   if (!PROXY || !item?.id) return null
   const map = loadMap()
   const key = String(item.id)

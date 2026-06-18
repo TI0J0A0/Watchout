@@ -1,7 +1,7 @@
 import { supabase } from './supabase'
 import { fetchExactCount, mapById, sortByNumericFieldsDesc } from './adminShared'
 
-export const ADMIN_EMAIL = 'joaoguiar99@gmail.com'
+const ADMIN_EMAIL = 'joaoguiar99@gmail.com'
 export const isAdmin = (user) => user?.email === ADMIN_EMAIL
 
 export async function loadPremiumStatus(userId) {

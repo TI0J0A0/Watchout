@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useTheme } from '../context/ThemeContext'
+import { CARD_PALETTES as PALETTES } from '../constants/index.js'
 
 const S_COLOR = {
   'watching':      '#34C759',
@@ -16,13 +17,6 @@ const STATUS_MAP = {
   'Dropped':       'dropped',
   'Plan to Watch': 'plan_to_watch',
 }
-
-const PALETTES = [
-  ['#FF6B35','#FF9A5C'],['#5856D6','#AF52DE'],['#34AADC','#5AC8FA'],
-  ['#30B0C7','#64D2FF'],['#FF9F0A','#FFD60A'],['#BF5AF2','#DA8FFF'],
-  ['#32ADE6','#5AC8FA'],['#FF2D55','#FF6B81'],['#34C759','#30D158'],
-  ['#636366','#98989D'],
-]
 
 function parseMALXML(xmlText, t) {
   const doc = new DOMParser().parseFromString(xmlText, 'text/xml')

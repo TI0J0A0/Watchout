@@ -2,7 +2,7 @@ const KITSU = 'https://kitsu.io/api/edge'
 const coverCache = new Map()
 const COVER_TTL_MS = 30 * 60 * 1000
 
-export function getKitsuCoverImage(anime) {
+function getKitsuCoverImage(anime) {
   const cover = anime?.attributes?.coverImage
   const poster = anime?.attributes?.posterImage
   return cover?.original || cover?.large || cover?.small || cover?.tiny ||

@@ -15,13 +15,13 @@ import { useEffect } from 'react'
 // While a scope is on the stack, spatial nav is constrained to its subtree.
 const scopeStack = [] // [{ el, prevFocus }]
 
-export function pushFocusScope(el) {
+function pushFocusScope(el) {
   if (!el) return
   scopeStack.push({ el, prevFocus: document.activeElement })
   requestAnimationFrame(() => getFocusables(el)[0]?.focus())
 }
 
-export function popFocusScope(el) {
+function popFocusScope(el) {
   const idx = scopeStack.findIndex(s => s.el === el)
   if (idx === -1) return
   const [scope] = scopeStack.splice(idx, 1)
@@ -55,7 +55,7 @@ function isVisible(el) {
   return r.width > 0 || r.height > 0
 }
 
-export function getFocusables(root = activeRoot()) {
+function getFocusables(root = activeRoot()) {
   return Array.from(root.querySelectorAll(FOCUSABLE_SELECTOR)).filter(isVisible)
 }
 

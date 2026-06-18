@@ -1,8 +1,10 @@
+import { CARD_PALETTES as PALETTES } from '../constants/index.js'
+
 const GQL = 'https://graphql.anilist.co'
 const gqlCache = new Map()
 const GQL_TTL_MS = 10 * 60 * 1000
 
-export function getAnilistHeroImages(media) {
+function getAnilistHeroImages(media) {
   return {
     bannerImage: media?.bannerImage ?? null,
     coverImage: media?.coverImage?.extraLarge ?? null,
@@ -113,12 +115,6 @@ export async function fetchAnilistHeroImages(malId) {
 // ── Latest trailers ─────────────────────────────────────────────────────────
 // Pulls currently-releasing + upcoming anime that have a YouTube trailer,
 // ordered by trending so freshly-dropped PVs surface first.
-
-const PALETTES = [
-  ['#FF6B35', '#FF9A5C'], ['#5856D6', '#AF52DE'], ['#34AADC', '#5AC8FA'],
-  ['#30B0C7', '#64D2FF'], ['#FF9F0A', '#FFD60A'], ['#BF5AF2', '#DA8FFF'],
-  ['#32ADE6', '#5AC8FA'], ['#FF2D55', '#FF6B81'], ['#34C759', '#30D158'],
-]
 
 function trailerEmbedUrl(trailer) {
   if (!trailer?.id) return null

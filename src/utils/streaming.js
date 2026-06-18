@@ -1,7 +1,7 @@
 // Some persisted records store each provider as a JSON string
 // (e.g. '{"name":"HIDIVE","url":"..."}'). Normalize to a plain object so the
 // rest of the app can treat providers uniformly.
-export function normalizeStreamingProvider(provider) {
+function normalizeStreamingProvider(provider) {
   if (provider && typeof provider === 'object') return provider
   if (typeof provider !== 'string') return null
   const trimmed = provider.trim()

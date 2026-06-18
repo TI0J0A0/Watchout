@@ -38,7 +38,7 @@ export const EMPTY_ADMIN_METRICS = {
 
 // Engagement weights for the public "Trending Now" shelf. Stronger intent
 // (adding to watchlist, playing an episode) counts more than a passing open.
-export const TRENDING_EVENT_WEIGHTS = {
+const TRENDING_EVENT_WEIGHTS = {
   anime_open: 1,
   anime_view: 1,
   search_result_click: 1.2,

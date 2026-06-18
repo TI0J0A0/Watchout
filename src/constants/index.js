@@ -1,5 +1,15 @@
 export const DAYS = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
 
+// Deterministic card gradient palette, indexed by `id % CARD_PALETTES.length`.
+// Shared across the catalogue sources (Jikan, AniList) and the MAL importer so
+// the same anime always gets the same colour.
+export const CARD_PALETTES = [
+  ["#FF6B35","#FF9A5C"], ["#5856D6","#AF52DE"], ["#34AADC","#5AC8FA"],
+  ["#30B0C7","#64D2FF"], ["#FF9F0A","#FFD60A"], ["#BF5AF2","#DA8FFF"],
+  ["#32ADE6","#5AC8FA"], ["#FF2D55","#FF6B81"], ["#34C759","#30D158"],
+  ["#636366","#98989D"],
+];
+
 export const CATALOG = [
   { id:1, title:"Dandadan", score:8.9, eps:12, type:"anime", studio:"Science SARU", year:"2024",
     genres:["Ação","Sobrenatural","Romance"], airing:true, airDay:"Sat", duration:24,
