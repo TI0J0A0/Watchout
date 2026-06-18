@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useTheme } from '../context/ThemeContext'
 import { useIsMobile } from '../hooks/useIsMobile'
@@ -207,8 +207,19 @@ export function ProfilePage({ library, onOpen, onStatus, onLogin, onViewFriend =
   const editActionDisabled = saving || nameAvailable === false || nameChecking || !hasUnsavedChanges
   const visibleLibrary = displayed.slice(0, libraryLimit)
 
-  // Fetch TMDB posters for displayed items + pinnedAnime + autoBannerAnime
-  const tmdbPosterBatch = useTmdbPosterBatch([...(visibleLibrary || []), pinnedAnime, autoBannerAnime, draftPinnedAnime].filter(Boolean))
+  // Top library titles shown in the banner picker (sorted by user score).
+  const bannerPickerAnime = useMemo(
+    () => [...animeLib].sort((a, b) => (b.userScore ?? 0) - (a.userScore ?? 0)).slice(0, 20),
+    [animeLib]
+  )
+
+  // Resolve TMDB posters only for the items getPosterUrl actually renders: the
+  // pinned/banner titles and the banner picker. The main library grid is NOT
+  // included — each MediaCard resolves its own poster via useTmdbImage, so
+  // feeding the whole library here would just duplicate that work.
+  const tmdbPosterBatch = useTmdbPosterBatch(
+    [pinnedAnime, autoBannerAnime, draftPinnedAnime, ...bannerPickerAnime].filter(Boolean)
+  )
 
   // Helper to get TMDB poster with fallback
   const getPosterUrl = (item) => tmdbPosterBatch[item?.id] ?? item?.img ?? null
@@ -661,7 +672,7 @@ export function ProfilePage({ library, onOpen, onStatus, onLogin, onViewFriend =
                   Banner de um anime
                 </p>
                 <div style={{ display:'grid', gridTemplateColumns: isMobile ? 'repeat(3, 1fr)' : 'repeat(5, minmax(0, 1fr))', gap:10 }}>
-                  {[...animeLib].sort((a,b) => (b.userScore??0)-(a.userScore??0)).slice(0,20).map(item => {
+                  {bannerPickerAnime.map(item => {
                     const loading  = bannerLoading === item.id
                     const selected = draft.bannerUrl && bannerLoading !== item.id &&
                       draft.bannerAnimeId === item.id
