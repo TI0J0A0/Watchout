@@ -20,7 +20,7 @@ function RefreshButton({ onClick, busy, T, label }) {
   )
 }
 
-export const ShelfRow = memo(function ShelfRow({ title, emoji, subtitle, items, loading, onOpen, onStatus, headerRight, matchScores = {}, onRefresh, refreshing }) {
+export const ShelfRow = memo(function ShelfRow({ title, emoji, subtitle, items, loading, onOpen, onStatus, headerRight, matchScores = {}, onRefresh, refreshing, showStatus = true }) {
   const { T, dark } = useTheme()
   const isMobile = useIsMobile()
   const scrollRef = useRef(null)
@@ -158,6 +158,7 @@ export const ShelfRow = memo(function ShelfRow({ title, emoji, subtitle, items, 
             : items.map((it, i) => (
                 <MediaCard key={it.id} item={it} delay={i * 40}
                   onOpen={onOpen} onStatus={onStatus} variant="shelf"
+                  showStatus={showStatus}
                   matchPct={matchScores[it.id] ?? undefined}/>
               ))
           }

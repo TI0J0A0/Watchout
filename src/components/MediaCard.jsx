@@ -8,7 +8,7 @@ import { fmt } from '../utils'
 import { StatusBtn } from './StatusBtn'
 import { useTmdbImage } from '../hooks/useTmdbImage'
 
-export const MediaCard = memo(function MediaCard({ item, delay, onOpen, onStatus, variant = 'grid', matchPct }) {
+export const MediaCard = memo(function MediaCard({ item, delay, onOpen, onStatus, variant = 'grid', matchPct, showStatus = true }) {
   const { T } = useTheme();
   const { t } = useTranslation();
   const isShelf = variant === 'shelf';
@@ -150,7 +150,7 @@ export const MediaCard = memo(function MediaCard({ item, delay, onOpen, onStatus
           </div>
         </div>
       </div>
-      <StatusBtn item={item} onStatus={onStatus}/>
+      {showStatus && <StatusBtn item={item} onStatus={onStatus}/>}
     </div>
   )
 })
