@@ -16,15 +16,20 @@ export function FriendProfilePage({ userId, friendshipId, onClose, onOpen, onNav
   const [profile, setProfile] = useState(null)
   const [library, setLibrary] = useState([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(false)
+  const [reloadKey, setReloadKey] = useState(0)
   const [unfriending, setUnfriending] = useState(false)
 
   useEffect(() => {
+    let active = true
     setLoading(true)
+    setError(false)
     Promise.all([getProfile(userId), loadFriendLibrary(userId)])
-      .then(([p, lib]) => { setProfile(p); setLibrary(lib) })
-      .catch(() => {})
-      .finally(() => setLoading(false))
-  }, [userId])
+      .then(([p, lib]) => { if (!active) return; setProfile(p); setLibrary(lib) })
+      .catch(() => { if (active) setError(true) })
+      .finally(() => { if (active) setLoading(false) })
+    return () => { active = false }
+  }, [userId, reloadKey])
 
   const handleUnfriend = async () => {
     if (!friendshipId) return
@@ -127,11 +132,44 @@ export function FriendProfilePage({ userId, friendshipId, onClose, onOpen, onNav
         </div>
 
         {loading ? (
-          <div style={{ display:'flex', justifyContent:'center', paddingTop:80 }}>
+          <div style={{ display:'flex', flexDirection:'column', alignItems:'center',
+            gap:14, paddingTop:80 }}>
             <div style={{ width:26, height:26, borderRadius:'50%',
               border:`3px solid ${T.bord}`, borderTopColor:'#0A84FF',
               animation:'spin .7s linear infinite' }}/>
+            <p style={{ fontSize:13, color:T.sub }}>{t('profile.loadingProfile')}</p>
             <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
+          </div>
+        ) : error ? (
+          <div style={{ display:'flex', flexDirection:'column', alignItems:'center',
+            gap:14, paddingTop:80, textAlign:'center' }}>
+            <div style={{ fontSize:38, opacity:.5 }}>⚠️</div>
+            <p style={{ fontSize:15, fontWeight:700, color:T.txt }}>{t('profile.friendsLoadError')}</p>
+            <button className="t" onClick={() => setReloadKey(k => k + 1)}
+              style={{ padding:'8px 20px', borderRadius:20, border:'none', cursor:'pointer',
+                background:'#0A84FF', color:'#fff', fontSize:13, fontWeight:700 }}>
+              {t('profile.retry')}
+            </button>
+          </div>
+        ) : !profile ? (
+          <div style={{ display:'flex', flexDirection:'column', alignItems:'center',
+            gap:14, paddingTop:80, textAlign:'center' }}>
+            <div style={{ width:72, height:72, borderRadius:'50%',
+              background: dark ? 'rgba(255,255,255,.06)' : 'rgba(0,0,0,.05)',
+              display:'flex', alignItems:'center', justifyContent:'center',
+              fontSize:30, color:T.sub }}>?</div>
+            <p style={{ fontSize:16, fontWeight:700, color:T.txt }}>{t('profile.accountUnavailable')}</p>
+            <p style={{ fontSize:13, color:T.sub, maxWidth:300, lineHeight:1.55 }}>
+              {t('profile.accountUnavailableDesc')}
+            </p>
+            {friendshipId && (
+              <button className="t" onClick={handleUnfriend} disabled={unfriending}
+                style={{ padding:'8px 20px', borderRadius:20, border:'none', cursor:'pointer',
+                  background:'rgba(255,59,48,.12)', color:'#FF3B30', fontSize:13, fontWeight:700,
+                  opacity: unfriending ? .5 : 1 }}>
+                {t('profile.removeConnection')}
+              </button>
+            )}
           </div>
         ) : (
           <>
@@ -141,7 +179,7 @@ export function FriendProfilePage({ userId, friendshipId, onClose, onOpen, onNav
                 background:`linear-gradient(135deg,${autoBannerColor.a},${autoBannerColor.b})`,
                 boxShadow:`0 12px 48px ${autoBannerColor.a}44` }}>
                 {getPosterUrl(autoBannerAnime) && (
-                  <img src={autoBannerAnime.img} alt="" style={{ position:'absolute', inset:0,
+                  <img src={getPosterUrl(autoBannerAnime)} alt="" style={{ position:'absolute', inset:0,
                     width:'100%', height:'100%', objectFit:'cover',
                     filter:'blur(28px)', transform:'scale(1.15)',
                     opacity: dark ? .35 : .22 }}/>

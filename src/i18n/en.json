@@ -167,7 +167,14 @@
     "noFriends": "No friends yet. Add someone!",
     "sendRequest": "Add",
     "requestSent": "Sent ✓",
-    "friendProfile": "Friend's Profile"
+    "friendProfile": "Friend's Profile",
+    "viewProfile": "View profile",
+    "removeConnection": "Remove connection",
+    "friendsLoadError": "Couldn't load your friends.",
+    "retry": "Retry",
+    "loadingProfile": "Loading profile…",
+    "accountUnavailable": "Account no longer available",
+    "accountUnavailableDesc": "This user deleted their account or is no longer reachable."
   },
   "auth": {
     "signIn": "Sign In",
