@@ -116,23 +116,29 @@ export function SeasonsPage({ onOpen }) {
   const [page, setPage]       = useState(1)
   const [items, setItems]     = useState([])
   const [loading, setLoading] = useState(true)
+  const [error, setError]     = useState(false)
   const [lastPage, setLastPage] = useState(1)
+  const [reloadKey, setReloadKey] = useState(0)
 
   useEffect(() => { setPage(1) }, [year, season])
 
   useEffect(() => {
     let cancelled = false
     setLoading(true)
+    setError(false)
     fetchSeasonPage(year, season, page)
       .then(({ items, lastPage }) => {
         if (cancelled) return
         setItems(items)
         setLastPage(lastPage)
       })
-      .catch(() => { if (!cancelled) { setItems([]); setLastPage(1) } })
+      // The data source (Jikan → MyAnimeList) can be down or rate-limited. Flag
+      // it as an error so we don't render the "no titles" message — which would
+      // wrongly imply the season is empty rather than temporarily unavailable.
+      .catch(() => { if (!cancelled) { setItems([]); setLastPage(1); setError(true) } })
       .finally(() => { if (!cancelled) setLoading(false) })
     return () => { cancelled = true }
-  }, [year, season, page])
+  }, [year, season, page, reloadKey])
 
   const pageNumbers = useMemo(() => {
     const total = Math.min(lastPage, 8)
@@ -201,6 +207,20 @@ export function SeasonsPage({ onOpen }) {
       {/* Grid */}
       {loading ? (
         <LoadingGrid count={6} />
+      ) : error ? (
+        <div style={{ textAlign: 'center', padding: '40px 0' }}>
+          <p style={{ color: T.sub, fontSize: 14, marginBottom: 16 }}>
+            Couldn't load this season. MyAnimeList may be temporarily down.
+          </p>
+          <button className="t" onClick={() => setReloadKey(k => k + 1)}
+            style={{
+              padding: '9px 20px', borderRadius: 10, cursor: 'pointer',
+              border: `1px solid ${T.bord}`, background: T.surf, color: T.txt,
+              fontSize: 13, fontWeight: 700,
+            }}>
+            Try again
+          </button>
+        </div>
       ) : items.length === 0 ? (
         <p style={{ textAlign: 'center', color: T.sub, fontSize: 14, padding: '40px 0' }}>
           No titles found for this season.
