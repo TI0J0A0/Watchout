@@ -249,15 +249,13 @@ export function WatchPanel({ item, onEp, onStatus }) {
   const count    = epCount ?? Math.max(maxFromStreamEps, (item.userEp ?? 0) + 1)
   const episodes = Array.from({ length: count }, (_, i) => i + 1)
 
-  // Filter out episodes with a confirmed future airdate — everything else shows
+  // We follow the streaming source (megaplay) rather than official airdates:
+  // every known episode is shown so pre-premiere titles that already have a
+  // stream are watchable. Episodes the source doesn't have yet simply fail to
+  // load in the player instead of being hidden here. A future airdate is used
+  // only to badge the card as "Pré-estreia", never to remove it.
   const today = new Date().toISOString().split('T')[0]
-  const airedEps = episodes.filter(ep => {
-    const airdate = streamEps[ep]?.airdate
-    if (!airdate) return true   // no known date = assume released
-    return airdate <= today     // has date = show only if already aired
-  })
-  const pendingCount = Math.max(0, (epCount ?? 0) - airedEps.length)
-  const nextEpisode = getNextAiredEpisode(activeEp, airedEps)
+  const nextEpisode = getNextAiredEpisode(activeEp, episodes)
   const showNextEpisode = shouldShowNextEpisodeButton({ progressRatio, nextEpisode })
 
   function seek(time) {
@@ -446,7 +444,7 @@ export function WatchPanel({ item, onEp, onStatus }) {
             gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(auto-fill, minmax(190px, 1fr))',
             gap: 10,
           }}>
-            {airedEps.map((ep) => {
+            {episodes.map((ep) => {
               const streamEp  = streamEps[ep]
               const thumbnail = tmdbStills[ep] ?? streamEp?.thumbnail ?? null
               const rawTitle  = streamEp?.title ?? ''
@@ -454,6 +452,9 @@ export function WatchPanel({ item, onEp, onStatus }) {
               const active    = activeEp === ep
               const watched   = ep <= (item.userEp ?? 0)
               const hovered   = hoveredEp === ep
+              const airdate   = streamEp?.airdate
+              const unaired   = airdate && airdate > today
+              const preDate   = unaired ? `${airdate.slice(8, 10)}/${airdate.slice(5, 7)}` : ''
 
               return (
                 <button key={ep}
@@ -528,6 +529,22 @@ export function WatchPanel({ item, onEp, onStatus }) {
                       </span>
                     </div>
 
+                    {/* Pre-premiere badge — episode has a future airdate but the
+                        stream source may already carry an early/short release */}
+                    {unaired && !active && (
+                      <div style={{ position: 'absolute', top: 6, right: 6,
+                        padding: '2px 7px', borderRadius: 6,
+                        background: 'rgba(255,159,10,.92)', backdropFilter: 'blur(6px)',
+                        display: 'flex', alignItems: 'center', gap: 4 }}>
+                        <span style={{ fontSize: 9, fontWeight: 700, color: '#000', letterSpacing: '.02em' }}>
+                          Pré-estreia
+                        </span>
+                        <span style={{ fontSize: 9, fontWeight: 700, color: 'rgba(0,0,0,.65)' }}>
+                          {preDate}
+                        </span>
+                      </div>
+                    )}
+
                     {/* Duration badge */}
                     {epDuration && (
                       <div style={{ position: 'absolute', bottom: 6, right: 6,
@@ -554,17 +571,6 @@ export function WatchPanel({ item, onEp, onStatus }) {
             })}
           </div>
 
-          {/* Coming soon indicator */}
-          {pendingCount > 0 && (
-            <div style={{ marginTop: 14, display: 'flex', alignItems: 'center', gap: 8,
-              padding: '10px 14px', borderRadius: 12,
-              background: 'rgba(255,159,10,.08)', border: '1px solid rgba(255,159,10,.18)' }}>
-              <span style={{ fontSize: 14 }}>📅</span>
-              <p style={{ fontSize: 12, color: '#FF9F0A', fontWeight: 500 }}>
-                {pendingCount} episode{pendingCount > 1 ? 's' : ''} not yet released
-              </p>
-            </div>
-          )}
         </>
       )}
     </div>
