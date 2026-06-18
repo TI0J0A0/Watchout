@@ -272,6 +272,15 @@ export function SeasonalPage({
     () => data.filter(i => i.type === 'anime' && i.userStatus === 'watching'),
     [data]
   )
+
+  // "Airing" shelf: only the season titles that are actually broadcasting now —
+  // drops "not yet aired" and already-finished entries from the current season
+  // block. Falls back to the full seasonal list if none are flagged as airing
+  // (e.g. between seasons) so the shelf is never unexpectedly empty.
+  const airingSeasonal = useMemo(() => {
+    const onlyAiring = seasonal.filter(i => i.airing)
+    return onlyAiring.length > 0 ? onlyAiring : seasonal
+  }, [seasonal])
   const isArchive = archYear !== null && archSeason !== null
   const ytId = hero?.trailer?.match(/embed\/([^?]+)/)?.[1]
   const ytThumb = ytId ? `https://img.youtube.com/vi/${ytId}/maxresdefault.jpg` : null
@@ -573,7 +582,7 @@ export function SeasonalPage({
           <ShelfRow
             title={t('seasonal.airing')}
             subtitle={t('seasonal.airingSubtitle')}
-            items={seasonal} loading={false}
+            items={airingSeasonal} loading={false}
             onOpen={onOpen} onStatus={onStatus}
             headerRight={
               <div style={{ display: 'flex', gap: 6 }}>
