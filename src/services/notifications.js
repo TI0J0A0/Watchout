@@ -32,10 +32,6 @@ export async function createNotification(userId, type, title, body = null, data 
   await supabase.from('notifications').insert({ user_id: userId, type, title, body, data })
 }
 
-export async function hasNotificationToday(userId, animeId) {
-  return hasRecentEpisodeNotification(userId, animeId, 24)
-}
-
 export async function hasRecentEpisodeNotification(userId, animeId, hours = 5) {
   if (!supabase) return false
   const { data } = await supabase

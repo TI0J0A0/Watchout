@@ -9,10 +9,6 @@ export async function fetchExactCount(table, applyQuery = query => query) {
   return count ?? 0
 }
 
-export function incrementCounter(map, key, amount = 1) {
-  map.set(key, (map.get(key) ?? 0) + amount)
-}
-
 export function mapById(items, key = 'id') {
   return new Map((items ?? []).map(item => [item[key], item]))
 }

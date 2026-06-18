@@ -1,12 +1,6 @@
-// Detects whether the SPA is running inside the native Android wrapper.
-// The wrapper sets window flags (after page start) AND tags the User-Agent
+// Detects whether the SPA is running inside the native Android TV wrapper.
+// The wrapper sets a window flag (after page start) AND tags the User-Agent
 // (available synchronously at first render), so we check both.
-
-export function isAndroid() {
-  if (typeof window === 'undefined') return false
-  if (window.__IS_ANDROID__ === true) return true
-  return /FunnyrollApp/i.test(navigator.userAgent || '')
-}
 
 export function isAndroidTV() {
   if (typeof window === 'undefined') return false
