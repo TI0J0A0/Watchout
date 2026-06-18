@@ -76,15 +76,28 @@ export async function deleteFriendship(friendshipId) {
   if (error) throw error
 }
 
+// Quando uma conta é excluída, a linha em `profiles` some por cascade mas a
+// `friendship` pode ficar órfã — apontando para um id sem perfil. Isso fazia o
+// amigo aparecer como um "?" fantasma. Removemos essas linhas em background.
+function cleanupOrphanFriendships(orphanIds) {
+  if (!supabase || !orphanIds.length) return
+  supabase
+    .from('friendships')
+    .delete()
+    .in('id', orphanIds)
+    .then(() => {}, () => {})
+}
+
 export async function getFriendsWithProfiles(userId) {
   if (!supabase || !userId) return []
 
-  const { data: friendships } = await supabase
+  const { data: friendships, error } = await supabase
     .from('friendships')
     .select('*')
     .eq('status', 'accepted')
     .or(`requester_id.eq.${userId},addressee_id.eq.${userId}`)
 
+  if (error) throw error
   if (!friendships?.length) return []
 
   const otherIds = friendships.map(f =>
@@ -94,33 +107,49 @@ export async function getFriendsWithProfiles(userId) {
   const { data: profiles } = await supabase
     .from('profiles').select('*').in('id', otherIds)
 
-  return friendships.map(f => {
+  const friends = []
+  const orphanIds = []
+  for (const f of friendships) {
     const otherId = f.requester_id === userId ? f.addressee_id : f.requester_id
-    return {
-      id:           otherId,
-      friendshipId: f.id,
-      profile:      profiles?.find(p => p.id === otherId) ?? null,
+    const profile = profiles?.find(p => p.id === otherId) ?? null
+    if (profile) {
+      friends.push({ id: otherId, friendshipId: f.id, profile })
+    } else {
+      orphanIds.push(f.id)
     }
-  })
+  }
+
+  cleanupOrphanFriendships(orphanIds)
+  return friends
 }
 
 export async function getPendingRequests(userId) {
   if (!supabase || !userId) return []
 
-  const { data: requests } = await supabase
+  const { data: requests, error } = await supabase
     .from('friendships')
     .select('*')
     .eq('status', 'pending')
     .eq('addressee_id', userId)
 
+  if (error) throw error
   if (!requests?.length) return []
 
   const requesterIds = requests.map(r => r.requester_id)
   const { data: profiles } = await supabase
     .from('profiles').select('*').in('id', requesterIds)
 
-  return requests.map(r => ({
-    id:      r.id,
-    profile: profiles?.find(p => p.id === r.requester_id) ?? null,
-  }))
+  const pending = []
+  const orphanIds = []
+  for (const r of requests) {
+    const profile = profiles?.find(p => p.id === r.requester_id) ?? null
+    if (profile) {
+      pending.push({ id: r.id, profile })
+    } else {
+      orphanIds.push(r.id)
+    }
+  }
+
+  cleanupOrphanFriendships(orphanIds)
+  return pending
 }

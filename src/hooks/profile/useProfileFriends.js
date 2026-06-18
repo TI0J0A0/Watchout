@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import {
   getFriendsWithProfiles,
   getPendingRequests,
@@ -11,21 +11,26 @@ import {
 export function useProfileFriends(user) {
   const [friends, setFriends] = useState([])
   const [friendsLoading, setFriendsLoading] = useState(true)
+  const [friendsError, setFriendsError] = useState(false)
   const [pendingRequests, setPendingRequests] = useState([])
   const [showFriendModal, setShowFriendModal] = useState(false)
   const [friendSearch, setFriendSearch] = useState('')
   const [friendResults, setFriendResults] = useState([])
   const [friendSearchLoading, setFriendSearchLoading] = useState(false)
   const [sentRequests, setSentRequests] = useState(new Set())
+  const [removingId, setRemovingId] = useState(null)
 
-  useEffect(() => {
-    if (!user) return
+  const loadFriends = useCallback(() => {
+    if (!user?.id) return
     setFriendsLoading(true)
+    setFriendsError(false)
     Promise.all([getFriendsWithProfiles(user.id), getPendingRequests(user.id)])
       .then(([f, p]) => { setFriends(f); setPendingRequests(p) })
-      .catch(() => {})
+      .catch(() => setFriendsError(true))
       .finally(() => setFriendsLoading(false))
   }, [user?.id])
+
+  useEffect(() => { loadFriends() }, [loadFriends])
 
   async function handleFriendSearch(q) {
     setFriendSearch(q)
@@ -60,6 +65,16 @@ export function useProfileFriends(user) {
     } catch {}
   }
 
+  async function handleRemoveFriend(friendshipId) {
+    if (!friendshipId) return
+    setRemovingId(friendshipId)
+    try {
+      await deleteFriendship(friendshipId)
+      setFriends(prev => prev.filter(f => f.friendshipId !== friendshipId))
+    } catch {}
+    setRemovingId(null)
+  }
+
   function closeFriendModal() {
     setShowFriendModal(false)
     setFriendSearch('')
@@ -69,17 +84,21 @@ export function useProfileFriends(user) {
   return {
     friends,
     friendsLoading,
+    friendsError,
     pendingRequests,
     showFriendModal,
     friendSearch,
     friendResults,
     friendSearchLoading,
     sentRequests,
+    removingId,
     setShowFriendModal,
     handleFriendSearch,
     handleSendRequest,
     handleAccept,
     handleDecline,
+    handleRemoveFriend,
+    refreshFriends: loadFriends,
     closeFriendModal,
   }
 }

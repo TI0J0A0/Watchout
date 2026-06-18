@@ -74,19 +74,25 @@ export function ProfilePage({ library, onOpen, onStatus, onLogin, onViewFriend =
   const {
     friends,
     friendsLoading,
+    friendsError,
     pendingRequests,
     showFriendModal,
     friendSearch,
     friendResults,
     friendSearchLoading,
     sentRequests,
+    removingId,
     setShowFriendModal,
     handleFriendSearch,
     handleSendRequest,
     handleAccept,
     handleDecline,
+    handleRemoveFriend,
+    refreshFriends,
     closeFriendModal,
   } = useProfileFriends(user)
+
+  const [friendMenuId, setFriendMenuId] = useState(null)
 
   useEffect(() => {
     if (!user?.id) return
@@ -276,7 +282,14 @@ export function ProfilePage({ library, onOpen, onStatus, onLogin, onViewFriend =
 
   return (
     <div className="fu" style={{ paddingBottom:60 }}>
-      <style>{`@keyframes avatarSpin { to { transform: rotate(360deg) } }`}</style>
+      <style>{`
+        @keyframes avatarSpin { to { transform: rotate(360deg) } }
+        @keyframes profSkelPulse { 0%,100% { opacity:.55 } 50% { opacity:1 } }
+        .profSkel {
+          background: ${dark ? 'rgba(255,255,255,.08)' : 'rgba(0,0,0,.07)'};
+          animation: profSkelPulse 1.3s ease-in-out infinite;
+        }
+      `}</style>
 
       {/* ── Banner + avatar ── */}
       <div style={{ position:'relative', marginTop:28, marginBottom:0 }}>
@@ -782,13 +795,19 @@ export function ProfilePage({ library, onOpen, onStatus, onLogin, onViewFriend =
       <ProfileTasteCard T={T} bannerColor={bannerColor} personality={personality} tasteProfile={tasteProfile} />
 
       {/* ── Friends ── */}
-      <section style={{ marginBottom:36 }}>
+      <section style={{ marginBottom:36 }} onClick={() => setFriendMenuId(null)}>
         <div style={{ display:'flex', alignItems:'center',
           justifyContent:'space-between', marginBottom:14 }}>
           <div style={{ display:'flex', alignItems:'center', gap:8 }}>
             <h2 style={{ fontSize:18, fontWeight:700, color:T.txt, letterSpacing:'-.02em' }}>
               {t('profile.friends')}
             </h2>
+            {!friendsLoading && !friendsError && friends.length > 0 && (
+              <span style={{ fontSize:12, fontWeight:700, color:T.sub,
+                background:T.surf2, borderRadius:10, padding:'2px 9px', lineHeight:1.6 }}>
+                {friends.length}
+              </span>
+            )}
             {pendingRequests.length > 0 && (
               <span style={{ fontSize:11, fontWeight:700, color:'#fff',
                 background:'#FF3B30', borderRadius:10, padding:'2px 7px' }}>
@@ -843,27 +862,111 @@ export function ProfilePage({ library, onOpen, onStatus, onLogin, onViewFriend =
 
         {/* Friends grid */}
         {friendsLoading ? (
-          <p style={{ fontSize:13, color:T.sub }}>…</p>
-        ) : friends.length === 0 ? (
-          <p style={{ fontSize:13, color:T.sub, fontStyle:'italic' }}>
-            {t('profile.noFriends')}
-          </p>
-        ) : (
           <div style={{ display:'flex', gap: isMobile ? 8 : 12, flexWrap:'wrap' }}>
-            {friends.map(f => (
-              <div key={f.id} className="t"
-                onClick={() => onViewFriend(f.id, f.friendshipId)}
-                style={{ display:'flex', flexDirection:'column', alignItems:'center',
-                  gap:6, cursor:'pointer', padding:'10px 14px', borderRadius:14,
-                  background:T.surf, border:`1px solid ${T.bord}` }}>
-                <AvatarPic profile={f.profile} size={44}/>
-                <p style={{ fontSize:11, fontWeight:600, color:T.txt, maxWidth:70,
-                  textAlign:'center', overflow:'hidden',
-                  textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
-                  {f.profile?.display_name || f.profile?.username || '?'}
-                </p>
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} style={{ display:'flex', flexDirection:'column', alignItems:'center',
+                gap:8, padding:'12px 16px', borderRadius:16,
+                background:T.surf, border:`1px solid ${T.bord}` }}>
+                <div className="profSkel" style={{ width:48, height:48, borderRadius:'50%' }}/>
+                <div className="profSkel" style={{ width:52, height:9, borderRadius:5 }}/>
               </div>
             ))}
+          </div>
+        ) : friendsError ? (
+          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between',
+            gap:12, padding:'14px 16px', borderRadius:14, flexWrap:'wrap',
+            background:'rgba(255,59,48,.07)', border:'1px solid rgba(255,59,48,.18)' }}>
+            <p style={{ fontSize:13, color:T.txt }}>{t('profile.friendsLoadError')}</p>
+            <button className="t" onClick={refreshFriends}
+              style={{ padding:'6px 14px', borderRadius:14, border:'none', cursor:'pointer',
+                background:'rgba(10,132,255,.12)', color:'#0A84FF', fontSize:12, fontWeight:700 }}>
+              {t('profile.retry')}
+            </button>
+          </div>
+        ) : friends.length === 0 ? (
+          <div className="t" onClick={() => setShowFriendModal(true)}
+            style={{ display:'flex', alignItems:'center', gap:14, cursor:'pointer',
+              padding:'18px 20px', borderRadius:16,
+              background:T.surf, border:`1px dashed ${T.bord}` }}>
+            <div style={{ width:44, height:44, borderRadius:'50%', flexShrink:0,
+              background:'rgba(10,132,255,.12)', display:'flex', alignItems:'center',
+              justifyContent:'center', fontSize:22 }}>👥</div>
+            <div style={{ minWidth:0 }}>
+              <p style={{ fontSize:14, fontWeight:700, color:T.txt, marginBottom:2 }}>
+                {t('profile.noFriends')}
+              </p>
+              <p style={{ fontSize:12.5, color:'#0A84FF', fontWeight:600 }}>
+                + {t('profile.addFriend')}
+              </p>
+            </div>
+          </div>
+        ) : (
+          <div style={{ display:'flex', gap: isMobile ? 8 : 12, flexWrap:'wrap' }}>
+            {friends.map(f => {
+              const fname = f.profile?.display_name || f.profile?.username || '?'
+              const removing = removingId === f.friendshipId
+              const menuOpen = friendMenuId === f.friendshipId
+              return (
+                <div key={f.id} className="t friendCard"
+                  onClick={() => !removing && onViewFriend(f.id, f.friendshipId)}
+                  style={{ position:'relative', display:'flex', flexDirection:'column',
+                    alignItems:'center', gap:7, cursor: removing ? 'default' : 'pointer',
+                    padding:'12px 16px', borderRadius:16, width: 96,
+                    background:T.surf, border:`1px solid ${T.bord}`,
+                    opacity: removing ? .5 : 1,
+                    transition:'transform .15s, box-shadow .15s, border-color .15s' }}
+                  onMouseEnter={e => { if (removing) return
+                    e.currentTarget.style.transform='translateY(-3px)'
+                    e.currentTarget.style.boxShadow=`0 8px 24px rgba(0,0,0,${dark?.35:.12})`
+                    e.currentTarget.style.borderColor='rgba(10,132,255,.45)' }}
+                  onMouseLeave={e => {
+                    e.currentTarget.style.transform=''
+                    e.currentTarget.style.boxShadow=''
+                    e.currentTarget.style.borderColor=T.bord }}>
+
+                  {/* kebab menu trigger */}
+                  <button className="t" aria-label="options"
+                    onClick={e => { e.stopPropagation(); setFriendMenuId(menuOpen ? null : f.friendshipId) }}
+                    style={{ position:'absolute', top:4, right:4, width:24, height:24,
+                      borderRadius:8, border:'none', cursor:'pointer', lineHeight:1,
+                      background: menuOpen ? T.surf2 : 'transparent', color:T.sub,
+                      fontSize:14, fontWeight:800,
+                      display:'flex', alignItems:'center', justifyContent:'center' }}>
+                    ⋯
+                  </button>
+
+                  {menuOpen && (
+                    <div onClick={e => e.stopPropagation()}
+                      style={{ position:'absolute', top:30, right:4, zIndex:5,
+                        borderRadius:10, overflow:'hidden', minWidth:120,
+                        background:T.surf, border:`1px solid ${T.bord}`,
+                        boxShadow:'0 8px 28px rgba(0,0,0,.35)' }}>
+                      <button className="t"
+                        onClick={() => { setFriendMenuId(null); onViewFriend(f.id, f.friendshipId) }}
+                        style={{ width:'100%', textAlign:'left', padding:'9px 12px', border:'none',
+                          background:'transparent', color:T.txt, fontSize:12.5, fontWeight:600,
+                          cursor:'pointer' }}>
+                        {t('profile.viewProfile')}
+                      </button>
+                      <button className="t"
+                        onClick={() => { setFriendMenuId(null); handleRemoveFriend(f.friendshipId) }}
+                        style={{ width:'100%', textAlign:'left', padding:'9px 12px', border:'none',
+                          borderTop:`1px solid ${T.bord}`, background:'transparent',
+                          color:'#FF3B30', fontSize:12.5, fontWeight:600, cursor:'pointer' }}>
+                        {t('profile.unfriend')}
+                      </button>
+                    </div>
+                  )}
+
+                  <AvatarPic profile={f.profile} size={48}/>
+                  <p title={fname} style={{ fontSize:11.5, fontWeight:600, color:T.txt,
+                    maxWidth:72, textAlign:'center', overflow:'hidden',
+                    textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+                    {fname}
+                  </p>
+                </div>
+              )
+            })}
           </div>
         )}
       </section>
