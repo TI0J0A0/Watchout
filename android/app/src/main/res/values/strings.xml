@@ -1,3 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
 <resources>
     <string name="app_name">Funnyroll</string>
+    <string name="title_activity_main">Funnyroll</string>
+    <string name="package_name">com.funnyroll.app</string>
+    <string name="custom_url_scheme">com.funnyroll.app</string>
 </resources>

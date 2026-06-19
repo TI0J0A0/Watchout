@@ -1,0 +1,12 @@
+{
+  "appId": "com.funnyroll.app",
+  "appName": "Funnyroll",
+  "webDir": "dist",
+  "server": {
+    "url": "https://funnyroll.com",
+    "androidScheme": "https"
+  },
+  "android": {
+    "appendUserAgentString": "FunnyrollApp/1.0"
+  }
+}

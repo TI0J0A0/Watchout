@@ -63,14 +63,30 @@ html.tv-mode :focus {
   outline: 3px solid var(--primary-soft) !important;
   outline-offset: 3px;
   border-radius: 12px;
-  transform: scale(1.06);
-  box-shadow: 0 0 0 3px rgba(167, 92, 246, .55), 0 16px 48px rgba(0, 0, 0, .6);
+  /* !important so the focus lift + glow win over the cards' inline box-shadow */
+  transform: scale(1.06) !important;
+  box-shadow: 0 0 0 3px rgba(167, 92, 246, .65), 0 16px 48px rgba(0, 0, 0, .6) !important;
   z-index: 6;
   position: relative;
+  scroll-margin: 96px;
   transition: transform .12s ease, box-shadow .12s ease, outline-color .12s ease;
 }
 /* Cards already animate transform on hover — keep the TV focus lift consistent */
 html.tv-mode .media-card-wrap:focus-within { z-index: 6; }
+
+/* TV remotes have no pointer, so `@media (hover:none)` hides the card info
+   overlay. In TV mode, reveal it on D-pad focus instead of hover so the
+   focused title/synopsis is always readable from the couch. */
+html.tv-mode .media-card-wrap:focus-within .card-hover-info {
+  display: flex !important;
+  opacity: 1 !important;
+  pointer-events: auto;
+  backdrop-filter: none;
+}
+
+/* Comfortable 10-foot reading: nudge core text up a touch in TV mode. */
+html.tv-mode .hero-title { font-size: clamp(46px, 6vw, 72px); }
+html.tv-mode .hero-sub   { font-size: 17px; }
 
 @keyframes fadeUp {
   from { opacity: 0; transform: translateY(12px); }

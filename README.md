@@ -172,6 +172,52 @@ supabase/
 | `npm run build` | Build for production into `dist/` |
 | `npm run preview` | Preview the production build locally |
 | `node --test src/` | Run the unit test suite (Node's built-in test runner) |
+| `npm run cap:sync` | Build the web app and sync it into the native project(s) |
+| `npm run cap:android` | Open the Android project in Android Studio |
+| `npm run cap:run` | Build and run the app on a connected Android device/emulator |
+
+---
+
+## Android TV / Fire TV app (Capacitor)
+
+The same React app is packaged for **Android TV, Fire TV (Firestick) and Android projectors** with [Capacitor](https://capacitorjs.com). The native shell is a thin WebView that loads the live site (`server.url` in [`capacitor.config.json`](capacitor.config.json)), so **front-end changes ship by deploying the site — no app rebuild required**. The `android/` folder is the Capacitor-generated project (app id `com.funnyroll.app`).
+
+### Develop without building the app
+
+TV navigation is built into the web app, so you can develop and test it entirely in a desktop browser — no Android toolchain needed:
+
+```bash
+npm run dev
+# then open with the TV override:
+#   http://localhost:5173/?tv=1   → forces 10-foot / D-pad mode
+#   http://localhost:5173/?tv=0   → forces normal mode
+```
+
+`?tv=1` is remembered in `localStorage` so it survives in-app navigation. Use arrow keys to move focus (spatial D-pad navigation), and the focused card reveals its info panel just like it will on a remote.
+
+### Build the APK (for Firestick / Android TV)
+
+Requires **JDK 17** + **Android Studio / Android SDK** installed locally.
+
+```bash
+npm run cap:sync          # vite build + copy web assets into android/
+npm run cap:android       # open in Android Studio → Run on an Android TV emulator
+# or from the CLI:
+cd android && ./gradlew assembleDebug   # APK at app/build/outputs/apk/debug/
+```
+
+Sideload onto a Firestick (Developer Options → ADB debugging enabled):
+
+```bash
+adb connect <firestick-ip>:5555
+adb install android/app/build/outputs/apk/debug/app-debug.apk
+```
+
+The manifest declares a **Leanback launcher** + TV banner, so the app appears on the Android TV / Fire TV home row. The remote **Back** button is handled in [`src/App.jsx`](src/App.jsx) (closes overlays → steps back through history → exits). TV detection lives in [`src/utils/platform.js`](src/utils/platform.js) (`isAndroidTV`), tagged by the WebView User-Agent in [`MainActivity.java`](android/app/src/main/java/com/funnyroll/app/MainActivity.java).
+
+### Future: Apple
+
+`npx cap add ios` adds an **iPhone/iPad** target later (the web app is reused as-is). Note that **Apple TV (tvOS) is not supported by Capacitor** — it would require a separate native app.
 
 ---
 

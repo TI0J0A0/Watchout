@@ -17,6 +17,7 @@ import { BackToTop } from './components/BackToTop'
 import { getGenreById } from './constants/browse'
 import { useTVNavigation } from './hooks/useTVNavigation'
 import { isAndroidTV } from './utils/platform'
+import { Capacitor } from '@capacitor/core'
 
 // Code-split rarely-used / heavy routes so they stay out of the initial bundle.
 const named = (loader, key) => lazy(() => loader().then(m => ({ default: m[key] })))
@@ -96,6 +97,30 @@ function AppInner() {
   pageRef.current = page
   const userIdRef = useRef(user?.id)
   userIdRef.current = user?.id
+
+  // Latest overlay state for the native hardware/remote Back handler below.
+  const backStateRef = useRef({})
+  backStateRef.current = { page, detailId, friendId, showAuth, showMAL }
+
+  // Hardware / remote Back button (Android TV remotes, Fire TV, phones) when
+  // running inside the Capacitor shell. Priority: close the topmost overlay →
+  // step back through hash history (detail/page) → exit the app at the root.
+  useEffect(() => {
+    if (!Capacitor.isNativePlatform()) return
+    let remove = () => {}
+    import('@capacitor/app').then(({ App: CapApp }) => {
+      const handle = CapApp.addListener('backButton', () => {
+        const s = backStateRef.current
+        if (s.showMAL) { setShowMAL(false); return }
+        if (s.showAuth) { setShowAuth(false); return }
+        if (s.friendId !== null) { setFriendId(null); setFriendshipId(null); return }
+        if (s.detailId !== null || s.page !== 'seasonal') { window.history.back(); return }
+        CapApp.exitApp()
+      })
+      remove = () => { handle.then?.(h => h.remove()) }
+    }).catch(() => {})
+    return () => remove()
+  }, [])
 
 
   useEffect(() => {
